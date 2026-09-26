@@ -58,19 +58,19 @@ test.describe("Motores — Tokens e Quotas ao Vivo", () => {
     expect(del.ok()).toBeTruthy();
   });
 
-  test("4. Aba limites exibe badge de consulta real e ações", async ({ page }) => {
+  test("4. Aba limites exibe os motores e a ação de salvar", async ({ page }) => {
     await page.goto("/config?tab=limites");
     const container = page.locator("[data-testid='tab-limites-motores']");
     await expect(container).toBeVisible({ timeout: 15000 });
-    await expect(container.getByText(/CONSULTA REAL AO VIVO/i).first()).toBeVisible();
-    await expect(container.getByRole("button", { name: /Recarregar Quotas/i })).toBeVisible();
     await expect(container.getByRole("button", { name: /Salvar Todos/i })).toBeVisible();
+    await expect(container.getByText("OpenAI Codex CLI", { exact: true }).first()).toBeVisible();
   });
 
-  test("5. Aba motores exibe quota real, adaptador e contas", async ({ page }) => {
+  // A UI React não exibe mais quotas ao vivo (removidas em 9ad8e1e); o contrato
+  // de /api/motores/tokens segue coberto pelos testes 1–3.
+  test("5. Aba motores exibe o painel do motor com diagnóstico", async ({ page }) => {
     await page.goto("/config?tab=motores");
-    await expect(page.getByText("Quota Real & Tokens Disponíveis").first()).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole("button", { name: /Consultar Adaptador/i }).first()).toBeVisible();
-    await expect(page.getByText(/Contas Conectadas/i).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Motores de Inferência & Provedores BYOK" })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("button", { name: "Diagnóstico rápido" }).first()).toBeVisible();
   });
 });

@@ -18,7 +18,7 @@ const ROTAS: Array<{ path: string; prova: { tipo: "texto" | "placeholder" | "tit
   { path: "/historico", prova: { tipo: "texto", valor: "Histórico de Atividades" } },
   { path: "/notificacoes", prova: { tipo: "texto", valor: "Central de Notificações" } },
   { path: "/docs", prova: { tipo: "placeholder", valor: "Buscar na documentação..." } },
-  { path: "/config", prova: { tipo: "texto", valor: "Configurações do Sistema" } },
+  { path: "/config", prova: { tipo: "texto", valor: "Configurações & Governança do Sistema" } },
 ];
 
 test.describe("Rotas: todas carregam sem erro e sem tela vazia", () => {

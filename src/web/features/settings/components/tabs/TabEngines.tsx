@@ -217,16 +217,29 @@ export const TabEngines: FC<TabEnginesProps> = ({
 
   // Ciclo de vida: Desconectar Motor
   const desconectarMotor = async (motorId: string) => {
-    if (!confirm(`Deseja desconectar o motor "${motorId}"? O OpenCode será restaurado como executor padrão.`)) {
+    // O motor padrão só é trocado para um motor escolhido pelo usuário (sem padrão implícito).
+    const candidatos = motores.filter((m) => m.installed && m.id !== motorId).map((m) => m.id);
+    if (candidatos.length === 0) {
+      showToast("Nenhum outro motor instalado para assumir como padrão. Instale outro motor antes de desconectar este.", "erro");
+      return;
+    }
+    const escolha = prompt(
+      `Desconectar "${motorId}". Qual motor passa a ser o padrão das execuções?\nInstalados: ${candidatos.join(", ")}`,
+      candidatos[0]
+    );
+    if (escolha === null) return;
+    const novoPadrao = escolha.trim();
+    if (!candidatos.includes(novoPadrao)) {
+      showToast(`"${novoPadrao}" não é um motor instalado. Escolha entre: ${candidatos.join(", ")}.`, "erro");
       return;
     }
     setDesconectandoMotor(motorId);
     try {
-      const res = await client.http.post<any>(`/api/motores/${encodeURIComponent(motorId)}/desconectar`, {});
+      const res = await client.http.post<any>(`/api/motores/${encodeURIComponent(motorId)}/desconectar`, { novoPadrao });
       if (!res?.ok && res?.erro) {
         throw new Error(res.erro || "Falha ao desconectar motor");
       }
-      showToast(`Motor "${motorId}" desconectado. OpenCode restaurado como padrão.`, "sucesso");
+      showToast(`Motor "${motorId}" desconectado. "${novoPadrao}" agora é o padrão.`, "sucesso");
       await carregarDados();
     } catch (err: unknown) {
       tratarErro(err, `Erro ao desconectar motor ${motorId}`);
@@ -340,7 +353,7 @@ export const TabEngines: FC<TabEnginesProps> = ({
           ABA MOTORES & PROVEDORES
          ───────────────────────────────────────────────────────────── */}
       {abaAtiva === "motores" && (
-        <div className="space-y-6 bg-transparent">
+        <div className="space-y-6 bg-transparent" data-testid="tab-motores">
           <LegacyConfigBanner />
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-zinc-800 gap-3">
             <div>
@@ -551,14 +564,14 @@ export const TabEngines: FC<TabEnginesProps> = ({
                     </button>
                   )}
 
-                  {/* Se o motor for o padrão ativo e não for o opencode, botão de desconectar */}
-                  {motorAtual.ativo && motorAtual.id !== "opencode" && (
+                  {/* Motor padrão ativo: desconectar exige escolher o novo padrão */}
+                  {motorAtual.ativo && (
                     <button
                       type="button"
                       disabled={desconectandoMotor === motorAtual.id}
                       onClick={() => desconectarMotor(motorAtual.id)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-rose-950/40 text-rose-400 hover:text-rose-300 border border-zinc-800 hover:border-rose-900/50 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
-                      title="Desconectar este motor e reverter o padrão para OpenCode"
+                      title="Desconectar este motor e escolher o novo motor padrão"
                     >
                       {desconectandoMotor === motorAtual.id ? (
                         <Loader2 size={13} className="animate-spin" />
@@ -982,9 +995,9 @@ export const TabEngines: FC<TabEnginesProps> = ({
                 <div className="flex items-start gap-2 rounded-xl border border-sky-800/40 bg-sky-950/20 p-3 text-xs text-sky-200">
                   <Shield size={15} className="mt-0.5 shrink-0 text-sky-400" />
                   <div>
-                    <span className="font-semibold block">Nenhuma conta necessária</span>
+                    <span className="font-semibold block">Login feito pelo próprio MiMo</span>
                     <span className="text-[11px] text-sky-200/80">
-                      O MiMo Code usa o tier gratuito oficial sem login ou chave de API. Após instalar, teste a prontidão e defina-o como padrão se desejar.
+                      O tier gratuito do MiMo foi encerrado. Após instalar, execute <code>mimo auth login</code> (ou configure um provedor terceiro no MiMo) e use o Diagnóstico rápido para confirmar.
                     </span>
                   </div>
                 </div>
@@ -998,7 +1011,7 @@ export const TabEngines: FC<TabEnginesProps> = ({
           ABA LIMITES DOS MOTORES
          ───────────────────────────────────────────────────────────── */}
       {abaAtiva === "limites" && (
-        <div className="space-y-6 bg-transparent">
+        <div className="space-y-6 bg-transparent" data-testid="tab-limites-motores">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-zinc-800 gap-3">
             <div>
               <h2 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
@@ -1013,7 +1026,7 @@ export const TabEngines: FC<TabEnginesProps> = ({
               type="button"
               disabled={salvandoLimites}
               onClick={salvarTodosLimites}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 shadow-sm self-start sm:self-center"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-orange-700 hover:bg-orange-600 text-white text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 shadow-sm self-start sm:self-center"
             >
               {salvandoLimites ? (
                 <Loader2 size={13} className="animate-spin" />

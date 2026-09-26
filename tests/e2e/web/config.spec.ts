@@ -9,7 +9,7 @@ test.describe("Web Config: abas, escopo, orçamento e chaves", () => {
     logado(page, "test-e2e");
     await seederEmpresaBasica(api(page), "test-e2e");
     await page.goto("/config");
-    await esperarElementoTexto(page, "Configurações do Sistema");
+    await esperarElementoTexto(page, "Configurações & Governança do Sistema");
   });
 
   test("todas as abas abrem sem erro", async ({ page }) => {
@@ -33,7 +33,7 @@ test.describe("Web Config: abas, escopo, orçamento e chaves", () => {
   test("orçamento edita e persiste via API", async ({ page }) => {
     await page.goto("/config?tab=orcamento");
     await esperarElementoTexto(page, "Limites de Gasto & Orçamento Financeiro");
-    const linha = page.locator("div.py-3", { has: page.locator("span", { hasText: "budget.daily_usd" }) });
+    const linha = page.getByTestId("setting-budget.daily_usd");
     await linha.locator('input[type="number"]').fill("7.5");
     await linha.getByRole("button").click();
     await expect.poll(async () => {
@@ -50,13 +50,12 @@ test.describe("Web Config: abas, escopo, orçamento e chaves", () => {
 
   test("chaves: salva e remove com confirm", async ({ page }) => {
     await page.goto("/config?tab=chaves");
-    await esperarElementoTexto(page, "Gerenciamento Seguro de Chaves de API");
-    await page.locator('input[placeholder="sk-or-v1-..."]').fill("sk-or-v1-e2e-web-1234567890");
+    await esperarElementoTexto(page, "Chaves de API dos Motores de IA (BYOK)");
+    await page.getByPlaceholder("sk-or-v1-... ou chave da API").fill("sk-or-v1-e2e-web-1234567890");
     await page.getByRole("button", { name: "Salvar Chave" }).click();
     await expect(page.getByText("openrouter").first()).toBeVisible({ timeout: 15000 });
     page.once("dialog", (d) => d.accept());
-    const linhaChave = page.locator("div.py-3", { hasText: "openrouter" }).first();
-    await linhaChave.getByRole("button").last().click();
-    await page.waitForTimeout(800);
+    await page.getByTestId("chave-openrouter").getByRole("button", { name: "Remover chave de openrouter" }).click();
+    await expect(page.getByTestId("chave-openrouter")).toHaveCount(0, { timeout: 10000 });
   });
 });

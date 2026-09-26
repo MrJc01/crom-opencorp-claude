@@ -22,7 +22,8 @@ export interface FakeOpenCode {
   close(): Promise<void>;
 }
 
-export function startFakeOpenCode(port: number, password: string): Promise<FakeOpenCode> {
+/** `replyPrefix` troca o início da resposta (o E2E usa o texto do fake antigo). */
+export function startFakeOpenCode(port: number, password: string, replyPrefix = "Olá, resposta para: "): Promise<FakeOpenCode> {
   const expected = `Basic ${Buffer.from(`opencode:${password}`).toString("base64")}`;
   const subscribers = new Set<ServerResponse>();
   const pendingPermission = new Map<string, () => void>();
@@ -73,11 +74,11 @@ export function startFakeOpenCode(port: number, password: string): Promise<FakeO
     }
 
     emit("message.part.updated", { sessionID, time: Date.now(), part: { id: partID, sessionID, messageID, type: "text", text: "" } });
-    for (const delta of ["Olá, ", "resposta para: ", text]) {
+    for (const delta of [replyPrefix.slice(0, 5), replyPrefix.slice(5), text]) {
       emit("message.part.delta", { sessionID, messageID, partID, field: "text", delta });
     }
     // Atualização final da parte com o texto completo: não pode duplicar.
-    emit("message.part.updated", { sessionID, time: Date.now(), part: { id: partID, sessionID, messageID, type: "text", text: `Olá, resposta para: ${text}` } });
+    emit("message.part.updated", { sessionID, time: Date.now(), part: { id: partID, sessionID, messageID, type: "text", text: `${replyPrefix}${text}` } });
     emit("message.part.updated", {
       sessionID,
       time: Date.now(),

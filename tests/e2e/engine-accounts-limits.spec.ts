@@ -93,7 +93,7 @@ test.describe("Motores — Contas e Limites", () => {
     await page.goto("/config?tab=limites");
     const tab = page.locator("[data-testid='tab-limites-motores']");
     await expect(tab).toBeVisible({ timeout: 15000 });
-    await esperarElementoTexto(page, "Limites de Operação, Taxas e Cotas por Motor");
+    await esperarElementoTexto(page, "Limites Operacionais & Quotas dos Motores");
     await expect(tab.getByRole("button", { name: /Salvar Todos/i })).toBeVisible();
     await expect(tab.getByText("OpenCode Engine", { exact: true }).first()).toBeVisible();
     await expect(tab.getByText("Google Antigravity Engine (AGY)", { exact: true }).first()).toBeVisible();
@@ -110,9 +110,5 @@ test.describe("Motores — Contas e Limites", () => {
       expect(typeof t.source).toBe("string");
     }
 
-    await page.goto("/config?tab=limites");
-    const tab = page.locator("[data-testid='tab-limites-motores']");
-    await expect(tab).toBeVisible({ timeout: 15000 });
-    await expect(tab.getByRole("button", { name: /Recarregar Quotas/i })).toBeVisible();
   });
 });

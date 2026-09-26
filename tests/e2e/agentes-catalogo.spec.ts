@@ -17,7 +17,7 @@ test.describe("Agentes — catálogo e toggle", () => {
     const semear = await api(page).post("/agents/semear-catalogo", { headers: HDR });
     expect(semear.status()).toBe(200);
     await page.goto("/agentes");
-    await esperarElementoTexto(page, "Catálogo de Agentes & Grupos");
+    await esperarElementoTexto(page, "Catálogo de Agentes & Equipes Multi-Agente");
   });
 
   test.afterEach(async ({ page }) => {
@@ -25,19 +25,23 @@ test.describe("Agentes — catálogo e toggle", () => {
   });
 
   test("semear catálogo lista agente-vendas como Inativo", async ({ page }) => {
-    const card = page.locator("div.rounded-xl", { has: page.getByText("@agente-vendas", { exact: true }) });
+    const card = page.getByTestId("agent-card-agente-vendas");
     await expect(card).toBeVisible({ timeout: 15000 });
-    await expect(card.getByRole("button", { name: "Inativo" })).toBeVisible();
+    await expect(card).toHaveAttribute("data-ativo", "false");
+    await expect(card.getByRole("button", { name: "Ativar agente" })).toBeVisible();
   });
 
   test("toggle desativa → persiste após recarregar", async ({ page }) => {
     await garantirAgente(page, true);
     await page.reload();
-    await esperarElementoTexto(page, "Catálogo de Agentes & Grupos");
-    await expect(page.getByText(`@${ALVO}`).first()).toBeVisible({ timeout: 15000 });
+    await esperarElementoTexto(page, "Catálogo de Agentes & Equipes Multi-Agente");
+    const card = page.getByTestId(`agent-card-${ALVO}`);
+    await expect(card).toBeVisible({ timeout: 15000 });
 
-    await page.locator('button[title="Desativar agente"]').first().click();
-    await expect(page.getByRole("button", { name: "Inativo" }).first()).toBeVisible({ timeout: 10000 });
+    await card.getByRole("button", { name: "Desativar agente" }).click();
+    await expect(card).toHaveAttribute("data-ativo", "false", { timeout: 10000 });
+    await page.reload();
+    await expect(page.getByTestId(`agent-card-${ALVO}`)).toHaveAttribute("data-ativo", "false", { timeout: 15000 });
 
     const get = await api(page).get(`/agents/${ALVO}`, { headers: HDR });
     const detalhe = await get.json();
@@ -47,11 +51,12 @@ test.describe("Agentes — catálogo e toggle", () => {
   test("toggle reativa → volta para Ativo", async ({ page }) => {
     await garantirAgente(page, false);
     await page.reload();
-    await esperarElementoTexto(page, "Catálogo de Agentes & Grupos");
-    await expect(page.getByText(`@${ALVO}`).first()).toBeVisible({ timeout: 15000 });
+    await esperarElementoTexto(page, "Catálogo de Agentes & Equipes Multi-Agente");
+    const card = page.getByTestId(`agent-card-${ALVO}`);
+    await expect(card).toBeVisible({ timeout: 15000 });
 
-    await page.locator('button[title="Ativar agente"]').first().click();
-    await expect(page.getByRole("button", { name: "Ativo" }).first()).toBeVisible({ timeout: 10000 });
+    await card.getByRole("button", { name: "Ativar agente" }).click();
+    await expect(card).toHaveAttribute("data-ativo", "true", { timeout: 10000 });
 
     const get = await api(page).get(`/agents/${ALVO}`, { headers: HDR });
     const detalhe = await get.json();
@@ -61,9 +66,9 @@ test.describe("Agentes — catálogo e toggle", () => {
   test("agente desativado: Executar desabilitado na UI e 409 na API", async ({ page }) => {
     await garantirAgente(page, false);
     await page.reload();
-    await esperarElementoTexto(page, "Catálogo de Agentes & Grupos");
-    const card = page.locator("div.rounded-xl", { has: page.getByText(`@${ALVO}`, { exact: true }) });
-    await expect(card.getByRole("button", { name: "Executar" })).toBeDisabled({ timeout: 10000 });
+    await esperarElementoTexto(page, "Catálogo de Agentes & Equipes Multi-Agente");
+    const card = page.getByTestId(`agent-card-${ALVO}`);
+    await expect(card.getByRole("button", { name: "Executar" })).toBeDisabled({ timeout: 15000 });
 
     const run = await api(page).post(`/agents/${ALVO}/run`, { headers: HDR, data: { ordem: "não deve rodar" } });
     expect(run.status()).toBe(409);

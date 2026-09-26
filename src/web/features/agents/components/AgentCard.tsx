@@ -33,11 +33,13 @@ export const AgentCard: FC<AgentCardProps> = ({
 
   return (
     <div
+      data-testid={`agent-card-${agente.id}`}
+      data-ativo={isAtivo ? "true" : "false"}
       onClick={() => aoInspecionar(agente)}
       className={`p-4 rounded-2xl border transition-all duration-150 flex flex-col justify-between cursor-pointer space-y-3 relative group ${
         isAtivo
           ? "bg-zinc-900/60 border-zinc-800/90 hover:border-zinc-700 hover:bg-zinc-900/90 shadow-xs"
-          : "bg-zinc-950/50 border-zinc-850/60 opacity-60 hover:opacity-80"
+          : "bg-zinc-950/50 border-dashed border-zinc-700 hover:border-zinc-600"
       }`}
     >
       <div>
@@ -89,6 +91,8 @@ export const AgentCard: FC<AgentCardProps> = ({
                 : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300"
             }`}
             title={isAtivo ? "Desativar agente" : "Ativar agente"}
+            aria-label={isAtivo ? "Desativar agente" : "Ativar agente"}
+            aria-pressed={isAtivo}
           >
             <Power size={13} />
           </button>
@@ -170,7 +174,7 @@ export const AgentCard: FC<AgentCardProps> = ({
             e.stopPropagation();
             aoDisparar(agente);
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md transition-all cursor-pointer disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold shadow-md transition-all cursor-pointer disabled:opacity-50"
           title="Disparar ordem avulsa para este agente"
         >
           <Play size={11} className="fill-current" />

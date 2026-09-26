@@ -55,7 +55,7 @@ export const AppCard: FC<AppCardProps> = ({
   const ativo = app.ativo !== false;
 
   return (
-    <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 hover:bg-zinc-900/80 hover:border-zinc-700 transition-all flex flex-col justify-between space-y-4 group shadow-xs">
+    <div data-testid={`app-card-${app.id}`} className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 hover:bg-zinc-900/80 hover:border-zinc-700 transition-all flex flex-col justify-between space-y-4 group shadow-xs">
       <div>
         {/* Topo do Card */}
         <div className="flex items-start justify-between gap-3">

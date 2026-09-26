@@ -8,7 +8,7 @@ test.describe("CRUD via UI", () => {
     logado(page, "test-e2e");
     await seederEmpresaBasica(api(page), "test-e2e");
     await page.goto("/");
-    await esperarElementoTexto(page, "Painel de Operações");
+    await esperarElementoTexto(page, "Governança da Empresa Autônoma");
   });
 
   test("Excluir task: drawer → Excluir (confirm) → some do kanban", async ({ page }) => {
@@ -31,16 +31,16 @@ test.describe("CRUD via UI", () => {
   test("Criar fluxo pela UI → abre o canvas do novo fluxo", async ({ page }) => {
     const nome = `Fluxo e2e ${Date.now()}`;
     await page.goto("/fluxos");
-    await esperarElementoTexto(page, "Fluxos");
-    await page.getByRole("button", { name: "Adicionar Fluxo" }).click();
-    await esperarElementoTexto(page, "Criar Novo Fluxo");
+    await esperarElementoTexto(page, "Studio de Fluxos Declarativos (DAG)");
+    await page.getByRole("button", { name: "Novo Fluxo", exact: true }).click();
+    await esperarElementoTexto(page, "Criar Novo Fluxo DAG");
 
-    await page.locator('input[placeholder="ex: Publicação Editorial de Conteúdo"]').fill(nome);
+    await page.getByPlaceholder("ex: Produção de Conteúdo YouTube").fill(nome);
     // ID é sugerido automaticamente a partir do nome
-    await page.getByRole("button", { name: "Criar Fluxo" }).click();
+    await page.getByRole("button", { name: "Criar no Studio" }).click();
 
     // Canvas abre (botão voltar + nome no editor)
-    await esperarElementoTexto(page, "Voltar para Fluxos");
+    await expect(page.locator('button[title="Voltar para Lista de Fluxos"]')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText(nome).first()).toBeVisible({ timeout: 10000 });
   });
 
@@ -51,29 +51,30 @@ test.describe("CRUD via UI", () => {
       data: { id: fid, nome: `Flow excluir ${fid}`, nos: [{ id: "gatilho", tipo: "manual", config: {} }], arestas: [] },
     });
     await page.goto("/fluxos");
-    await esperarElementoTexto(page, "Fluxos");
-    await page.locator('input[placeholder="Pesquisar fluxos..."]').fill(fid);
+    await esperarElementoTexto(page, "Studio de Fluxos Declarativos (DAG)");
+    await page.getByPlaceholder("Buscar por nome, id ou descrição...").fill(fid);
     await expect(page.getByText(fid).first()).toBeVisible({ timeout: 10000 });
 
     page.once("dialog", (d) => d.accept());
-    await page.locator('button[title="Excluir fluxo"]').first().click();
+    await page.getByTestId(`fluxo-card-${fid}`).getByRole("button", { name: "Excluir fluxo" }).click();
     await expect(page.getByText(fid)).toHaveCount(0, { timeout: 10000 });
   });
 
   test("Reunião: pauta + agente → Abrir Sala limpa o form e abre a sala", async ({ page }) => {
     const pauta = `Pauta de lançamento e2e ${Date.now()}`;
     await page.goto("/reunioes");
-    await page.locator('button[title="Convocar nova reunião"]').click();
-    await esperarElementoTexto(page, "Convocar Nova Reunião Multi-Agente");
+    await page.getByRole("button", { name: "Nova Reunião" }).first().click();
+    await esperarElementoTexto(page, "Convocar Nova Reunião Colegiada");
 
-    await page.locator('textarea[placeholder="Ex: Alinhar lançamento da nova home e definir responsabilidade de cada agente..."]').fill(pauta);
+    await page.getByPlaceholder(/Definir linha editorial/).fill(pauta);
     // seleciona o primeiro agente da mesa
-    const agentes = page.locator("div", { has: page.locator("span", { hasText: /^@/ }) });
-    await agentes.first().click();
+    const agente = page.locator("button[aria-pressed]", { hasText: /@/ }).first();
+    await agente.click();
+    await expect(agente).toHaveAttribute("aria-pressed", "true");
 
-    await page.getByRole("button", { name: "Abrir Sala de Chat" }).click();
+    await page.getByRole("button", { name: "Iniciar Deliberação" }).click();
     // modal fecha e a sala abre com a pauta
-    await expect(page.getByText("Convocar Nova Reunião Multi-Agente")).toHaveCount(0, { timeout: 15000 });
+    await expect(page.getByText("Convocar Nova Reunião Colegiada")).toHaveCount(0, { timeout: 15000 });
     await expect(page.getByText(pauta).first()).toBeVisible({ timeout: 15000 });
   });
 });

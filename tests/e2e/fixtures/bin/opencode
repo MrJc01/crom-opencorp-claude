@@ -1,0 +1,5 @@
+#!/bin/sh
+# `opencode` falso para o E2E: delega ao servidor que reproduz o `opencode serve` 1.18.32.
+DIR=$(cd "$(dirname "$0")" && pwd)
+ROOT=$(cd "$DIR/../../../.." && pwd)
+exec node --import "$ROOT/node_modules/tsx/dist/loader.mjs" "$DIR/../fake-opencode-cli.ts" "$@"

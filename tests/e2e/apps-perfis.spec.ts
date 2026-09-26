@@ -16,9 +16,9 @@ test.describe("Apps — Mini-Apps do workspace", () => {
     await page.getByRole("button", { name: "Novo Mini-App" }).first().click();
     await esperarElementoTexto(page, "Criar Novo Mini-App");
 
-    await page.locator('input[placeholder="ex: painel-vendas ou monitor-api"]').fill(id);
-    await page.locator('input[placeholder="ex: Painel de Monitoramento"]').fill(`Painel ${id}`);
-    await page.getByRole("button", { name: "Criar App e Abrir" }).click();
+    await page.getByPlaceholder("Ex: painel-metricas ou lead-tracker").fill(id);
+    await page.getByPlaceholder("Ex: Painel de Métricas do YouTube").fill(`Painel ${id}`);
+    await page.getByRole("button", { name: "Criar Aplicação" }).click();
 
     await expect(page.getByText(`apps/${id}/index.html`).first()).toBeVisible({ timeout: 15000 });
 
@@ -26,7 +26,7 @@ test.describe("Apps — Mini-Apps do workspace", () => {
   });
 
   test("app semeado abre no modo app (iframe/preview)", async ({ page }) => {
-    const card = page.locator("div.p-4.rounded-xl", { hasText: "Painel de Tarefas" });
+    const card = page.getByTestId("app-card-painel-tarefas");
     await expect(card).toBeVisible({ timeout: 15000 });
     await card.getByRole("button", { name: "Abrir App" }).click();
     await page.waitForTimeout(1000);

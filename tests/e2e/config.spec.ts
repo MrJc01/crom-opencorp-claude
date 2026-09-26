@@ -6,7 +6,7 @@ test.describe("Config / Settings", () => {
     logado(page, "test-e2e");
     await seederEmpresaBasica(api(page), "test-e2e");
     await page.goto("/config");
-    await esperarElementoTexto(page, "Configurações do Sistema");
+    await esperarElementoTexto(page, "Configurações & Governança do Sistema");
   });
 
   test("abre com as 12 abas da central", async ({ page }) => {
@@ -19,7 +19,7 @@ test.describe("Config / Settings", () => {
     await page.goto("/config?tab=orcamento");
     await esperarElementoTexto(page, "Limites de Gasto & Orçamento Financeiro");
 
-    const linha = page.locator("div.py-3", { has: page.locator("span", { hasText: "budget.daily_usd" }) });
+    const linha = page.getByTestId("setting-budget.daily_usd");
     const input = linha.locator('input[type="number"]');
     await expect(input).toBeVisible({ timeout: 10000 });
     await input.fill("9.25");
@@ -38,8 +38,8 @@ test.describe("Config / Settings", () => {
     await page.goto("/config?tab=orcamento");
     await esperarElementoTexto(page, "Pausar Agentes ao Estourar");
 
-    const linha = page.locator("div.py-3", { has: page.locator("span", { hasText: "budget.pause_on_exceed" }) });
-    const toggle = linha.locator("button.rounded-full");
+    const linha = page.getByTestId("setting-budget.pause_on_exceed");
+    const toggle = linha.getByRole("switch");
     await expect(toggle).toBeVisible({ timeout: 10000 });
 
     const antesResp = await page.request.get("/settings?escopo=global", { headers: { authorization: "Bearer test-e2e" } });
@@ -94,7 +94,7 @@ test.describe("Config / Settings", () => {
     });
 
     await page.goto("/config?tab=chaves");
-    await esperarElementoTexto(page, "Gerenciamento Seguro de Chaves de API");
+    await esperarElementoTexto(page, "Chaves de API dos Motores de IA (BYOK)");
     await expect(page.getByText("openrouter").first()).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("sk-or-v…Xyz9").first()).toBeVisible();
   });

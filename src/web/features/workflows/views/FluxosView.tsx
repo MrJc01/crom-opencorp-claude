@@ -458,10 +458,11 @@ export const FluxosView: FC = () => {
   const dispararExecucao = async (id: string, payload?: any, nome?: string) => {
     setExecutandoId(id);
     try {
-      await client.flows.executar(id, payload, {
+      const exec = await client.flows.executar(id, payload, {
         workspaceId: wsEfetivo,
       });
-      showToast(`Fluxo "${nome || id}" iniciado com sucesso!`, "sucesso");
+      const execId = typeof exec?.exec_id === "string" ? exec.exec_id : undefined;
+      showToast(`Fluxo "${nome || id}" iniciado com sucesso!${execId ? ` (exec_id ${execId})` : ""}`, "sucesso");
       if (fluxoAtivo && fluxoAtivo.id === id) {
         setPainelLogsAberto(true);
         void carregarLogs(id);

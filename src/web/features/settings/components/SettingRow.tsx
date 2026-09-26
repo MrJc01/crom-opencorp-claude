@@ -82,7 +82,7 @@ export const SettingRow: FC<SettingRowProps> = ({
   };
 
   return (
-    <div className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-transparent border-b border-zinc-850/60 last:border-b-0">
+    <div data-testid={`setting-${chave}`} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-transparent border-b border-zinc-850/60 last:border-b-0">
       <div className="space-y-1 max-w-md sm:max-w-lg">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-zinc-100">{label}</span>
@@ -106,6 +106,9 @@ export const SettingRow: FC<SettingRowProps> = ({
         {tipo === "bool" && (
           <button
             type="button"
+            role="switch"
+            aria-checked={Boolean(val)}
+            aria-label={label}
             disabled={salvandoLocal || salvando}
             onClick={async () => {
               const novo = !Boolean(val);
@@ -148,6 +151,7 @@ export const SettingRow: FC<SettingRowProps> = ({
         {tipo === "number" && (
           <div className="flex items-center gap-1.5">
             <input
+              aria-label={label}
               type="number"
               step={step}
               min={min}
@@ -168,6 +172,7 @@ export const SettingRow: FC<SettingRowProps> = ({
                 disabled={salvandoLocal || salvando}
                 className="p-1 rounded-lg bg-orange-600 hover:bg-orange-500 text-white transition-colors cursor-pointer"
                 title="Salvar alteração"
+                aria-label={`Salvar ${label}`}
               >
                 {salvandoLocal ? (
                   <Loader2 size={12} className="animate-spin" />
@@ -183,6 +188,7 @@ export const SettingRow: FC<SettingRowProps> = ({
         {tipo === "text" && (
           <div className="flex items-center gap-1.5">
             <input
+              aria-label={label}
               type="text"
               value={val ?? ""}
               onKeyDown={(e) => {
@@ -201,6 +207,7 @@ export const SettingRow: FC<SettingRowProps> = ({
                 disabled={salvandoLocal || salvando}
                 className="p-1 rounded-lg bg-orange-600 hover:bg-orange-500 text-white transition-colors cursor-pointer"
                 title="Salvar alteração"
+                aria-label={`Salvar ${label}`}
               >
                 {salvandoLocal ? (
                   <Loader2 size={12} className="animate-spin" />

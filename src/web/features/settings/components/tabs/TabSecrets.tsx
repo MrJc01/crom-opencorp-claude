@@ -518,6 +518,7 @@ export const TabSecrets: FC<TabSecretsProps> = ({ escopoConfig }) => {
               {chavesGlobal.map((c: any, idx: number) => (
                 <div
                   key={c.provider || idx}
+                  data-testid={`chave-${c.provider}`}
                   className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-950/60 border border-zinc-850 text-xs"
                 >
                   <div>
@@ -534,6 +535,7 @@ export const TabSecrets: FC<TabSecretsProps> = ({ escopoConfig }) => {
                       onClick={() => void testarConexaoModelo(c.provider)}
                       className="p-1 rounded text-zinc-400 hover:text-emerald-400 transition-colors"
                       title="Testar ping"
+                      aria-label={`Testar ping de ${c.provider}`}
                     >
                       <Play size={13} />
                     </button>
@@ -542,6 +544,7 @@ export const TabSecrets: FC<TabSecretsProps> = ({ escopoConfig }) => {
                       onClick={() => void removerChave(c.provider, "global")}
                       className="p-1 rounded text-zinc-400 hover:text-rose-400 transition-colors"
                       title="Remover chave"
+                      aria-label={`Remover chave de ${c.provider}`}
                     >
                       <Trash2 size={13} />
                     </button>

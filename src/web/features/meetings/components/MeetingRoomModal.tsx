@@ -191,6 +191,7 @@ export const MeetingRoomModal: FC<MeetingRoomModalProps> = ({
                     key={ag.id}
                     type="button"
                     onClick={() => toggleParticipante(ag.id)}
+                    aria-pressed={isSelected}
                     className={`p-2 rounded-xl border text-left text-xs transition-colors flex items-center gap-2 cursor-pointer ${
                       isSelected
                         ? "bg-purple-950/50 border-purple-600/70 text-purple-200 font-semibold"

@@ -15,13 +15,13 @@ test.describe("Apps / Mini-Apps", () => {
   });
 
   test("abrir app mostra topbar com modos e voltar funciona", async ({ page }) => {
-    const card = page.locator("div.p-4.rounded-xl", { hasText: "Painel de Tarefas" });
+    const card = page.getByTestId("app-card-painel-tarefas");
     await expect(card).toBeVisible({ timeout: 15000 });
     await card.getByRole("button", { name: "Abrir App" }).click();
 
     await expect(page.getByRole("button", { name: "Voltar aos Apps" })).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole("button", { name: "Só App" })).toBeVisible();
     await page.getByRole("button", { name: "Voltar aos Apps" }).click();
-    await esperarElementoTexto(page, "Aplicações Instaladas");
+    await esperarElementoTexto(page, "Catálogo de Mini-Apps & Servidores MCP");
   });
 });

@@ -50,7 +50,7 @@ const ROTAS_LEGADAS: ReadonlyArray<{
   { path: "/notificacoes", modulo: "notificacoes" },
   { path: "/agenda", modulo: "fluxos", queryPadrao: { filtro: "cron" } },
   { path: "/hooks", modulo: "fluxos" },
-  { path: "/secrets", modulo: "config" },
+  { path: "/secrets", modulo: "config", queryPadrao: { tab: "chaves" } },
 ];
 
 function lerUltimoWorkspace(): string | null {

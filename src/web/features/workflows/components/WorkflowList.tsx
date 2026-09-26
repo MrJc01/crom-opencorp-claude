@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, type FC } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Workflow,
   Play,
@@ -67,7 +68,7 @@ function extrairDadosFluxo(fluxo: FluxoCompleto) {
   let cronExpr: string | undefined = undefined;
   const noCron = nosArray.find((n: any) => n.tipo === "cron");
   if (noCron?.config) {
-    cronExpr = noCron.config.cron || noCron.config.expressao;
+    cronExpr = noCron.config.expressao_cron || noCron.config.cron || noCron.config.expressao;
   }
   if (!cronExpr) {
     const gCron = gatilhos.find((g: any) => g?.tipo === "cron");
@@ -101,7 +102,12 @@ export const WorkflowList: FC<WorkflowListProps> = ({
   onToggleAtivo,
 }) => {
   const [busca, setBusca] = useState("");
-  const [filtroTipo, setFiltroTipo] = useState<"todos" | "cron" | "webhook" | "manual">("todos");
+  // `?filtro=cron` (rota /agenda) abre a lista já filtrada pelos fluxos agendados.
+  const [searchParams] = useSearchParams();
+  const filtroInicial = searchParams.get("filtro");
+  const [filtroTipo, setFiltroTipo] = useState<"todos" | "cron" | "webhook" | "manual">(
+    filtroInicial === "cron" || filtroInicial === "webhook" || filtroInicial === "manual" ? filtroInicial : "todos"
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Filtra fluxos por busca e por tipo de gatilho
@@ -254,6 +260,7 @@ export const WorkflowList: FC<WorkflowListProps> = ({
               key={cat.id}
               type="button"
               onClick={() => setFiltroTipo(cat.id as any)}
+              aria-pressed={filtroTipo === cat.id}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
                 filtroTipo === cat.id
                   ? "bg-zinc-800 text-orange-400 font-bold border border-zinc-700"
@@ -289,7 +296,10 @@ export const WorkflowList: FC<WorkflowListProps> = ({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          data-testid={filtroTipo === "cron" ? "secao-fluxos-agendados" : "lista-fluxos"}
+        >
           {fluxosFiltrados.map((fluxo) => {
             const dados = extrairDadosFluxo(fluxo);
             const isExecutando = executandoId === fluxo.id;
@@ -298,6 +308,7 @@ export const WorkflowList: FC<WorkflowListProps> = ({
             return (
               <div
                 key={fluxo.id}
+                data-testid={`fluxo-card-${fluxo.id}`}
                 className="group flex flex-col justify-between p-4 rounded-xl bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-850 hover:border-zinc-700 transition-all duration-200 shadow-md hover:shadow-xl space-y-4"
               >
                 {/* Topo do Card */}
@@ -321,6 +332,10 @@ export const WorkflowList: FC<WorkflowListProps> = ({
                     <button
                       type="button"
                       onClick={() => onToggleAtivo(fluxo.id, !isAtivo)}
+                      role="switch"
+                      aria-checked={isAtivo}
+                      aria-label={isAtivo ? `Pausar fluxo ${fluxo.nome || fluxo.id}` : `Ativar fluxo ${fluxo.nome || fluxo.id}`}
+                      data-testid={`toggle-ativo-${fluxo.id}`}
                       className={`p-1 rounded-lg border transition-colors cursor-pointer shrink-0 ${
                         isAtivo
                           ? "bg-emerald-950/40 border-emerald-800 text-emerald-400 hover:bg-emerald-950/70"
@@ -341,7 +356,7 @@ export const WorkflowList: FC<WorkflowListProps> = ({
                 {/* Métricas e Gatilho */}
                 <div className="space-y-2 pt-2 border-t border-zinc-850/80 text-xs">
                   {/* Informação do Gatilho */}
-                  <div className="flex items-center gap-1.5 font-mono text-[11px] text-zinc-400">
+                  <div className="flex items-center gap-1.5 font-mono text-[11px] text-zinc-400" data-testid={`trigger-${fluxo.id}`}>
                     {dados.temCron ? (
                       <>
                         <Clock size={12} className="text-sky-400 shrink-0" />
@@ -385,6 +400,7 @@ export const WorkflowList: FC<WorkflowListProps> = ({
                       onClick={() => copiarJson(fluxo)}
                       className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
                       title="Copiar JSON"
+                      aria-label="Copiar JSON do fluxo"
                     >
                       <Copy size={13} />
                     </button>
@@ -393,6 +409,7 @@ export const WorkflowList: FC<WorkflowListProps> = ({
                       onClick={() => exportarJson(fluxo)}
                       className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
                       title="Baixar JSON"
+                      aria-label="Baixar JSON do fluxo"
                     >
                       <Download size={13} />
                     </button>
@@ -401,6 +418,7 @@ export const WorkflowList: FC<WorkflowListProps> = ({
                       onClick={() => onExcluirFluxo(fluxo.id, fluxo.nome)}
                       className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-950/30 transition-colors cursor-pointer"
                       title="Excluir fluxo"
+                      aria-label="Excluir fluxo"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -412,6 +430,8 @@ export const WorkflowList: FC<WorkflowListProps> = ({
                       type="button"
                       onClick={() => onExecutarFluxo(fluxo.id, fluxo.nome)}
                       disabled={isExecutando}
+                      aria-label={`Executar fluxo ${fluxo.nome || fluxo.id} agora`}
+                      data-testid={`executar-agora-${fluxo.id}`}
                       className="flex items-center justify-center h-7 w-7 rounded-lg bg-orange-600/20 hover:bg-orange-600/30 border border-orange-500/30 text-orange-400 hover:text-orange-300 transition-all cursor-pointer disabled:opacity-50"
                       title="Executar fluxo agora"
                     >
@@ -422,6 +442,7 @@ export const WorkflowList: FC<WorkflowListProps> = ({
                     <button
                       type="button"
                       onClick={() => onAbrirStudio(fluxo.id)}
+                      data-testid={`abrir-editor-${fluxo.id}`}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-750 text-xs font-semibold text-zinc-200 hover:text-white transition-colors cursor-pointer"
                     >
                       <span>Studio</span>
