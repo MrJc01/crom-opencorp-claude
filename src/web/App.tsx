@@ -13,6 +13,7 @@ import { useOpenCorp } from "./providers/OpenCorpProvider.js";
 import { AppLayout } from "./shared/layout/AppLayout.js";
 import { WorkspaceBoundary } from "./shared/layout/WorkspaceBoundary.js";
 import { RouteSkeleton } from "./shared/ui/RouteSkeleton.js";
+import { AuthGate } from "./shared/auth/AuthGate.js";
 import { workspacePath } from "./lib/routes.js";
 
 // Views Nativas em React 19
@@ -160,6 +161,7 @@ const RedirectWorkspace: FC<{
 export const App: FC = () => {
   return (
     <BrowserRouter>
+      <AuthGate>
       <OpenCorpProvider workspaceId={null}>
         <Routes>
           {/* Rotas globais usam client sem header de workspace e não abrem SSE. */}
@@ -198,6 +200,7 @@ export const App: FC = () => {
           </Route>
         </Routes>
       </OpenCorpProvider>
+      </AuthGate>
     </BrowserRouter>
   );
 };
