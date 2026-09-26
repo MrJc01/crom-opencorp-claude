@@ -24,7 +24,7 @@ import {
   WebLoginOrchestrator,
 } from "../../core/engines/index.js";
 import { ProcessRegistry } from "../../core/runtime/index.js";
-import { mergeSettings, readFirstDeprecationNotice, readRunEngineConfig, translateRunnerJson, writeRunEngineConfig } from "../../core/config/run-engine-config.js";
+import { canonicalEngineId, mergeSettings, readFirstDeprecationNotice, readRunEngineConfig, translateRunnerJson, writeRunEngineConfig } from "../../core/config/run-engine-config.js";
 import { applyMigration, listBackups, MigrationValidationError, planMigration, rollbackMigration } from "../../core/config/config-migrator.js";
 import { DEPRECATION_NOT_BEFORE_REMOVAL_AT, DEPRECATION_REMOVE_IN_VERSION } from "../../core/engines/legacy-config-translator.js";
 import { WorkspaceManager } from "../../core/contexts/workspace/workspace-manager.js";
@@ -852,10 +852,30 @@ export async function handleConfigRoutes(ctx: RouteContext): Promise<boolean> {
   // Por padrão só altera a configuração do OpenCorp; a sessão do CLI externo
   // (ex.: ~/.codex) é preservada. Encerrar a sessão externa exige
   // `{ encerrarSessaoExterna: true, confirmacao: "<motorId>" }`.
+  // Desconectar o motor PADRÃO exige `{ novoPadrao: "<id>" }` escolhido pelo
+  // usuário (D1: nenhum motor é escolhido implicitamente); sem ele → 409.
   const mDesconectarMotor = /^\/api\/motores\/([^/]+)\/desconectar$/.exec(rota);
   if (mDesconectarMotor && req.method === "POST") {
     const motorId = decodeURIComponent(mDesconectarMotor[1]!);
-    const corpoDesc = (await lerCorpo(req).catch(() => ({}))) as { encerrarSessaoExterna?: boolean; confirmacao?: string };
+    const corpoDesc = (await lerCorpo(req).catch(() => ({}))) as { encerrarSessaoExterna?: boolean; confirmacao?: string; novoPadrao?: string };
+    const padraoAtual = readRunEngineConfig(home, { emitNotice: false }).engine;
+    const eraPadrao = padraoAtual === motorId;
+    const novoPadrao = corpoDesc.novoPadrao ? canonicalEngineId(String(corpoDesc.novoPadrao)) : undefined;
+    if (eraPadrao) {
+      if (!novoPadrao || novoPadrao === motorId || !engineRegistry.get(novoPadrao)) {
+        const candidatos = (await engineRegistry.listSummaries(home, false)).filter((m) => m.installed && m.id !== motorId).map((m) => m.id);
+        enviar(res, 409, {
+          ok: false,
+          motorId,
+          requerNovoPadrao: true,
+          candidatos,
+          erro: novoPadrao
+            ? `Motor "${corpoDesc.novoPadrao}" inválido como novo padrão.`
+            : `"${motorId}" é o motor padrão das execuções; escolha o novo padrão em "novoPadrao".`,
+        });
+        return true;
+      }
+    }
     let sessaoExterna: { ok: boolean; message: string } | undefined;
     if (corpoDesc.encerrarSessaoExterna) {
       sessaoExterna = logoutCliSession(motorId, home, String(corpoDesc.confirmacao ?? ""));
@@ -864,12 +884,11 @@ export async function handleConfigRoutes(ctx: RouteContext): Promise<boolean> {
         return true;
       }
     }
-    // Só troca o padrão quando o motor desconectado ERA o padrão, e a troca é
-    // informada na resposta (a UI pede confirmação antes).
-    const padraoAtual = readRunEngineConfig(home, { emitNotice: false }).engine;
-    const padraoRestaurado = padraoAtual === motorId ? "opencode" : padraoAtual;
-    if (padraoAtual === motorId) await writeRunEngineConfig(home, { engine: padraoRestaurado });
-    const novoRunner = { engine: padraoRestaurado };
+    // Só troca o padrão quando o motor desconectado ERA o padrão, para o motor
+    // escolhido explicitamente pelo usuário.
+    const padraoFinal = eraPadrao ? novoPadrao! : padraoAtual;
+    if (eraPadrao) await writeRunEngineConfig(home, { engine: padraoFinal });
+    const novoRunner = { engine: padraoFinal };
     enviar(res, 200, {
       ok: true,
       motorId,
