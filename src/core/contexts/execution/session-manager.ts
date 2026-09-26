@@ -535,6 +535,15 @@ export class WatchdogRun {
   }
 }
 
+/**
+ * PIDs que podem receber sinal de cancelamento. Fluxos rodam dentro do próprio
+ * OpenCorp e registram `pid: process.pid`; sinalizar esse pid (ou o pai) mataria
+ * o servidor/daemon inteiro. Nesses casos o cancelamento é cooperativo (status no meta).
+ */
+export function pidSinalizavel(pid: unknown): pid is number {
+  return typeof pid === "number" && Number.isInteger(pid) && pid > 1 && pid !== process.pid && pid !== process.ppid;
+}
+
 export class SessionManager {
   private readonly homeDir: string;
   private readonly workspaces: WorkspaceManager;
@@ -566,7 +575,7 @@ export class SessionManager {
       try {
         const meta = await this.registros.lerMeta(wsPath, "execucoes", execId);
         const pid = (meta.extras as any)?.pid;
-        if (pid && typeof pid === "number") {
+        if (pidSinalizavel(pid)) {
           try {
             process.kill(pid, "SIGTERM");
             setTimeout(() => {
@@ -1920,6 +1929,8 @@ export class SessionManager {
 
     if (viva) {
       if (duracao < MAX_RUN_TIME_MS) return;
+      // Execução dentro do próprio processo (fluxo): nunca matar o OpenCorp.
+      if (!pidSinalizavel(pid)) return;
       // Processo vivo há mais de 15 minutos sem finalizar — trava/hang detectado pelo reaper
       try {
         process.kill(pid, "SIGTERM");
@@ -2104,6 +2115,9 @@ export class SessionManager {
     }
     if (!viva) {
       throw new SessionError(`o processo da sessão "${id}" (pid ${pid}) não está mais vivo`);
+    }
+    if (!pidSinalizavel(pid)) {
+      throw new SessionError(`a sessão "${id}" roda dentro do próprio OpenCorp (pid ${pid}); use o cancelamento da execução em vez de matar o processo`);
     }
     try {
       process.kill(pid, "SIGTERM");
