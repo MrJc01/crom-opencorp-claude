@@ -15,7 +15,7 @@ export function registerDoctorCommand(program: Command): void {
   program
     .command("doctor")
     .description(
-      "diagnóstico do ambiente: node, opencode no PATH, settings, scheduler, hooks, apps, teams, secretário e segredos",
+      "diagnóstico do ambiente: node, motores configurados, settings, scheduler, hooks, apps, teams, secretário e segredos",
     )
     .option("--json", "imprime o resultado em JSON (machine-readable)")
     .action(async (opts: { json?: boolean }) => {

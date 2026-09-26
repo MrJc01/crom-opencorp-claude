@@ -1,4 +1,4 @@
-import { accessSync, constants as fsConstants, existsSync, statSync } from "node:fs";
+import { accessSync, constants as fsConstants, existsSync, readFileSync, statSync } from "node:fs";
 import { readFile, readdir, rm, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -7,6 +7,8 @@ import { settingsSchema, type Settings } from "../../../schemas/settings.js";
 import { parseSecurityPolicyTexto } from "../../../schemas/security-policy.js";
 import { mkdirRecursive, writeFileAtomic } from "../../../utils/fs-safe.js";
 import { expandTilde } from "../../../utils/paths.js";
+import { ENGINE_BINARY_NAMES, findManagedBinary, findOnPath, readSettingsBinaryPath } from "../../engines/installer/binary-resolver.js";
+import { canonicalEngineId, readRunEngineConfig } from "../../config/run-engine-config.js";
 import { AppStore } from "./app-store.js";
 import { TeamStore } from "../meetings/team-store.js";
 import { FlowStore } from "../orchestration/flow-store.js";
@@ -101,18 +103,65 @@ export function lookupExecutable(
   return null;
 }
 
-export function checkOpenCodeInPath(pathEnv: string): DoctorCheck {
-  const base = { id: "opencode", label: "opencode no PATH" } as const;
-  const encontrado = lookupExecutable("opencode", pathEnv);
-  if (!encontrado) {
-    return {
-      ...base,
-      status: "fail",
-      detail:
-        "opencode não encontrado no PATH (which opencode falhou) — necessário para rodar sessões (OpenCode >= 1.18)",
-    };
+/**
+ * Motores efetivamente configurados: padrão das execuções (`run_engine.default`),
+ * motor do Secretário (`default_conversation_engine`) e override do workspace.
+ * Cada um precisa ser resolvido por `binary_path` → PATH → instalação gerenciada.
+ */
+export function checkConfiguredEngines(
+  homeDir: string,
+  pathEnv: string,
+  opts: { conversationEngine?: string; workspacePath?: string } = {}
+): DoctorCheck {
+  const base = { id: "motores", label: "motores configurados" } as const;
+  const usos = new Map<string, string[]>();
+  const add = (id: string | undefined, uso: string) => {
+    if (!id) return;
+    const key = canonicalEngineId(id);
+    usos.set(key, [...(usos.get(key) ?? []), uso]);
+  };
+  add(readRunEngineConfig(homeDir, { emitNotice: false }).engine, "execuções");
+  add(opts.conversationEngine ?? "opencode", "Secretário");
+  if (opts.workspacePath) {
+    try {
+      const cfg = JSON.parse(readFileSyncSafe(join(opts.workspacePath, ".opencorp", "config.json")) ?? "{}") as { conversationEngineOverride?: string };
+      add(cfg.conversationEngineOverride, "Secretário do workspace");
+    } catch {
+      // config do workspace ilegível: coberto por outros checks
+    }
   }
-  return { ...base, status: "ok", detail: `encontrado em ${encontrado}` };
+  const items: string[] = [];
+  const faltando: string[] = [];
+  for (const [id, lista] of usos) {
+    const configurado = readSettingsBinaryPath(homeDir, id);
+    const caminho =
+      (configurado && ehExecutavel(configurado) ? configurado : undefined) ||
+      findOnPath(ENGINE_BINARY_NAMES[id] ?? [id], pathEnv) ||
+      findManagedBinary(homeDir, id)?.path;
+    items.push(`${id} (${lista.join(", ")}): ${caminho ?? "NÃO ENCONTRADO"}`);
+    if (!caminho) faltando.push(id);
+  }
+  if (faltando.length > 0) {
+    return { ...base, status: "fail", detail: `binário não encontrado para: ${faltando.join(", ")} — instale ou ajuste settings.engines[id].binary_path`, items };
+  }
+  return { ...base, status: "ok", detail: `${usos.size} motor(es) resolvido(s)`, items };
+}
+
+function ehExecutavel(path: string): boolean {
+  try {
+    accessSync(path, fsConstants.X_OK);
+    return statSync(path).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function readFileSyncSafe(path: string): string | null {
+  try {
+    return existsSync(path) ? readFileSync(path, "utf8") : null;
+  } catch {
+    return null;
+  }
 }
 
 export interface LoadedSettings {
@@ -868,9 +917,8 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
 
   const checks: DoctorCheck[] = [];
   checks.push(checkNodeVersion(nodeVersion));
-  checks.push(checkOpenCodeInPath(pathEnv));
-
   const loaded = await loadSettings(settingsPath);
+  checks.push(checkConfiguredEngines(home, pathEnv, { conversationEngine: loaded.settings?.default_conversation_engine, workspacePath: options.workspacePath }));
   checks.push(loaded.check);
 
   let raizes = options.workspaceRoots;

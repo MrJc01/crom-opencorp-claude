@@ -163,7 +163,7 @@ describe("runDoctor (integração, tudo injetado)", () => {
 
     const porId = new Map(resultado.checks.map((c) => [c.id, c]));
     expect(porId.get("node")?.status).toBe("ok");
-    expect(porId.get("opencode")?.status).toBe("ok");
+    expect(porId.get("motores")?.status).toBe("ok");
     expect(porId.get("settings")?.status).toBe("ok");
     expect(porId.get("escrita")?.status).toBe("ok");
     expect(porId.get("segredos")?.status).toBe("warn");
@@ -172,7 +172,7 @@ describe("runDoctor (integração, tudo injetado)", () => {
     expect(resultado.exitCode).toBe(0);
   });
 
-  it("sem opencode no PATH → exitCode 1", async () => {
+  it("motor configurado (padrão: opencode) ausente → exitCode 1", async () => {
     const home = await tmpDir();
     const resultado = await runDoctor({
       nodeVersion: "v22.0.0",
@@ -182,9 +182,24 @@ describe("runDoctor (integração, tudo injetado)", () => {
       settingsPath: join(home, "inexistente.json"),
       workspaceRoots: [],
     });
-    expect(resultado.checks.find((c) => c.id === "opencode")?.status).toBe("fail");
+    expect(resultado.checks.find((c) => c.id === "motores")?.status).toBe("fail");
     expect(resultado.ok).toBe(false);
     expect(resultado.exitCode).toBe(1);
+  });
+
+  it("motores configurados para Codex não exigem OpenCode", async () => {
+    const home = await tmpDir();
+    const bin = await tmpDir();
+    await writeFile(join(bin, "codex"), "#!/bin/sh\n");
+    await chmod(join(bin, "codex"), 0o755);
+    const settingsDir = join(home, ".opencorp");
+    await mkdir(settingsDir, { recursive: true });
+    const settingsPath = join(settingsDir, "settings.json");
+    await writeFile(settingsPath, JSON.stringify({ default_conversation_engine: "codex", run_engine: { default: "codex" } }));
+    const resultado = await runDoctor({ nodeVersion: "v22.0.0", pathEnv: bin, homeDir: home, cwd: home, settingsPath, workspaceRoots: [] });
+    const motores = resultado.checks.find((c) => c.id === "motores");
+    expect(motores?.status).toBe("ok");
+    expect(motores?.items?.join("\n")).not.toContain("opencode");
   });
 
   it("settings inválido → exitCode 2", async () => {
