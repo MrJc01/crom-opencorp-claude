@@ -3,10 +3,11 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import Database from "better-sqlite3";
 import { z } from "zod";
 import { OpencorpError } from "../../shared/errors.js";
 import { FlowStore } from "../orchestration/flow-store.js";
+import { TaskStore, type MensagemTask } from "./task-store.js";
+import { OpencorpDb } from "../../db/opencorp-db.js";
 import { writeFileAtomic } from "../../../utils/fs-safe.js";
 import { opencorpHome } from "../../../utils/paths.js";
 
@@ -133,97 +134,67 @@ function listarArquivos(dirBase: string): string[] {
   return saida.sort();
 }
 
-// ── Tasks: serialização a partir do tasks.db (better-sqlite3) ─────────────
-const SQL_TASKS = `
-  CREATE TABLE IF NOT EXISTS tasks (
-    id TEXT PRIMARY KEY, titulo TEXT NOT NULL, descricao TEXT NOT NULL DEFAULT '',
-    coluna TEXT NOT NULL DEFAULT 'backlog', pos REAL NOT NULL DEFAULT 0,
-    prioridade TEXT NOT NULL DEFAULT 'media', labels TEXT NOT NULL DEFAULT '',
-    responsavel TEXT NOT NULL DEFAULT '', due TEXT, task_pai TEXT,
-    bloqueado_por TEXT NOT NULL DEFAULT '', lock_por TEXT, lock_expira TEXT,
-    criado_por TEXT NOT NULL DEFAULT '', criado_em TEXT NOT NULL DEFAULT '',
-    atualizado_em TEXT NOT NULL DEFAULT ''
-  );
-  CREATE TABLE IF NOT EXISTS task_mensagens (
-    id TEXT PRIMARY KEY, task_id TEXT NOT NULL, autor TEXT NOT NULL,
-    tipo TEXT NOT NULL DEFAULT 'comentario', corpo TEXT NOT NULL DEFAULT '',
-    menciona TEXT NOT NULL DEFAULT '', refs TEXT NOT NULL DEFAULT '',
-    criado_em TEXT NOT NULL DEFAULT ''
-  );
-`;
-
+// ── Tasks: serialização via TaskStore (banco unificado opencorp.db) ──────
 interface PacoteTasks {
   tasks: Record<string, unknown>[];
   mensagens: Record<string, unknown>[];
 }
 
-function lerTasks(wsPath: string): PacoteTasks | null {
-  const dbPath = join(wsPath, ".opencorp", "tasks.db");
-  if (!existsSync(dbPath)) return null;
-  const db = new Database(dbPath, { readonly: true });
-  try {
-    const tasks = db.prepare("SELECT * FROM tasks ORDER BY coluna, pos").all() as Record<string, unknown>[];
-    const mensagens = db.prepare("SELECT * FROM task_mensagens ORDER BY criado_em").all() as Record<string, unknown>[];
-    return { tasks, mensagens };
-  } finally {
-    db.close();
-  }
+async function lerTasks(wsPath: string): Promise<PacoteTasks | null> {
+  const store = new TaskStore();
+  const tasks = await store.listar(wsPath);
+  if (tasks.length === 0) return null;
+  const mensagens: Record<string, unknown>[] = [];
+  for (const t of tasks) mensagens.push(...((await store.listarMensagens(wsPath, t.id, 10_000)) as unknown as Record<string, unknown>[]));
+  return { tasks: tasks as unknown as Record<string, unknown>[], mensagens };
 }
 
-function gravarTasks(wsPath: string, dados: PacoteTasks, sobrescrever: boolean): void {
-  const dbPath = join(wsPath, ".opencorp", "tasks.db");
-  mkdirSync(dirname(dbPath), { recursive: true });
-  const db = new Database(dbPath);
-  db.pragma("journal_mode = WAL");
-  db.pragma("busy_timeout = 5000");
-  db.exec(SQL_TASKS);
-  const colunas = [
-    "id", "titulo", "descricao", "coluna", "pos", "prioridade", "labels",
-    "responsavel", "due", "task_pai", "bloqueado_por", "lock_por", "lock_expira",
-    "criado_por", "criado_em", "atualizado_em",
-  ];
-  const insTask = db.prepare(
-    `INSERT ${sobrescrever ? "OR REPLACE" : "OR IGNORE"} INTO tasks (${colunas.join(", ")}) VALUES (${colunas.map((c) => "@" + c).join(", ")})`,
-  );
-  const insMsg = db.prepare(
-    `INSERT ${sobrescrever ? "OR REPLACE" : "OR IGNORE"} INTO task_mensagens (id, task_id, autor, tipo, corpo, menciona, refs, criado_em) VALUES (@id, @task_id, @autor, @tipo, @corpo, @menciona, @refs, @criado_em)`,
-  );
-  const tx = db.transaction(() => {
-    for (const t of dados.tasks) {
-      insTask.run({
-        id: String(t.id ?? ""),
-        titulo: String(t.titulo ?? ""),
-        descricao: String(t.descricao ?? ""),
-        coluna: String(t.coluna ?? "backlog"),
-        pos: Number(t.pos ?? 0),
-        prioridade: String(t.prioridade ?? "media"),
-        labels: String(t.labels ?? ""),
-        responsavel: String(t.responsavel ?? ""),
-        due: t.due == null ? null : String(t.due),
-        task_pai: t.task_pai == null ? null : String(t.task_pai),
-        bloqueado_por: String(t.bloqueado_por ?? ""),
-        lock_por: t.lock_por == null ? null : String(t.lock_por),
-        lock_expira: t.lock_expira == null ? null : String(t.lock_expira),
-        criado_por: String(t.criado_por ?? ""),
-        criado_em: String(t.criado_em ?? ""),
-        atualizado_em: String(t.atualizado_em ?? ""),
-      });
+/**
+ * Importa tasks preservando os ids. Sem `sobrescrever`, tasks já existentes são
+ * mantidas; mensagens só entram para tasks criadas/sobrescritas nesta importação.
+ */
+async function gravarTasks(wsPath: string, dados: PacoteTasks, sobrescrever: boolean): Promise<void> {
+  const store = new TaskStore();
+  const db = OpencorpDb.obter(wsPath);
+  const importadas = new Set<string>();
+  for (const t of dados.tasks) {
+    const id = String(t.id ?? "");
+    if (!id) continue;
+    if (db.obterTask(id)) {
+      if (!sobrescrever) continue;
+      db.deletarTask(id);
     }
-    for (const m of dados.mensagens) {
-      insMsg.run({
-        id: String(m.id ?? ""),
-        task_id: String(m.task_id ?? ""),
-        autor: String(m.autor ?? ""),
-        tipo: String(m.tipo ?? "comentario"),
-        corpo: String(m.corpo ?? ""),
-        menciona: String(m.menciona ?? ""),
-        refs: String(m.refs ?? ""),
-        criado_em: String(m.criado_em ?? ""),
-      });
-    }
-  });
-  tx();
-  db.close();
+    const lista = (v: unknown) => (Array.isArray(v) ? v.map(String) : String(v ?? "").split(",").map((x) => x.trim()).filter(Boolean));
+    const prioridade = String(t.prioridade ?? "media");
+    db.criarTask({
+      id,
+      titulo: String(t.titulo ?? ""),
+      descricao: String(t.descricao ?? ""),
+      coluna: String(t.coluna ?? "backlog"),
+      posicao: Number(t.pos ?? 0),
+      prioridade: (["baixa", "media", "alta"].includes(prioridade) ? prioridade : "media") as "baixa" | "media" | "alta",
+      responsavel: String(t.responsavel ?? ""),
+      due: t.due == null ? null : String(t.due),
+      criado_por: String(t.criado_por ?? "importacao"),
+      labels: lista(t.labels),
+    });
+    importadas.add(id);
+  }
+  // Dependências e pai só depois que todas as tasks existem.
+  for (const t of dados.tasks) {
+    const id = String(t.id ?? "");
+    if (!importadas.has(id)) continue;
+    const deps = Array.isArray(t.bloqueado_por) ? t.bloqueado_por.map(String) : String(t.bloqueado_por ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+    const validas = deps.filter((d) => db.obterTask(d));
+    if (validas.length > 0) await store.definirDependencias(wsPath, id, validas);
+  }
+  for (const m of dados.mensagens) {
+    const taskId = String(m.task_id ?? "");
+    const corpo = String(m.corpo ?? "").trim();
+    if (!importadas.has(taskId) || !corpo) continue;
+    const tipo = String(m.tipo ?? "comentario") as MensagemTask["tipo"];
+    await store.mensagem(wsPath, taskId, { autor: String(m.autor ?? "importacao") || "importacao", corpo, tipo });
+  }
 }
 
 // ── Migração pura pré-zod (funções migrarVX→VY encadeadas por kind) ───────
@@ -368,7 +339,7 @@ export class AssetStore {
       const ids = await this.copiarFlows(wsPath, somente, pkg, dependeDe);
       nome = nome || ids[0]!;
     } else if (kind === "task") {
-      const dados = lerTasks(wsPath);
+      const dados = await lerTasks(wsPath);
       if (!dados || dados.tasks.length === 0) throw new AssetError('nenhuma task para exportar neste workspace');
       await writeFileAtomic(join(pkg, "tasks.json"), `${JSON.stringify(dados, null, 2)}\n`);
       nome = nome || "tasks";
@@ -436,7 +407,7 @@ export class AssetStore {
     else if (kind === "skill") this.copiarSkills(wsPath, [id], pkg, dependeDe, excluidos);
     else if (kind === "flow") await this.copiarFlows(wsPath, [id], pkg, dependeDe);
     else if (kind === "task") {
-      const dados = lerTasks(wsPath);
+      const dados = await lerTasks(wsPath);
       if (dados && dados.tasks.length > 0) await writeFileAtomic(join(pkg, "tasks.json"), `${JSON.stringify(dados, null, 2)}\n`);
       dependeDe.push({ kind: "task", nome: id });
     } else if (kind === "prompt") {
@@ -463,7 +434,7 @@ export class AssetStore {
       const ids = this.listarFlows(wsPath);
       if (ids.length > 0) await this.copiarFlows(wsPath, ids, pkg, dependeDe);
     } else if (kind === "task") {
-      const dados = lerTasks(wsPath);
+      const dados = await lerTasks(wsPath);
       if (dados && dados.tasks.length > 0) await writeFileAtomic(join(pkg, "tasks.json"), `${JSON.stringify(dados, null, 2)}\n`);
     } else if (kind === "prompt") {
       const origem = join(wsPath, ".opencorp", "prompts.json");
@@ -692,7 +663,7 @@ export class AssetStore {
     }
     if (asset.kind === "task") {
       const dados = JSON.parse(readFileSync(join(dirFonte, "tasks.json"), "utf8")) as PacoteTasks;
-      gravarTasks(wsPath, dados, sobrescrever);
+      await gravarTasks(wsPath, dados, sobrescrever);
       return { kind: "task", id: "tasks", acao: "criado" };
     }
     // prompt
