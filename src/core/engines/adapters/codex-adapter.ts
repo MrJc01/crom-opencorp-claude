@@ -1,6 +1,8 @@
 import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process";
 import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { opencorpHome } from "../../../utils/paths.js";
 import { checkEngineAuthStatus, probeCliLogin } from "../credentials-bridge.js";
 import { resolveEngineSpawnEnv } from "../../credentials/credentials-store.js";
@@ -75,6 +77,60 @@ interface CodexJsonEvent {
   delta?: string;
 }
 
+/**
+ * Metadados das conversas Codex persistidos em `~/.opencorp/codex-sessions.json`.
+ * O histórico fica no próprio Codex (thread nativa); aqui só título, modelo,
+ * workspace e datas, para sobreviverem a reinícios do OpenCorp.
+ */
+class CodexSessionStore {
+  private readonly file: string;
+  private cache: Map<string, CodexSessionMeta> | null = null;
+
+  constructor(homeDir: string) {
+    this.file = join(homeDir, ".opencorp", "codex-sessions.json");
+  }
+
+  private load(): Map<string, CodexSessionMeta> {
+    if (this.cache) return this.cache;
+    this.cache = new Map();
+    try {
+      if (existsSync(this.file)) {
+        const data = JSON.parse(readFileSync(this.file, "utf8")) as Record<string, CodexSessionMeta>;
+        for (const [id, meta] of Object.entries(data)) if (meta && meta.id === id && meta.workspaceId) this.cache.set(id, meta);
+      }
+    } catch {
+      // arquivo corrompido: recomeça vazio (o histórico continua no Codex)
+    }
+    return this.cache;
+  }
+
+  private persist(): void {
+    const data = Object.fromEntries(this.load());
+    mkdirSync(dirname(this.file), { recursive: true });
+    const tmp = `${this.file}.${process.pid}.tmp`;
+    writeFileSync(tmp, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
+    renameSync(tmp, this.file);
+  }
+
+  get(id: string): CodexSessionMeta | undefined {
+    return this.load().get(id);
+  }
+
+  set(id: string, meta: CodexSessionMeta): void {
+    this.load().set(id, meta);
+    this.persist();
+  }
+
+  touch(meta: CodexSessionMeta): void {
+    meta.updatedAt = new Date().toISOString();
+    this.set(meta.id, meta);
+  }
+
+  delete(id: string): void {
+    if (this.load().delete(id)) this.persist();
+  }
+}
+
 const OPENCORP_VERSION = (createRequire(import.meta.url)("../../../../package.json") as { version: string }).version;
 
 type CodexInvocation =
@@ -98,12 +154,13 @@ export class CodexAdapter implements EngineAdapter {
   private readonly customProcessLauncher?: CodexAdapterOptions["customProcessLauncher"];
   private readonly appServerLauncher?: CodexAppServerLauncher;
   private readonly processRegistry: ProcessRegistry;
-  private readonly sessions = new Map<string, CodexSessionMeta>();
+  private readonly sessions: CodexSessionStore;
   private readonly appServers = new Map<string, CodexAppServerClient>();
   private readonly startingAppServers = new Map<string, Promise<CodexAppServerClient>>();
 
   constructor(options: CodexAdapterOptions = {}) {
     this.homeDir = options.homeDir ?? opencorpHome();
+    this.sessions = new CodexSessionStore(this.homeDir);
     this.driver = options.driver ?? new CodexDriver();
     this.binPath = options.binPath ?? "codex";
     this.customProcessLauncher = options.customProcessLauncher;
@@ -292,9 +349,9 @@ export class CodexAdapter implements EngineAdapter {
   private async createConversation(input: ConversationCreateInput): Promise<ConversationRef> {
     const model = input.model === "default" ? undefined : input.model;
     const existing = input.conversationId ? this.sessions.get(input.conversationId) : undefined;
-    if (existing && existing.workspaceId === input.workspaceId) {
+    if (existing && existing.workspaceId === input.workspaceId && this.appServers.has(formatProcessKey({ engineId: this.engineId, workspaceId: input.workspaceId }))) {
       if (model) existing.model = model;
-      existing.updatedAt = new Date().toISOString();
+      this.sessions.touch(existing);
       return { id: existing.id, engineId: this.engineId, workspaceId: existing.workspaceId };
     }
 
@@ -309,7 +366,17 @@ export class CodexAdapter implements EngineAdapter {
         : client.startThread({ cwd: input.workspacePath, model })
     );
     const now = new Date().toISOString();
-    this.sessions.set(id, { id, workspaceId: input.workspaceId, workspacePath: input.workspacePath, model, title: input.title || "Conversa com Codex", createdAt: now, updatedAt: now });
+    // Retomada após reinício: título, modelo e criação vêm dos metadados persistidos.
+    const previous = existing && existing.id === id && existing.workspaceId === input.workspaceId ? existing : undefined;
+    this.sessions.set(id, {
+      id,
+      workspaceId: input.workspaceId,
+      workspacePath: input.workspacePath,
+      model: model ?? previous?.model,
+      title: input.title || previous?.title || "Conversa com Codex",
+      createdAt: previous?.createdAt ?? now,
+      updatedAt: now,
+    });
     return { id, engineId: this.engineId, workspaceId: input.workspaceId };
   }
 
@@ -321,7 +388,14 @@ export class CodexAdapter implements EngineAdapter {
     }
     let client: CodexAppServerClient;
     try {
+      const running = this.appServers.has(formatProcessKey({ engineId: this.engineId, workspaceId: session.workspaceId }));
       client = await this.getAppServer(session.workspaceId, session.workspacePath, this.homeDir);
+      // App-server novo (reinício/ocioso): a thread precisa ser retomada antes do turno.
+      if (!running) {
+        await this.withAppServerActivity(session.workspaceId, () =>
+          client.resumeThread(session.id, { cwd: session.workspacePath, model: session.model })
+        );
+      }
     } catch (error) {
       yield { type: "run.failed", runId: `codex-run-${randomUUID()}`, error: normalizeEngineError(error, { engineId: this.engineId }), timestamp: new Date().toISOString() };
       return;
@@ -330,7 +404,7 @@ export class CodexAdapter implements EngineAdapter {
     this.processRegistry.acquire(key);
     try {
       for await (const event of client.runTurn(ref.id, input.text, signal)) yield event;
-      session.updatedAt = new Date().toISOString();
+      this.sessions.touch(session);
     } finally {
       this.processRegistry.release(key);
     }
