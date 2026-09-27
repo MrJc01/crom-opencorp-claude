@@ -24,12 +24,14 @@ test.describe("Web Secretário: sugestões, drawer motor, histórico", () => {
     expect(watcher.limpos()).toEqual([]);
   });
 
-  test("drawer motor abre, testa e aplica", async ({ page }) => {
+  test("drawer motor abre, salva e fecha", async ({ page }) => {
     await page.locator('[data-testid="btn-configurar-motor"]').click();
     const drawer = page.locator('[data-testid="drawer-lateral-config"]');
     await expect(drawer).toBeVisible({ timeout: 10000 });
-    await esperarElementoTexto(page, "Configurar Motor & Modelo");
-    await page.getByRole("button", { name: /Aplicar ao Chat/i }).click();
+    await expect(drawer.getByText("Modelo Principal")).toBeVisible();
+    await drawer.getByRole("button", { name: /Salvar no Workspace/ }).click();
+    await expect(drawer.getByText("Salvo!")).toBeVisible({ timeout: 10000 });
+    await page.getByTitle("Fechar painel").click();
     await expect(drawer).not.toBeVisible({ timeout: 10000 });
   });
 

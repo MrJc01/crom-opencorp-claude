@@ -30,7 +30,7 @@ test.describe("Roteamento canônico por workspace", () => {
       const path = `/w/${WORKSPACE}${modulo ? `/${modulo}` : ""}`;
       const response = await page.goto(path);
       expect(response?.status()).toBe(200);
-      await expect(page).toHaveURL(new RegExp(`${path.replaceAll("/", "\\/")}/?$`));
+      await expect(page).toHaveURL(new RegExp(`${path.replaceAll("/", "\\/")}/?(\\?.*)?$`));
       await expect(page.locator("main").first()).toBeVisible();
     }
   });

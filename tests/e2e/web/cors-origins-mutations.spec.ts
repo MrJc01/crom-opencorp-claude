@@ -170,7 +170,7 @@ test.describe("Auditoria E2E de CORS e Mutações Web (Prevenção de 403 Forbid
     const titulo = `Tarefa E2E ${Date.now()}`;
     await page.getByRole("button", { name: "Nova Tarefa" }).click();
     await esperarElementoTexto(page, "Criar Nova Tarefa");
-    await page.locator('input[placeholder="Ex: Auditoria técnica do site"]').fill(titulo);
+    await page.getByPlaceholder("Ex: Auditoria técnica de endpoints ou refatoração").fill(titulo);
     await page.getByRole("button", { name: "Criar Tarefa" }).click();
 
     // Aguarda o card aparecer no Kanban
