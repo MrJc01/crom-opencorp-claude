@@ -1,4 +1,4 @@
-import React, { useState, useEffect, type FC, type ChangeEvent } from "react";
+import React, { useState, useEffect, useRef, type FC, type ChangeEvent } from "react";
 import { Check, Loader2 } from "lucide-react";
 import type { EntradaSettingsRow } from "../types.js";
 
@@ -42,9 +42,12 @@ export const SettingRow: FC<SettingRowProps> = ({
   const [salvandoLocal, setSalvandoLocal] = useState(false);
   const [salvoFeedback, setSalvoFeedback] = useState(false);
 
+  // Valor que chega do servidor não sobrescreve uma edição em andamento.
+  const modificadoRef = useRef(false);
+  modificadoRef.current = modificado;
   useEffect(() => {
+    if (modificadoRef.current) return;
     setVal(getValorInicial());
-    setModificado(false);
   }, [item?.valor, chave]);
 
   const origem = item?.origem || "default";
