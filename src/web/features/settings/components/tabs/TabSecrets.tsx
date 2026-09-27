@@ -681,7 +681,17 @@ export const TabSecrets: FC<TabSecretsProps> = ({ escopoConfig }) => {
               return (
                 <div
                   key={tmpl.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Configurar ${tmpl.rotulo}`}
+                  data-testid={`template-segredo-${tmpl.id}`}
                   onClick={() => abrirModalNovo(tmpl.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      abrirModalNovo(tmpl.id);
+                    }
+                  }}
                   className="p-3.5 rounded-xl border border-zinc-850 bg-zinc-900/40 hover:border-emerald-500/50 hover:bg-zinc-850/60 transition-all cursor-pointer flex flex-col justify-between group space-y-3"
                 >
                   <div className="space-y-2">
@@ -732,6 +742,8 @@ export const TabSecrets: FC<TabSecretsProps> = ({ escopoConfig }) => {
               <button
                 type="button"
                 onClick={() => setFiltroEscopoSecrets("todos")}
+                data-testid="secrets-filtro-todos"
+                aria-pressed={filtroEscopoSecrets === "todos"}
                 className={`px-2.5 py-1 rounded text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer ${
                   filtroEscopoSecrets === "todos"
                     ? "bg-zinc-800 text-zinc-100 font-semibold shadow-xs"
@@ -744,6 +756,8 @@ export const TabSecrets: FC<TabSecretsProps> = ({ escopoConfig }) => {
               <button
                 type="button"
                 onClick={() => setFiltroEscopoSecrets("workspace")}
+                data-testid="secrets-filtro-workspace"
+                aria-pressed={filtroEscopoSecrets === "workspace"}
                 className={`px-2.5 py-1 rounded text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer ${
                   filtroEscopoSecrets === "workspace"
                     ? "bg-purple-950/60 text-purple-300 border border-purple-800/60 font-semibold shadow-xs"
@@ -756,6 +770,8 @@ export const TabSecrets: FC<TabSecretsProps> = ({ escopoConfig }) => {
               <button
                 type="button"
                 onClick={() => setFiltroEscopoSecrets("global")}
+                data-testid="secrets-filtro-global"
+                aria-pressed={filtroEscopoSecrets === "global"}
                 className={`px-2.5 py-1 rounded text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer ${
                   filtroEscopoSecrets === "global"
                     ? "bg-cyan-950/60 text-cyan-300 border border-cyan-800/60 font-semibold shadow-xs"
@@ -904,6 +920,7 @@ export const TabSecrets: FC<TabSecretsProps> = ({ escopoConfig }) => {
               <button
                 type="button"
                 onClick={() => setModalNovoAberto(false)}
+                aria-label="Fechar"
                 className="text-zinc-400 hover:text-zinc-200 p-1 rounded-lg hover:bg-zinc-800 transition-colors cursor-pointer"
               >
                 <X size={16} />

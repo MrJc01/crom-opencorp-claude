@@ -44,6 +44,6 @@ test.describe("Histórico — Visualizador de Telemetria Granular (E2E)", () => 
     await expect(botaoTelemetria).toBeVisible({ timeout: 15000 });
 
     await botaoTelemetria.click();
-    await esperarElementoTexto(page, "Nenhum span granular registrado para esta execução");
+    await esperarElementoTexto(page, "Nenhum span registrado nesta execução.");
   });
 });

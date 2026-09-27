@@ -246,6 +246,8 @@ export const AppsView: FC = () => {
                 <button
                   type="button"
                   onClick={() => setModoVisualizacao("app")}
+                  aria-label="Só App"
+                  aria-pressed={modoVisualizacao === "app"}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                     modoVisualizacao === "app"
                       ? "bg-blue-600 text-white shadow-xs"
@@ -260,6 +262,8 @@ export const AppsView: FC = () => {
                 <button
                   type="button"
                   onClick={() => setModoVisualizacao("chat")}
+                  aria-label="Só Chat"
+                  aria-pressed={modoVisualizacao === "chat"}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                     modoVisualizacao === "chat"
                       ? "bg-blue-600 text-white shadow-xs"
@@ -274,6 +278,8 @@ export const AppsView: FC = () => {
                 <button
                   type="button"
                   onClick={() => setModoVisualizacao("ambos")}
+                  aria-label="Ambos"
+                  aria-pressed={modoVisualizacao === "ambos"}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                     modoVisualizacao === "ambos"
                       ? "bg-blue-600 text-white shadow-xs"

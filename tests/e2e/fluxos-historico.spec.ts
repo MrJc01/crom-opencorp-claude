@@ -120,7 +120,8 @@ test.describe("Fluxos no Histórico e Home (ABCD)", () => {
     await page.locator(`text=${execId}`).first().waitFor({ state: "visible", timeout: 15000 });
   });
 
-  test("C1. Home na aba Fluxos mostra Últimas execuções com status", async ({ page }) => {
+  // A home não tem mais a aba Fluxos (ver pendências).
+  test.fixme("C1. Home na aba Fluxos mostra Últimas execuções com status", async ({ page }) => {
     const fid = `${FLOW_BASE}-c1`;
     await criarFlow(page, fid);
     const execId = await rodarFlow(page, fid, { entrada: "home-c1" });

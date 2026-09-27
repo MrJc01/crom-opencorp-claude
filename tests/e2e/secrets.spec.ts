@@ -13,13 +13,13 @@ test.describe("Secrets / Credenciais", () => {
   });
 
   async function adicionarSegredo(page: import("@playwright/test").Page) {
-    await page.getByRole("button", { name: "Adicionar Credencial" }).first().click();
+    await page.getByRole("button", { name: "+ Novo Segredo" }).click();
     await esperarElementoTexto(page, "Adicionar Credencial com Template");
     // Template customizado (chave livre)
-    await page.getByRole("button", { name: "Customizado / Chave Livre" }).click();
-    await page.locator('input[placeholder="Ex: STRIPE_API_KEY ou SUPABASE_SERVICE_ROLE"]').fill(NOME);
-    await page.locator('textarea[placeholder="Cole o segredo, token ou JSON aqui..."]').fill(VALOR);
-    await page.getByRole("button", { name: "Salvar Credencial" }).click();
+    await page.getByRole("button", { name: "Customizado / Chave Livre", exact: true }).click();
+    await page.getByPlaceholder("Ex: app:custom:variavel-privada ou STRIPE_API_KEY").fill(NOME);
+    await page.getByPlaceholder("Cole o segredo, token ou JSON aqui...").fill(VALOR);
+    await page.getByRole("button", { name: "Salvar no Cofre" }).click();
     await expect(page.getByText(NOME).first()).toBeVisible({ timeout: 10000 });
   }
 

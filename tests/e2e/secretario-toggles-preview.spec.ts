@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api } from "./helpers.js";
 
-test.describe("Secretário - Controles Superiores e Preview Web", () => {
+// Os controles de raciocínio/ferramentas e o Preview Lateral do Secretário foram
+// removidos na UI React (9ad8e1e); ver docs/PENDENCIAS-MULTIMOTORES.md.
+test.describe.fixme("Secretário - Controles Superiores e Preview Web", () => {
   test.beforeEach(async ({ page }) => {
     logado(page, "test-e2e", "e2e-corp");
     await seederEmpresaBasica(api(page), "test-e2e", "e2e-corp").catch(() => {});

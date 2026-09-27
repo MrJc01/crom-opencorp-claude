@@ -86,24 +86,19 @@ test.describe("Histórico — Modal com Layout do Secretário e Encerramento", (
     await page.goto(`/historico?run=${execIdSequential}&workspace=${wsId}`);
 
     // Modal aberto com o ID da execução
-    await expect(page.locator(`text=Execução: ${execIdSequential}`)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: execIdSequential })).toBeVisible({ timeout: 15000 });
 
-    // Turno do Usuário: cabeçalho "Você" e texto da ordem
-    await expect(page.locator("text=Você").first()).toBeVisible({ timeout: 10000 });
+    // Ordem original (turno do operador)
+    await expect(page.getByText("Ordem Operacional").first()).toBeVisible({ timeout: 10000 });
     await expect(page.locator(`text=${ordemSequential}`).first()).toBeVisible({ timeout: 10000 });
 
-    // Turno do Assistente: cabeçalho estilo Secretário e badges
-    await expect(page.locator("text=@executor-padrao").first()).toBeVisible({ timeout: 10000 });
+    // Ações do agente em sequência (bash → read → write), cada uma expansível
+    await expect(page.getByRole("button", { name: /bash\s*ls -la/ }).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("button", { name: /read\s*.*package\.json/ }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /write\s*.*build-report\.md/ }).first()).toBeVisible();
 
-    // Ações sequenciais com badges estilo Secretário (bash, read, write)
-    await expect(page.locator("text=bash:").first()).toBeVisible({ timeout: 10000 });
-    await expect(page.locator("text=read:").first()).toBeVisible({ timeout: 10000 });
-    await expect(page.locator("text=write:").first()).toBeVisible({ timeout: 10000 });
-
-    // Indicadores de sucesso da ação (✓ ok)
-    await expect(page.locator("text=✓ ok").first()).toBeVisible({ timeout: 10000 });
-
-    // Conclusão final formatada
+    // Conclusão final (aba Resultado)
+    await page.getByRole("button", { name: /^Resultado/ }).click();
     await expect(
       page.locator("text=Conclusão: O sistema está operacional e todas as dependências foram validadas.").first()
     ).toBeVisible({ timeout: 10000 });
@@ -111,10 +106,10 @@ test.describe("Histórico — Modal com Layout do Secretário e Encerramento", (
 
   test("(b) Alternador entre Chat ao Vivo e Terminal Raw funciona perfeitamente", async ({ page }) => {
     await page.goto(`/historico?run=${execIdSequential}&workspace=${wsId}`);
-    await expect(page.locator(`text=Execução: ${execIdSequential}`)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: execIdSequential })).toBeVisible({ timeout: 15000 });
 
     // Alternar para Terminal Raw
-    const btnTerminal = page.locator('button:has-text("Terminal Raw")');
+    const btnTerminal = page.getByRole("button", { name: /^Terminal/ });
     await expect(btnTerminal).toBeVisible();
     await btnTerminal.click();
 
@@ -124,12 +119,12 @@ test.describe("Histórico — Modal com Layout do Secretário e Encerramento", (
     await expect(preRaw).toContainText("executor-padrao");
 
     // Alternar de volta para Chat ao Vivo
-    const btnChat = page.locator('button:has-text("Chat ao Vivo")');
+    const btnChat = page.getByRole("button", { name: /^Chat/ });
     await expect(btnChat).toBeVisible();
     await btnChat.click();
 
     // Chat sequencial volta a ficar visível
-    await expect(page.locator("text=Você").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Ordem Operacional").first()).toBeVisible({ timeout: 5000 });
   });
 
   test("(c) Encerramento de execução ('Encerrar') interrompe polling e persiste status cancelado", async ({ page }) => {
@@ -145,7 +140,7 @@ test.describe("Histórico — Modal com Layout do Secretário e Encerramento", (
     });
 
     await page.goto(`/historico?run=exec-test-cancelar-99&workspace=${wsId}`);
-    await expect(page.locator("text=Execução: exec-test-cancelar-99")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: "exec-test-cancelar-99" })).toBeVisible({ timeout: 15000 });
 
     // Botão Encerrar ou fechar
     const btnEncerrar = page.locator('button:has-text("Encerrar")');
@@ -160,6 +155,6 @@ test.describe("Histórico — Modal com Layout do Secretário e Encerramento", (
 
     // Tecla Escape fecha o modal sem deixar órfãos
     await page.keyboard.press("Escape");
-    await expect(page.locator("text=Execução: exec-test-cancelar-99")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "exec-test-cancelar-99" })).toHaveCount(0);
   });
 });

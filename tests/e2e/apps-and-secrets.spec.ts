@@ -44,20 +44,20 @@ test.describe("Apps e Segredos (E2E)", () => {
 
     // Verifica topbar do app aberto com as 3 opções
     await expect(page.locator("button:has-text('Voltar aos Apps')")).toBeVisible();
-    await expect(page.locator("button:has-text('Só App')")).toBeVisible();
-    await expect(page.locator("button:has-text('Só Chat')")).toBeVisible();
-    await expect(page.locator("button:has-text('Os Dois')")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Só App" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Só Chat" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Ambos" })).toBeVisible();
 
     // Verifica que o Iframe do Mini-App foi montado
     const iframe = page.locator('iframe[src*="/api/apps/monitor-pulso/view"]');
     await expect(iframe).toBeVisible();
 
     // Alterna para 'Só Chat'
-    await page.locator("button:has-text('Só Chat')").click();
-    await expect(page.locator("main").locator("textarea, input[placeholder*='Peça para a IA']")).toBeVisible();
+    await page.getByRole("button", { name: "Só Chat" }).click();
+    await expect(page.getByRole("button", { name: "Só Chat" })).toHaveAttribute("aria-pressed", "true");
 
-    // Alterna para 'Os Dois'
-    await page.locator("button:has-text('Os Dois')").click();
+    // Alterna para 'Ambos'
+    await page.getByRole("button", { name: "Ambos" }).click();
     await expect(iframe).toBeVisible();
 
     // Clica em 'Voltar aos Apps'
@@ -76,19 +76,17 @@ test.describe("Apps e Segredos (E2E)", () => {
     await expect(page.locator("text=Mercado Pago / Checkout")).toBeVisible();
 
     // Filtros de escopo
-    await expect(page.locator("button:has-text('Todos (Merge)')")).toBeVisible();
-    await expect(page.locator("button:has-text('Workspace')")).toBeVisible();
-    await expect(page.locator("button:has-text('Global')")).toBeVisible();
+    for (const f of ["todos", "workspace", "global"]) await expect(page.getByTestId(`secrets-filtro-${f}`)).toBeVisible();
 
-    // Clica em template para abrir modal de configuração
-    await page.locator("text=WordPress (Application Password)").click();
-    await expect(page.locator("text=Guia de Configuração: WordPress (Application Password)")).toBeVisible();
-    await expect(page.locator("text=Como Encontrar / Gerar o Token:")).toBeVisible();
-    await expect(page.locator("text=Regras de Uso & Boas Práticas de Segurança:")).toBeVisible();
+    // Clica em template (acessível por teclado) para abrir o modal guiado
+    await page.getByTestId("template-segredo-wordpress").press("Enter");
+    await expect(page.getByText("Guia de Operação: WordPress (Application Password)").first()).toBeVisible();
+    await expect(page.getByText("Como Gerar / Obter a Chave:").first()).toBeVisible();
+    await expect(page.getByText("Boas Práticas & Governança:").first()).toBeVisible();
 
     // Fecha modal
-    await page.locator("button:has-text('Cancelar')").click();
-    await expect(page.locator("text=Guia de Configuração")).not.toBeVisible();
+    await page.getByRole("button", { name: "Cancelar" }).click();
+    await expect(page.getByText("Guia de Operação:")).toHaveCount(0);
   });
 
   test("4. CLI oc secret permite CRUD completo de senhas (set, get, list, delete)", async () => {

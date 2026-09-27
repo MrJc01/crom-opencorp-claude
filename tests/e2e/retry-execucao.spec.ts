@@ -72,7 +72,7 @@ test.describe("Histórico — Reenviar / Clone de Execução", () => {
     await page.goto(`/historico?run=${execIdOriginal}&workspace=${wsId}`);
 
     // Modal deve estar aberto
-    const modal = page.locator("text=Execução: " + execIdOriginal);
+    const modal = page.getByRole("heading", { name: execIdOriginal });
     await expect(modal).toBeVisible({ timeout: 15000 });
 
     // Botão Reenviar deve estar visível
@@ -83,7 +83,7 @@ test.describe("Histórico — Reenviar / Clone de Execução", () => {
     await btnReenviar.click();
 
     // Deve exibir toast de sucesso ou notificação de reenviado
-    const toastSucesso = page.locator("text=Execução reenviada como");
+    const toastSucesso = page.getByText(/Execução reenviada com sucesso/).first();
     await expect(toastSucesso).toBeVisible({ timeout: 15000 });
   });
 });

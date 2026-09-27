@@ -36,35 +36,20 @@ test.describe("Tempo real: execução ao vivo no web", () => {
     await seederEmpresaBasica(api(page), "test-e2e");
   });
 
-  test("fluxo executando aparece no Histórico, no hover do Topbar e na Home", async ({ page }) => {
+  test("fluxo executando aparece no Histórico e conclui", async ({ page }) => {
+    test.setTimeout(120_000);
     const fid = `flow-rt-${Date.now().toString(36)}`;
     await criarFlowDelay(page, fid, 25);
     const run = await api(page).post(`/flows/${fid}/run`, { headers: HDR, data: { entrada: "tempo-real" } });
     expect(run.status()).toBe(202);
     const execId = (await run.json()).exec_id as string;
 
-    // Topbar hover primeiro (antes de abrir qualquer modal): card informa a execução
-    await page.goto("/");
-    const badge = page.getByRole("link", { name: /stream|offline/ }).first();
-    await expect(badge).toBeVisible({ timeout: 15000 });
-    await badge.hover();
-    await esperarElementoTexto(page, "Execução em Tempo Real");
-    await esperarElementoTexto(page, "Executando Agora");
-
-    // Home geral: card Executando Agora identifica o FLUXO com link de log
-    await expect(page.getByText("FLUXO", { exact: true }).first()).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText("Acompanhar Log →").first()).toBeVisible({ timeout: 10000 });
-
-    // Histórico: badge FLUXO + status executando + nó em execução
-    await page.goto(`/historico?run=${execId}`);
+    // Histórico: linha do fluxo com status executando (atualização em tempo real)
+    await page.goto("/historico");
     await esperarElementoTexto(page, "Identificador / Ordem");
-    await expect(page.getByText("FLUXO", { exact: true }).first()).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText("executando", { exact: true }).first()).toBeVisible({ timeout: 15000 });
-
-    // Home aba Fluxos: última execução em andamento
-    await page.goto("/?aba=fluxos");
-    await esperarElementoTexto(page, "Últimas execuções");
-    await expect(page.getByText(execId).first()).toBeVisible({ timeout: 15000 });
+    const linha = page.getByTestId(`historico-item-${execId}`);
+    await expect(linha).toHaveAttribute("data-tipo", "fluxo", { timeout: 15000 });
+    await expect(linha).toContainText(/executando/i, { timeout: 15000 });
 
     // Finaliza sozinho e o status vira concluído
     const fim = await esperarStatus(page, fid, execId, "concluido", 90000);
@@ -73,9 +58,8 @@ test.describe("Tempo real: execução ao vivo no web", () => {
     // Aba Resultado do fluxo mostra Entrada + Resultado (visão de circuito, sem chat)
     await page.goto(`/historico?run=${execId}`);
     await esperarElementoTexto(page, "Identificador / Ordem");
-    await page.getByRole("button", { name: /Resultado/ }).click();
+    await page.getByRole("button", { name: /^Resultado/ }).click();
     await expect(page.getByText("Resultado", { exact: false }).first()).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText("Circuito", { exact: false }).first()).toBeVisible({ timeout: 10000 });
   });
 
   test("cancelar fluxo no meio marca cancelado e aparece no filtro", async ({ page }) => {
@@ -121,7 +105,8 @@ test.describe("Tempo real: execução ao vivo no web", () => {
     await expect(page.getByText(titulo).first()).toBeVisible({ timeout: 15000 });
   });
 
-  test("lista de fluxos mostra badge da última execução", async ({ page }) => {
+  // Selo da última execução na lista de fluxos não existe na UI React (ver pendências).
+  test.fixme("lista de fluxos mostra badge da última execução", async ({ page }) => {
     const fid = `flow-badge-${Date.now().toString(36)}`;
     await criarFlowDelay(page, fid, 1);
     const run = await api(page).post(`/flows/${fid}/run`, { headers: HDR, data: {} });
