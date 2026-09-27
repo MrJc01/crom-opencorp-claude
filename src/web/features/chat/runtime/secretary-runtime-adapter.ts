@@ -30,9 +30,18 @@ export function converterMensagensBackend(
       };
     }
 
+    // Ações com pergunta (ask_question) guardam as opções em `passos`.
+    const acoes: any[] = Array.isArray(m.acoes) ? m.acoes.map((a: any) => ({ ...a })) : [];
+    for (const passo of Array.isArray(m.passos) ? m.passos : []) {
+      if (passo?.tipo !== "acao" || !(passo.pergunta || passo.opcoes || passo.perguntas)) continue;
+      const extra = { pergunta: passo.pergunta, opcoes: passo.opcoes, perguntas: passo.perguntas };
+      const alvo = acoes.find((a) => (a.ferramenta || a.tool) === passo.ferramenta && a.resumo === passo.resumo);
+      if (alvo) Object.assign(alvo, extra);
+      else acoes.push({ ferramenta: passo.ferramenta, resumo: passo.resumo || "", sucesso: passo.sucesso !== false, status: passo.status, ...extra });
+    }
     const partes = buildAssistantParts(
       m.pensamento || "",
-      m.acoes || [],
+      acoes,
       m.content || "",
     );
 
@@ -58,6 +67,9 @@ export function buildAssistantParts(
     resumo: string;
     sucesso: boolean;
     status?: string;
+    pergunta?: string;
+    opcoes?: string[];
+    perguntas?: Array<{ header?: string; pergunta: string; opcoes: string[] }>;
   }>,
   texto: string,
   aprovacoes: Array<{
@@ -87,6 +99,12 @@ export function buildAssistantParts(
         args: {
           resumo: item.resumo || "Executando inspeção de workspace...",
           statusOperacional: item.status || "completed",
+          // Ferramentas de pergunta (ask_question/question) levam o conteúdo para o card.
+          ...(item.perguntas?.length
+            ? { questions: item.perguntas.map((q) => ({ header: q.header, question: q.pergunta, options: q.opcoes })) }
+            : item.pergunta || item.opcoes?.length
+              ? { question: item.pergunta, options: item.opcoes ?? [] }
+              : {}),
         },
         result: item.resumo || "Concluído",
         isError: item.sucesso === false,
@@ -358,6 +376,9 @@ export function criarSecretarioModelAdapter(
         resumo: string;
         sucesso: boolean;
         status?: string;
+        pergunta?: string;
+        opcoes?: string[];
+        perguntas?: Array<{ header?: string; pergunta: string; opcoes: string[] }>;
       }> = [];
 
       try {
@@ -400,6 +421,16 @@ export function criarSecretarioModelAdapter(
                   if (pensamentos.length > 0) {
                     pensamentoAcumulado = pensamentos.join("\n\n");
                   }
+                  // Ferramentas de pergunta: o evento "acao" não traz as opções; "passos" traz.
+                  for (const passo of parsed.passos) {
+                    if (passo?.tipo !== "acao" || !(passo.pergunta || passo.opcoes || passo.perguntas)) continue;
+                    const ferramenta = String(passo.ferramenta || "ferramenta");
+                    const resumo = String(passo.resumo || "");
+                    const extra = { pergunta: passo.pergunta, opcoes: passo.opcoes, perguntas: passo.perguntas };
+                    const idx = acoesAcumuladas.findIndex((a) => a.ferramenta === ferramenta && a.resumo === resumo);
+                    if (idx >= 0) acoesAcumuladas[idx] = { ...acoesAcumuladas[idx]!, ...extra };
+                    else acoesAcumuladas.push({ ferramenta, resumo, status: String(passo.status || "completed"), sucesso: passo.sucesso !== false, ...extra });
+                  }
                 } else if (evento === "pensamento") {
                   pensamentoAcumulado =
                     parsed.acumulado || pensamentoAcumulado + (parsed.delta || "");
@@ -434,7 +465,7 @@ export function criarSecretarioModelAdapter(
                         acao.ferramenta === ferramenta && acao.resumo === resumo,
                     );
                     if (idxExistente >= 0) {
-                      acoesAcumuladas[idxExistente] = atualizada;
+                      acoesAcumuladas[idxExistente] = { ...acoesAcumuladas[idxExistente]!, ...atualizada };
                     } else {
                       acoesAcumuladas.push(atualizada);
                     }

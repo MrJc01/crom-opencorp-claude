@@ -286,10 +286,10 @@ export const SecretarioSettingsDrawer: FC<SecretarioSettingsDrawerProps> = ({
               value={agenteSelecionado}
               onChange={(e) => setAgenteSelecionado(e.target.value)}
             >
-              <option value="secretario">secretario — Supervisor Executivo (OpenCode)</option>
+              <option value="secretario">secretario — Supervisor Executivo</option>
               {agentes.map((ag) => (
                 <option key={ag.id} value={ag.id}>
-                  {ag.id} — {ag.role || ag.id} ({ag.harness || ag.motor || "opencode"})
+                  {ag.id} — {ag.role || ag.id}{ag.harness || ag.motor ? ` (${ag.harness || ag.motor})` : ""}
                 </option>
               ))}
             </select>

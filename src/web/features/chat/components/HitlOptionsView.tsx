@@ -1,4 +1,4 @@
-import React, { type FC } from "react";
+import React, { useState, type FC } from "react";
 import { Sparkles, ArrowRight } from "lucide-react";
 
 export interface ItemOpcaoPergunta {
@@ -97,10 +97,16 @@ export const HitlOptionsView: FC<HitlOptionsViewProps> = ({
   desabilitado = false,
 }) => {
   const dados = extrairOpcoesDoTexto(texto);
-  if (!dados || dados.opcoes.length === 0) return null;
+  // Depois da escolha o card some (a resposta já está no chat).
+  const [respondido, setRespondido] = useState(false);
+  if (respondido || !dados || dados.opcoes.length === 0) return null;
 
   return (
-    <div className="my-3 p-3 rounded-xl bg-purple-950/20 border border-purple-900/40 text-xs shadow-md">
+    <div
+      className="chat-pergunta-card my-3 p-3 rounded-xl bg-purple-950/20 border border-purple-900/40 text-xs shadow-md"
+      role="group"
+      aria-label={dados.pergunta || "Opções de resposta rápida"}
+    >
       <div className="flex items-center gap-1.5 text-purple-300 font-semibold mb-2 font-mono text-[11px]">
         <Sparkles size={12} className="text-purple-400 animate-pulse" />
         <span>{dados.pergunta || "Opções de resposta rápida:"}</span>
@@ -112,7 +118,12 @@ export const HitlOptionsView: FC<HitlOptionsViewProps> = ({
             key={`${dados.id}_${idx}`}
             type="button"
             disabled={desabilitado}
-            onClick={() => onSelecionarOpcao(opcao)}
+            onClick={() => {
+              setRespondido(true);
+              onSelecionarOpcao(opcao);
+            }}
+            data-testid="chat-opcao-btn"
+            data-opcao={opcao}
             className="chat-opcao-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 active:scale-95 border border-purple-800/60 text-purple-200 hover:text-white transition-all text-xs font-medium cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed group text-left"
           >
             <span className="h-4 w-4 rounded-full bg-purple-900/80 text-[10px] font-bold flex items-center justify-center text-purple-300 group-hover:bg-purple-700 group-hover:text-white shrink-0">

@@ -201,6 +201,7 @@ export const OpenCodeTabsHeader: FC<OpenCodeTabsHeaderProps> = ({
           <button
             type="button"
             onClick={onAbrirConfiguracoes}
+            data-testid="btn-configurar-motor"
             className="p-1 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850 transition-colors cursor-pointer"
             title="Configurações do Secretário (Motor, Modelos e Agentes)"
             aria-label="Configurações do Secretário"

@@ -19,7 +19,13 @@ if (!Number.isInteger(port) || port <= 0) {
   console.error("fake opencode: --port obrigatório");
   process.exit(2);
 }
-const fake = await startFakeOpenCode(port, process.env.OPENCODE_SERVER_PASSWORD ?? "", "Resposta do assistant para: ");
+const fake = await startFakeOpenCode(
+  port,
+  process.env.OPENCODE_SERVER_PASSWORD ?? "",
+  "Resposta do assistant para: ",
+  // Pergunta com opções numeradas: a UI renderiza botões de escolha rápida.
+  (text) => (/teste pergunta/i.test(text) ? "Qual ambiente você deseja implantar?\n1. Produção\n2. Staging\n3. Desenvolvimento" : undefined),
+);
 const stop = () => void fake.close().finally(() => process.exit(0));
 process.on("SIGTERM", stop);
 process.on("SIGINT", stop);

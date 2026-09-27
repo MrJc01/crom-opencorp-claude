@@ -39,6 +39,7 @@ import { SUGESTOES_RAPIDAS } from "../../../lib/chat/constants.js";
 import type { SecretaryRuntimeOptions } from "../types.js";
 import { GitStatusCard, parsearSaidaGitStatus } from "./GitStatusCard.js";
 import { HitlOptionsView } from "./HitlOptionsView.js";
+import { PerguntaCard } from "./PerguntaCard.js";
 import { EngineApprovalCard } from "./EngineApprovalCard.js";
 import {
   ChatComposer,
@@ -448,6 +449,12 @@ const SecretarioChatInterno: FC<{
                   },
                 );
                 const emExecucao = message.status?.type === "running";
+                // Pergunta já respondida = existe mensagem do usuário depois desta.
+                const respondida = (() => {
+                  const msgs = runtime.thread.getState().messages;
+                  const i = msgs.findIndex((x) => x.id === message.id);
+                  return i >= 0 && msgs.slice(i + 1).some((x) => x.role === "user");
+                })();
 
                 const arquivosGit = parsearSaidaGitStatus(textoAssistente);
 
@@ -564,6 +571,24 @@ const SecretarioChatInterno: FC<{
                                     }}
                                   />
                                 ),
+                                ask_question: ({ args }: any) => (
+                                  <PerguntaCard
+                                    args={args}
+                                    respondida={respondida}
+                                    onResponder={(texto) => {
+                                      void runtime.thread.append({ role: "user", content: [{ type: "text", text: texto }] });
+                                    }}
+                                  />
+                                ),
+                                question: ({ args }: any) => (
+                                  <PerguntaCard
+                                    args={args}
+                                    respondida={respondida}
+                                    onResponder={(texto) => {
+                                      void runtime.thread.append({ role: "user", content: [{ type: "text", text: texto }] });
+                                    }}
+                                  />
+                                ),
                                 terminal_exec: ({ args, result }: any) => {
                                   const cmd = args?.comando || "";
                                   const out = String(result ?? args?.saida ?? "");
@@ -611,7 +636,7 @@ const SecretarioChatInterno: FC<{
 
                         {/* Opções Interativas da LLM (Interactive HITL) para resposta em 1 clique */}
                         <HitlOptionsView
-                          texto={textoAssistente}
+                          texto={respondida ? "" : textoAssistente}
                           onSelecionarOpcao={(opcao) => {
                             void runtime.thread.append({
                               role: "user",

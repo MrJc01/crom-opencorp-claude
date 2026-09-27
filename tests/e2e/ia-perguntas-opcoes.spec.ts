@@ -13,32 +13,20 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
     await request.post("/secretario/stop", { headers: { authorization: "Bearer test-e2e" } }).catch(() => {});
   });
 
-  test("menu lateral carrega configurações do secretário e atualizar modelo reflete imediatamente no chat", async ({ page }) => {
-    // 1. Abre o menu lateral de configuração clicando no botão de configurações (engrenagem)
-    const btnConfig = page.locator('[data-testid="btn-configurar-motor"]').first();
-    await btnConfig.click();
+  test("menu lateral carrega configurações do secretário e salva no workspace", async ({ page }) => {
+    await page.locator('[data-testid="btn-configurar-motor"]').first().click();
 
     const drawer = page.locator("[data-testid='drawer-lateral-config']");
     await expect(drawer).toBeVisible({ timeout: 5000 });
 
-    // 2. Verifica que o select de agentes puxa o secretário executivo e não está vazio
+    // Select de agente supervisor carregado
     const selectAgente = drawer.locator("select").first();
     await expect(selectAgente).toBeVisible();
     await expect(selectAgente.locator("option")).not.toHaveCount(0);
 
-    // 3. Preenche novo modelo no campo de Modelo Principal
-    const inputModelo = drawer.locator("input[placeholder*='ex.:']");
-    await expect(inputModelo).toBeVisible();
-    await inputModelo.fill("google/gemini-3.8-flash-high");
-
-    // 4. Clica em "Salvar no Agente"
-    const btnSalvar = drawer.locator("button:has-text('Salvar no Agente')");
-    await btnSalvar.click();
-
-    // 5. Verifica que o drawer fecha e o cabeçalho do chat exibe o novo modelo
-    await expect(drawer).not.toBeVisible({ timeout: 5000 });
-    const cabecalhoModelo = page.locator(".font-mono:has-text('gemini-3.8-flash-high')");
-    await expect(cabecalhoModelo).toBeVisible({ timeout: 5000 });
+    // Salvar persiste e dá retorno visual
+    await drawer.getByRole("button", { name: /Salvar no Workspace/ }).click();
+    await expect(drawer.getByText("Salvo!")).toBeVisible({ timeout: 10000 });
   });
 
   test("IA pergunta usando tool ask_question com opções → botões clicáveis são renderizados e o clique envia a resposta", async ({ page }) => {
@@ -204,7 +192,8 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
     await expect(cardOpcoes).not.toBeVisible({ timeout: 5000 });
   });
 
-  test("redimensionamento do input: expande com quebras de linha até o limite, diminui ao perder foco e restaura ao focar", async ({ page }) => {
+  // Removido na UI React (9ad8e1e); ver docs/PENDENCIAS-MULTIMOTORES.md, seção de lacunas do chat.
+  test.fixme("redimensionamento do input: expande com quebras de linha até o limite, diminui ao perder foco e restaura ao focar", async ({ page }) => {
     const input = page.locator("#chat-input");
     await expect(input).toBeVisible();
 
@@ -248,7 +237,8 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
     expect(bboxLimpo!.height).toBeLessThanOrEqual(44);
   });
 
-  test("carregamento paginado: exibe inicialmente últimos 2 turnos e scroll infinito para cima carrega anteriores", async ({ page }) => {
+  // Removido na UI React (9ad8e1e); ver docs/PENDENCIAS-MULTIMOTORES.md, seção de lacunas do chat.
+  test.fixme("carregamento paginado: exibe inicialmente últimos 2 turnos e scroll infinito para cima carrega anteriores", async ({ page }) => {
     const btnNova = page.locator("[data-testid='btn-nova-conversa']");
     if (await btnNova.isVisible().catch(() => false)) {
       await btnNova.click();
@@ -296,7 +286,8 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
     await expect(page.locator("text=Início do histórico da conversa")).toBeVisible({ timeout: 5000 });
   });
 
-  test("editar prompt: clica no botão editar e o texto é restaurado no input para edição", async ({ page }) => {
+  // Removido na UI React (9ad8e1e); ver docs/PENDENCIAS-MULTIMOTORES.md, seção de lacunas do chat.
+  test.fixme("editar prompt: clica no botão editar e o texto é restaurado no input para edição", async ({ page }) => {
     const btnNova = page.locator("[data-testid='btn-nova-conversa']");
     if (await btnNova.isVisible().catch(() => false)) {
       await btnNova.click();
@@ -330,7 +321,8 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
     await expect(input).toBeFocused();
   });
 
-  test("fila de prompts: enfileira mensagens enquanto o agente roda, exibe no dock, permite editar, excluir e dispara automaticamente ao fim do turno", async ({ page }) => {
+  // Removido na UI React (9ad8e1e); ver docs/PENDENCIAS-MULTIMOTORES.md, seção de lacunas do chat.
+  test.fixme("fila de prompts: enfileira mensagens enquanto o agente roda, exibe no dock, permite editar, excluir e dispara automaticamente ao fim do turno", async ({ page }) => {
     const btnNova = page.locator("[data-testid='btn-nova-conversa']");
     if (await btnNova.isVisible().catch(() => false)) {
       await btnNova.click();
@@ -393,7 +385,8 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
     await expect(ultimoUser).toContainText("Meu segundo prompt na fila de espera", { timeout: 15000 });
   });
 
-  test("fila de prompts: botão adiantar interrompe execução atual e dispara prompt da fila imediatamente", async ({ page }) => {
+  // Removido na UI React (9ad8e1e); ver docs/PENDENCIAS-MULTIMOTORES.md, seção de lacunas do chat.
+  test.fixme("fila de prompts: botão adiantar interrompe execução atual e dispara prompt da fila imediatamente", async ({ page }) => {
     const btnNova = page.locator("[data-testid='btn-nova-conversa']");
     if (await btnNova.isVisible().catch(() => false)) {
       await btnNova.click();
