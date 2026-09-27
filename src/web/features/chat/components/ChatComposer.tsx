@@ -2,10 +2,12 @@ import React, {
   useState,
   useRef,
   useCallback,
+  useEffect,
   useMemo,
   type FC,
 } from "react";
 import { ComposerPrimitive, ThreadPrimitive } from "@assistant-ui/react";
+import { useOpenCorp } from "../../../providers/OpenCorpProvider.js";
 import {
   Send,
   Square,
@@ -171,6 +173,35 @@ export const ChatComposer: FC<ChatComposerProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Menções `@` vêm dos agentes ativos do workspace (não de uma lista fixa).
+  const { client } = useOpenCorp();
+  const [mencoes, setMencoes] = useState<AutocompleteItem[]>([]);
+  useEffect(() => {
+    let vivo = true;
+    client.agents
+      .listar()
+      .then((lista: any[]) => {
+        if (!vivo || !Array.isArray(lista)) return;
+        setMencoes(
+          lista
+            .filter((a) => a?.id && a.ativo !== false && a.active !== false)
+            .map((a) => ({
+              id: `at-${a.id}`,
+              tipo: "at" as const,
+              gatilho: `@${a.id}`,
+              titulo: `@${a.id}`,
+              descricao: a.role || a.descricao || a.nome || "Agente do workspace",
+              categoria: "Agentes",
+              icone: Bot,
+            })),
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [client]);
+
   // Estados de gatilhos (/ @ !) e popover de sugestões
   const [popoverAberto, setPopoverAberto] = useState<boolean>(false);
   const [tipoGatilho, setTipoGatilho] = useState<"slash" | "at" | "bang" | null>(null);
@@ -190,7 +221,7 @@ export const ChatComposer: FC<ChatComposerProps> = ({
       );
     }
     if (tipoGatilho === "at") {
-      return MENTIONS_PADRAO.filter(
+      return (mencoes.length > 0 ? mencoes : MENTIONS_PADRAO).filter(
         (m) =>
           m.titulo.toLowerCase().includes(termo) ||
           m.descricao.toLowerCase().includes(termo) ||
@@ -220,7 +251,7 @@ export const ChatComposer: FC<ChatComposerProps> = ({
       ].filter((cmd) => cmd.gatilho.toLowerCase().includes(termo));
     }
     return [];
-  }, [popoverAberto, tipoGatilho, termoFiltro]);
+  }, [popoverAberto, tipoGatilho, termoFiltro, mencoes]);
 
   const aplicarTextoNoInput = useCallback((novoTexto: string) => {
     const inputEl = document.getElementById(inputId) as HTMLTextAreaElement | null;
@@ -257,8 +288,8 @@ export const ChatComposer: FC<ChatComposerProps> = ({
         return;
       }
 
-      // / ou !
-      aplicarTextoNoInput(item.gatilho);
+      // / ou !: deixa um espaço para os argumentos do comando.
+      aplicarTextoNoInput(`${item.gatilho} `);
     },
     [aplicarTextoNoInput, onDefinirAgente, inputId],
   );
