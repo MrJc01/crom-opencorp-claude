@@ -42,6 +42,27 @@ export interface HistoryInspectionDrawerProps {
   onSelecionarSubExecucao?: (execId: string) => void;
 }
 
+/**
+ * Resposta final de uma execução de agente: o último bloco de texto do log,
+ * sem cabeçalhos (#), comandos ($) nem marcadores de ferramenta (→/←).
+ */
+export function respostaFinalDoLog(log?: string): string | undefined {
+  if (!log) return undefined;
+  const linhas = log.split("\n");
+  const bloco: string[] = [];
+  for (let i = linhas.length - 1; i >= 0; i--) {
+    const l = linhas[i]!.trim();
+    if (!l) {
+      if (bloco.length) break;
+      continue;
+    }
+    if (/^(#|\$|→|←)/.test(l)) break;
+    bloco.unshift(linhas[i]!);
+  }
+  const texto = bloco.join("\n").trim();
+  return texto || undefined;
+}
+
 export const HistoryInspectionDrawer: FC<HistoryInspectionDrawerProps> = ({
   item,
   log,
@@ -60,6 +81,15 @@ export const HistoryInspectionDrawer: FC<HistoryInspectionDrawerProps> = ({
   onSelecionarSubExecucao,
 }) => {
   const [abaAtiva, setAbaAtiva] = useState<ModoAbaHistorico>("chat");
+
+  // Esc fecha o painel (acessibilidade de teclado).
+  useEffect(() => {
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [onClose]);
   const [executandoAcao, setExecutandoAcao] = useState(false);
 
   // Define a aba inicial com base no tipo de item
@@ -275,7 +305,7 @@ export const HistoryInspectionDrawer: FC<HistoryInspectionDrawerProps> = ({
           {abaAtiva === "resultado" && (
             <HistoryResultTab
               contextoFinal={item.contexto_final}
-              resultado={item.entrada}
+              resultado={item.contexto_final ? undefined : respostaFinalDoLog(log)}
               status={item.status}
             />
           )}

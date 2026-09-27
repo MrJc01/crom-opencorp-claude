@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, type FC } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef, type FC } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useOpenCorp } from "../../../providers/OpenCorpProvider.js";
 import { showToast } from "../../../shared/ui/Toast.js";
@@ -304,9 +304,14 @@ export const HistoricoView: FC = () => {
     [client, wsEfetivo, itens, setSearchParams]
   );
 
+  // Execução recém-fechada: evita reabrir enquanto o ?run= ainda não saiu da URL.
+  const runFechadoRef = useRef<string | null>(null);
+
   // Sincroniza deep-link ?run=<id>
   useEffect(() => {
+    if (runParam !== runFechadoRef.current) runFechadoRef.current = null;
     if (runParam) {
+      if (runFechadoRef.current === runParam) return;
       if (!itemSelecionado || itemSelecionado.id !== runParam) {
         void abrirInspecao(runParam);
       }
@@ -349,6 +354,7 @@ export const HistoricoView: FC = () => {
   }, [conversaParam]);
 
   const fecharInspecao = () => {
+    runFechadoRef.current = runParam;
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.delete("run");
