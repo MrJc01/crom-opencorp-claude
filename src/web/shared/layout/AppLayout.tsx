@@ -5,11 +5,14 @@ import { Topbar } from "./Topbar.js";
 import { ToastContainer } from "../ui/Toast.js";
 import { RouteSkeleton } from "../ui/RouteSkeleton.js";
 import { SecretarioDock } from "../../features/chat/components/SecretarioDock.js";
+import { Bot } from "lucide-react";
 
 export const AppLayout: FC = () => {
   const [dockAberto, setDockAberto] = useState(false);
   const [sidebarMobileAberta, setSidebarMobileAberta] = useState(false);
   const { pathname } = useLocation();
+  // Na página do Secretário o chat já ocupa a tela: sem dock nem botão flutuante.
+  const naPaginaSecretario = /\/secretario\/?$/.test(pathname);
 
   useEffect(() => {
     setSidebarMobileAberta(false);
@@ -59,7 +62,19 @@ export const AppLayout: FC = () => {
       </div>
 
       {/* Dock Lateral Flutuante do Secretário */}
-      <SecretarioDock aberto={dockAberto} aoFechar={() => setDockAberto(false)} />
+      {!naPaginaSecretario && <SecretarioDock aberto={dockAberto} aoFechar={() => setDockAberto(false)} />}
+      {!naPaginaSecretario && !dockAberto && (
+        <button
+          type="button"
+          data-testid="secretario-fab"
+          aria-label="Abrir Secretário Executivo"
+          title="Abrir Secretário Executivo (Ctrl+J)"
+          onClick={() => setDockAberto(true)}
+          className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-700 text-white shadow-lg shadow-emerald-950/60 hover:bg-emerald-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+        >
+          <Bot size={20} aria-hidden="true" />
+        </button>
+      )}
 
       {/* Container Global de Notificações Toast */}
       <ToastContainer />

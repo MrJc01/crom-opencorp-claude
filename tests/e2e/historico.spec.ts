@@ -8,20 +8,18 @@ test.describe("Histórico", () => {
     logado(page, "test-e2e");
     await seederEmpresaBasica(api(page), "test-e2e");
     await page.goto("/historico");
-    await esperarElementoTexto(page, "Histórico de Atividades");
+    await esperarElementoTexto(page, "Identificador / Ordem");
   });
 
   test("timeline mostra itens (task semeada gera badge TASK)", async ({ page }) => {
-    await expect(page.getByText("TASK").first()).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText("Task backlog e2e").first()).toBeVisible({ timeout: 15000 });
+    const linha = page.locator("tr[data-tipo='task']", { hasText: "Task backlog e2e" }).first();
+    await expect(linha).toBeVisible({ timeout: 15000 });
   });
 
   test("filtro Tasks mostra só tasks", async ({ page }) => {
-    await page.getByRole("button", { name: "Tasks" }).click();
-    await page.waitForTimeout(800);
-    await expect(page.getByText("TASK").first()).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("FLUXO", { exact: true })).toHaveCount(0);
-    await expect(page.getByText("EXECUÇÃO", { exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: "Kanban" }).click();
+    await expect(page.locator("tr[data-tipo='task']").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("tr[data-tipo]:not([data-tipo='task'])")).toHaveCount(0);
   });
 
   test("filtro Fluxos lista execução de fluxo com nós", async ({ page }) => {
@@ -44,8 +42,8 @@ test.describe("Histórico", () => {
     expect(run.status()).toBe(202);
     const { exec_id: execId } = await run.json();
 
-    await page.getByRole("button", { name: "Fluxos" }).click();
-    await expect(page.getByText("FLUXO").first()).toBeVisible({ timeout: 15000 });
+    await page.getByRole("button", { name: "Fluxos DAG" }).click();
+    await expect(page.locator("tr[data-tipo='fluxo']").first()).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(execId).first()).toBeVisible({ timeout: 15000 });
   });
 });

@@ -14,7 +14,7 @@ test.describe("Web Notificações: filtros, excluir e console limpo", () => {
       data: { titulo: "Web resumo e2e", corpo: "corpo web", tipo: "resumo", origem: "e2e" },
     });
     await page.goto("/notificacoes");
-    await esperarElementoTexto(page, "Central de Notificações");
+    await esperarElementoTexto(page, "Central de Alertas & Notificações");
     await expect(page.locator(".not-card")).toHaveCount(1, { timeout: 15000 });
   });
 

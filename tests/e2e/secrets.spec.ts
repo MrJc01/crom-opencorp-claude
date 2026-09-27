@@ -9,7 +9,7 @@ test.describe("Secrets / Credenciais", () => {
     logado(page, "test-e2e");
     await seederEmpresaBasica(api(page), "test-e2e");
     await page.goto("/secrets");
-    await esperarElementoTexto(page, "Segredos & Credenciais");
+    await esperarElementoTexto(page, "Cofre de Segredos & Credenciais");
   });
 
   async function adicionarSegredo(page: import("@playwright/test").Page) {

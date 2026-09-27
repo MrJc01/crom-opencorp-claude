@@ -6,7 +6,7 @@ test.describe("Reuniões e Fluxos", () => {
     logado(page, "test-e2e");
     await seederEmpresaBasica(api(page), "test-e2e");
     await page.goto("/");
-    await esperarElementoTexto(page, "Painel de Operações");
+    await esperarElementoTexto(page, "Governança da Empresa Autônoma");
   });
 
   test("Reuniões: header, estado e modal de convocação existem", async ({ page }) => {

@@ -42,7 +42,7 @@ test.describe("Web Tasks: busca, filtros, drawer e agendamento", () => {
   test("modal criação com agendamento recorrente", async ({ page }) => {
     await page.getByRole("button", { name: "Nova Tarefa" }).click();
     await esperarElementoTexto(page, "Criar Nova Tarefa");
-    await page.locator('input[placeholder="Ex: Auditoria técnica do site"]').fill(`Web agenda ${Date.now()}`);
+    await page.getByPlaceholder("Ex: Auditoria técnica de endpoints ou refatoração").fill(`Web agenda ${Date.now()}`);
     await page.locator("#checkAgendar").check();
     await page.getByRole("button", { name: "Repetir (Recorrente)" }).click();
     await page.locator("select:has(option[value='horario'])").selectOption("horario");

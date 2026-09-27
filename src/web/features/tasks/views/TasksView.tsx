@@ -343,6 +343,9 @@ export const TasksView: FC = () => {
           return (
             <div
               key={col.id}
+              data-testid={`kanban-coluna-${col.id}`}
+              role="region"
+              aria-label={`Coluna ${col.id}`}
               onDragOver={(e) => handleDragOver(e, col.id)}
               onDragLeave={() => handleDragLeave(col.id)}
               onDrop={(e) => void handleDrop(e, col.id)}

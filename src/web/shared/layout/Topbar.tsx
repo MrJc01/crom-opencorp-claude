@@ -17,7 +17,7 @@ export const Topbar: FC<TopbarProps> = ({
 }) => {
   const { notificacoesNaoLidas, sseConectado } = useOpenCorp();
   const location = useLocation();
-  const estaNaRotaNotificacoes = location.pathname === "/notificacoes";
+  const estaNaRotaNotificacoes = /\/notificacoes\/?$/.test(location.pathname);
 
   return (
     <header className="h-14 bg-zinc-950 border-b border-zinc-850 px-4 md:px-6 flex items-center justify-between z-20 select-none">
@@ -97,6 +97,9 @@ export const Topbar: FC<TopbarProps> = ({
         <button
           type="button"
           onClick={aoAlternarSecretario}
+          data-testid="secretario-toggle"
+          aria-expanded={secretarioAberto}
+          aria-label="Abrir/Fechar Secretário Executivo"
           className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs transition-all cursor-pointer ${
             secretarioAberto
               ? "bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-950/60"

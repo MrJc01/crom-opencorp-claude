@@ -17,7 +17,7 @@ test.describe("Web Workspace: explorer, editor, terminal e menu", () => {
       data: { conteudo: '{\n  "empresa": "E2E Files",\n  "nicho": "teste"\n}\n' },
     }).catch(() => undefined);
     await page.goto("/workspace");
-    await esperarElementoTexto(page, "Explorador");
+    await esperarElementoTexto(page, "Buscar (Ctrl+P)");
   });
 
   test("explorer expande, abre arquivo e Ctrl+P busca", async ({ page }) => {
@@ -29,7 +29,7 @@ test.describe("Web Workspace: explorer, editor, terminal e menu", () => {
     await expect(page.locator("textarea").first()).toHaveValue(/E2E/, { timeout: 10000 });
 
     await page.keyboard.press("Control+p");
-    await page.locator('input[placeholder="Buscar arquivo por nome ou caminho..."]').fill("projeto");
+    await page.getByPlaceholder(/Buscar arquivo por nome ou caminho/).fill("projeto");
     await expect(page.getByText("projeto.json", { exact: true }).first()).toBeVisible({ timeout: 10000 });
     await page.keyboard.press("Escape");
     watcher.stop();
@@ -42,9 +42,9 @@ test.describe("Web Workspace: explorer, editor, terminal e menu", () => {
     const editor = page.locator("textarea").first();
     await expect(editor).toHaveValue(/E2E/, { timeout: 10000 });
     await editor.fill('{\n  "empresa": "E2E Web Save",\n  "nicho": "teste"\n}\n');
-    await expect(page.getByText("(modificado)").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTitle("Alterações não salvas").first()).toBeVisible({ timeout: 10000 });
     await page.keyboard.press("Control+s");
-    await expect(page.getByText("(modificado)")).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByTitle("Alterações não salvas")).toHaveCount(0, { timeout: 10000 });
 
     const resp = await page.request.get(`/files?workspace=${WS}&path=.opencorp%2Fprojeto.json`, {
       headers: { authorization: "Bearer test-e2e" },
@@ -53,7 +53,7 @@ test.describe("Web Workspace: explorer, editor, terminal e menu", () => {
 
     await editor.fill('{\n  "empresa": "E2E Files",\n  "nicho": "teste"\n}\n');
     await page.keyboard.press("Control+s");
-    await expect(page.getByText("(modificado)")).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByTitle("Alterações não salvas")).toHaveCount(0, { timeout: 10000 });
   });
 
   test("terminal roda comando e limpa", async ({ page }) => {
@@ -71,7 +71,7 @@ test.describe("Web Workspace: explorer, editor, terminal e menu", () => {
     await expect(page.getByText("Nova Pasta").first()).toBeVisible();
     await page.keyboard.press("Escape");
 
-    await page.locator('button[title="Novo Terminal"]').click();
-    await expect(page.getByRole("button", { name: "Terminal 2" })).toBeVisible({ timeout: 10000 });
+    await page.getByRole("button", { name: "Nova aba de Terminal" }).click();
+    await expect(page.getByText("Terminal 2", { exact: true }).first()).toBeVisible({ timeout: 10000 });
   });
 });

@@ -115,7 +115,7 @@ test.describe("Fluxos no Histórico e Home (ABCD)", () => {
     const execId = await rodarFlow(page, fid, { entrada: "ui-b2" });
     await esperarStatus(page, fid, execId);
     await page.goto("/historico?tipo=fluxo");
-    await esperarElementoTexto(page, "Histórico de Atividades");
+    await esperarElementoTexto(page, "Identificador / Ordem");
     await esperarElementoTexto(page, "FLUXO");
     await page.locator(`text=${execId}`).first().waitFor({ state: "visible", timeout: 15000 });
   });

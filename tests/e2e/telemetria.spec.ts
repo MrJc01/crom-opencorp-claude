@@ -38,7 +38,7 @@ test.describe("Histórico — Visualizador de Telemetria Granular (E2E)", () => 
   test("abre a execução e alterna para Telemetria (estado sem spans)", async ({ page }) => {
     // O modal lê o registro direto; a lista só exibe sessões reais (tag "sessao") — abre via ?run=
     await page.goto(`/historico?run=${encodeURIComponent(execId)}`);
-    await esperarElementoTexto(page, "Histórico de Atividades");
+    await esperarElementoTexto(page, "Identificador / Ordem");
 
     const botaoTelemetria = page.getByRole("button", { name: /Telemetria/ });
     await expect(botaoTelemetria).toBeVisible({ timeout: 15000 });

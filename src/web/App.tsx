@@ -158,9 +158,25 @@ const RedirectWorkspace: FC<{
   return <RouteSkeleton />;
 };
 
+/** Links antigos com hash (`/#/reunioes`) viram rotas reais (`/reunioes`). */
+const HashLegado: FC = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const converter = () => {
+      const h = window.location.hash;
+      if (h.startsWith("#/")) navigate(h.slice(1), { replace: true });
+    };
+    converter();
+    window.addEventListener("hashchange", converter);
+    return () => window.removeEventListener("hashchange", converter);
+  }, [navigate]);
+  return null;
+};
+
 export const App: FC = () => {
   return (
     <BrowserRouter>
+      <HashLegado />
       <AuthGate>
       <OpenCorpProvider workspaceId={null}>
         <Routes>

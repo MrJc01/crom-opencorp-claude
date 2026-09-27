@@ -246,6 +246,8 @@ export interface SecretarioChatProps {
   aoSessaoCriada?: (sid: string) => void;
   contextoInicial?: ContextChip[];
   className?: string;
+  /** Renderizado no dock lateral: usa ids próprios no composer (sem duplicar os da página). */
+  emDock?: boolean;
 }
 
 /**
@@ -261,6 +263,7 @@ const SecretarioChatInterno: FC<{
   contextoInicial?: ContextChip[];
   options?: SecretaryRuntimeOptions;
   className?: string;
+  emDock?: boolean;
 }> = ({
   runtimeProp,
   workspaceId,
@@ -271,6 +274,7 @@ const SecretarioChatInterno: FC<{
   contextoInicial = [],
   options,
   className = "",
+  emDock = false,
 }) => {
   const [agenteAtivo, setAgenteAtivo] = useState<string | null>(null);
   const [chipsContexto, setChipsContexto] = useState<ContextChip[]>(contextoInicial);
@@ -661,6 +665,8 @@ const SecretarioChatInterno: FC<{
                 <ChevronDown size={14} />
               </ThreadPrimitive.ScrollToBottom>
               <ChatComposer
+                inputId={emDock ? "secretario-dock-input" : "chat-input"}
+                enviarId={emDock ? "secretario-dock-btn-enviar" : "btn-enviar"}
                 agenteAtivo={agenteAtivo}
                 onDefinirAgente={(ag) => setAgenteAtivo(ag)}
                 chipsContexto={chipsContexto}
@@ -697,6 +703,7 @@ export const SecretarioChat: FC<SecretarioChatProps> = ({
   aoSessaoCriada,
   contextoInicial,
   className = "",
+  emDock = false,
 }) => {
   const { workspaceId } = useOpenCorp();
   const wsId = options?.workspaceId ?? workspaceId ?? "default";
@@ -805,6 +812,7 @@ export const SecretarioChat: FC<SecretarioChatProps> = ({
       contextoInicial={contextoInicial}
       options={options}
       className={className}
+      emDock={emDock}
     />
   );
 };

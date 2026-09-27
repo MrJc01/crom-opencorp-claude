@@ -7,46 +7,43 @@ test.describe("Web Reuniões: convocar, sala, histórico e ata", () => {
     logado(page, "test-e2e");
     await seederEmpresaBasica(api(page), "test-e2e");
     await page.goto("/reunioes");
-    await page.locator('button[title="Convocar nova reunião"]').first().waitFor({ timeout: 15000 });
+    await page.getByRole("button", { name: "Nova Reunião" }).first().waitFor({ timeout: 15000 });
   });
 
-  test("modal convocar valida, cria sala e fecha", async ({ page }) => {
+  async function convocar(page: import("@playwright/test").Page, pauta: string): Promise<void> {
+    await page.getByRole("button", { name: "Nova Reunião" }).first().click();
+    await esperarElementoTexto(page, "Convocar Nova Reunião Colegiada");
+    await page.getByPlaceholder(/Definir linha editorial/).fill(pauta);
+    await page.locator("button[aria-pressed]", { hasText: /@/ }).first().click();
+    await page.getByRole("button", { name: "Iniciar Deliberação" }).click();
+    await page.waitForURL(/reuniao=/, { timeout: 20000 });
+    await expect(page.getByText(pauta).first()).toBeVisible({ timeout: 15000 });
+  }
+
+  test("modal convocar cria sala e fecha", async ({ page }) => {
     const watcher = new ConsoleWatcher(page);
     watcher.start();
-    await page.locator('button[title="Convocar nova reunião"]').click();
-    await esperarElementoTexto(page, "Convocar Nova Reunião Multi-Agente");
-
-    await page.getByRole("button", { name: "Abrir Sala de Chat" }).click();
-    await esperarElementoTexto(page, "Convocar Nova Reunião Multi-Agente");
-
-    const pauta = `Web reuniao ${Date.now()}`;
-    await page.locator('textarea[placeholder="Ex: Alinhar lançamento da nova home e definir responsabilidade de cada agente..."]').fill(pauta);
-    await page.getByRole("button", { name: "Abrir Sala de Chat" }).click();
-    await page.waitForURL("**/reunioes?reuniao=*", { timeout: 20000 });
-    await expect(page.getByText(pauta).first()).toBeVisible({ timeout: 15000 });
+    await convocar(page, `Web reuniao ${Date.now()}`);
+    await expect(page.getByText("Convocar Nova Reunião Colegiada")).toHaveCount(0);
     watcher.stop();
     expect(watcher.limpos()).toEqual([]);
   });
 
   test("enviar mensagem na sala aparece no feed", async ({ page }) => {
-    const pauta = `Web sala msg ${Date.now()}`;
-    await page.locator('button[title="Convocar nova reunião"]').click();
-    await page.locator('textarea[placeholder="Ex: Alinhar lançamento da nova home e definir responsabilidade de cada agente..."]').fill(pauta);
-    await page.getByRole("button", { name: "Abrir Sala de Chat" }).click();
-    await page.waitForURL("**/reunioes?reuniao=*", { timeout: 20000 });
-
+    await convocar(page, `Web sala msg ${Date.now()}`);
     const texto = `msg web ${Date.now()}`;
-    const input = page.locator('textarea[placeholder*="mesa"], textarea[placeholder*="direcionado"]');
+    const input = page.locator("main textarea").last();
     await expect(input).toBeVisible({ timeout: 15000 });
     await input.fill(texto);
-    await page.locator("main").getByRole("button", { name: "Enviar" }).click();
+    await input.press("Enter");
     await expect(page.getByText(texto).first()).toBeVisible({ timeout: 15000 });
   });
 
-  test("histórico lista e abre sala; ata abre e fecha", async ({ page }) => {
-    await page.getByRole("button", { name: /Reuniões \(\d+\)/ }).click();
-    await esperarElementoTexto(page, "Histórico de Reuniões da Empresa");
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(400);
+  test("histórico lista a sala criada", async ({ page }) => {
+    const pauta = `Web historico ${Date.now()}`;
+    await convocar(page, pauta);
+    await page.goto("/reunioes");
+    await expect(page.getByRole("button", { name: /Histórico \(\d+\)/ })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(pauta).first()).toBeVisible({ timeout: 15000 });
   });
 });

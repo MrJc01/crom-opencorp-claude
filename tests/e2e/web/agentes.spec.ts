@@ -10,44 +10,47 @@ test.describe("Web Agentes: abas, toggle, inspeção e grupos", () => {
     await seederEmpresaBasica(api(page), "test-e2e");
     await api(page).post("/agents/semear-catalogo", { headers: HDR });
     await page.goto("/agentes");
-    await esperarElementoTexto(page, "Catálogo de Agentes & Grupos");
+    await esperarElementoTexto(page, "Catálogo de Agentes & Equipes Multi-Agente");
   });
 
-  test("abas Todos/Agentes/Grupos filtram", async ({ page }) => {
+  test("abas Todos/Agentes/Equipes filtram", async ({ page }) => {
     const watcher = new ConsoleWatcher(page);
     watcher.start();
-    await page.getByRole("button", { name: /Agentes Individuais/ }).click();
-    await expect(page.getByText("@executor-padrao").first()).toBeVisible({ timeout: 10000 });
-    await page.getByRole("button", { name: /Grupos de Agentes/ }).click();
-    await expect(page.getByText("team:e2e-pipe").first()).toBeVisible({ timeout: 10000 });
-    await page.getByRole("button", { name: /^Todos/ }).click();
+    await page.getByRole("button", { name: /^Agentes \d+/ }).click();
+    await expect(page.getByTestId("agent-card-executor-padrao")).toBeVisible({ timeout: 10000 });
+    await page.getByRole("button", { name: /^Equipes \d+/ }).click();
+    await expect(page.getByText("ID: e2e-pipe").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId("agent-card-executor-padrao")).toHaveCount(0);
+    await page.getByRole("button", { name: /^Todos \d+/ }).click();
     watcher.stop();
     expect(watcher.limpos()).toEqual([]);
   });
 
   test("busca filtra agentes", async ({ page }) => {
-    await page.locator('input[placeholder="Buscar agente ou grupo..."]').fill("executor-padrao");
-    await expect(page.getByText("@executor-padrao").first()).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("@agente-vendas").first()).toHaveCount(0);
-    await page.locator('input[placeholder="Buscar agente ou grupo..."]').fill("");
+    const busca = page.getByPlaceholder("Buscar por nome, papel ou skill...");
+    await busca.fill("executor-padrao");
+    await expect(page.getByTestId("agent-card-executor-padrao")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId("agent-card-agente-vendas")).toHaveCount(0);
+    await busca.fill("");
   });
 
-  test("inspecionar abre prompt/modelo e fecha", async ({ page }) => {
-    const card = page.locator("div.rounded-xl", { has: page.getByText("@executor-padrao", { exact: true }) });
+  test("configurar abre prompt/modelo e fecha", async ({ page }) => {
+    const card = page.getByTestId("agent-card-executor-padrao");
     await expect(card).toBeVisible({ timeout: 15000 });
-    await card.getByRole("button", { name: "Inspecionar / Editar" }).click();
-    await esperarElementoTexto(page, "Especificação do Agente: @executor-padrao");
-    await page.getByRole("button", { name: "Fechar" }).click();
-    await expect(page.getByText("Especificação do Agente: @executor-padrao")).toHaveCount(0);
+    await card.getByRole("button", { name: "Configurar" }).click();
+    await expect(page.getByText("Configuração & Prompt do Sistema")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Prompt do Sistema (System Prompt)")).toBeVisible();
+    await page.getByTitle("Fechar", { exact: true }).first().click();
+    await expect(page.getByText("Configuração & Prompt do Sistema")).toHaveCount(0);
   });
 
-  test("modal execução dispara e fecha", async ({ page }) => {
-    const card = page.locator("div.rounded-xl", { has: page.getByText("@executor-padrao", { exact: true }) });
+  test("modal execução dispara e mostra confirmação", async ({ page }) => {
+    const card = page.getByTestId("agent-card-executor-padrao");
     await expect(card).toBeVisible({ timeout: 15000 });
     await card.getByRole("button", { name: "Executar" }).click();
-    await esperarElementoTexto(page, "Executar @executor-padrao");
-    await page.locator('textarea[placeholder="Descreva detalhadamente o objetivo a ser executado..."]').fill("ping web e2e");
-    await page.getByRole("button", { name: "Disparar Execução" }).click();
-    await expect(page.getByText("Executar @executor-padrao")).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByText("Disparar Execução:")).toBeVisible({ timeout: 10000 });
+    await page.locator("textarea").last().fill("ping web e2e");
+    await page.getByRole("button", { name: "Disparar Ordem" }).click();
+    await expect(page.getByText("Execução iniciada com sucesso!")).toBeVisible({ timeout: 15000 });
   });
 });

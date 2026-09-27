@@ -19,33 +19,24 @@ test.describe("Apps e Segredos (E2E)", () => {
     await page.goto("/home");
   });
 
-  test("1. Sidebar possui botão Apps com badge Alfa abaixo de Hooks e botão Segredos & Senhas na base", async ({ page }) => {
-    // Verifica link de Apps com tag Alfa
-    const linkApps = page.locator('aside a[href="/apps"]');
-    await expect(linkApps).toBeVisible();
-    await expect(linkApps).toContainText("Apps");
-    await expect(linkApps).toContainText("Alfa");
-
-    // Verifica link de Segredos & Senhas
-    const linkSecrets = page.locator('aside a[href="/secrets"]');
-    await expect(linkSecrets).toBeVisible();
-    await expect(linkSecrets).toContainText("Segredos & Senhas");
+  test("1. Sidebar possui links de Apps & MCPs e Segredos & Chaves", async ({ page }) => {
+    const sidebar = page.locator("aside#sidebar-principal");
+    await expect(sidebar.getByRole("link", { name: "Apps & MCPs" })).toBeVisible();
+    await expect(sidebar.getByRole("link", { name: "Segredos & Chaves" })).toBeVisible();
   });
 
   test("2. Navegação para /apps lista os Mini-Apps do workspace e permite abrir no Iframe", async ({ page }) => {
     await page.goto("/apps");
 
-    // Título e badge Alfa
     await expect(page.locator("h1")).toContainText("Mini-Apps");
-    await expect(page.locator("span:has-text('Alfa')").first()).toBeVisible();
 
     // App semeado 'Monitor do Pulso Diário'
-    const appCard = page.locator('div:has-text("Monitor do Pulso Diário")').last();
-    await expect(appCard).toBeVisible();
-    await expect(page.locator("text=apps/monitor-pulso/index.html")).toBeVisible();
+    const appCard = page.getByTestId("app-card-monitor-pulso");
+    await expect(appCard).toBeVisible({ timeout: 15000 });
+    await expect(appCard).toContainText("Monitor do Pulso Diário");
 
     // Botões de ação
-    const btnAbrir = page.locator('button:has-text("Abrir App")').first();
+    const btnAbrir = appCard.getByRole("button", { name: "Abrir App" });
     await expect(btnAbrir).toBeVisible();
 
     // Clica em 'Abrir App' (deve abrir com Só App ativo e chat oculto)

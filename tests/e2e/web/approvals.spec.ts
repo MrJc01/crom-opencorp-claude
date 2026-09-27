@@ -25,7 +25,7 @@ test.describe("Web Aprovações HITL: aprovar e rejeitar resolvem", () => {
     logado(page, "test-e2e");
     await seederEmpresaBasica(api(page), "test-e2e");
     await page.goto("/");
-    await esperarElementoTexto(page, "Painel de Operações");
+    await esperarElementoTexto(page, "Governança da Empresa Autônoma");
   });
 
   test.afterEach(async ({ page }) => {
@@ -39,7 +39,7 @@ test.describe("Web Aprovações HITL: aprovar e rejeitar resolvem", () => {
   test("aprovar pendência some da inicial (sem 500)", async ({ page }) => {
     const id = await semearAprovacao(page, `git push origin aprovar-web-${Date.now()}`);
     await page.reload();
-    await esperarElementoTexto(page, "Painel de Operações");
+    await esperarElementoTexto(page, "Governança da Empresa Autônoma");
     await esperarElementoTexto(page, "aprovação(ões) humana(s) pendente(s)");
 
     await page.getByRole("button", { name: "Aprovar" }).first().click();
@@ -57,7 +57,7 @@ test.describe("Web Aprovações HITL: aprovar e rejeitar resolvem", () => {
     expect((await rej.json()).status).toBe("rejeitado");
 
     await page.reload();
-    await esperarElementoTexto(page, "Painel de Operações");
+    await esperarElementoTexto(page, "Governança da Empresa Autônoma");
     await expect(page.getByText("aprovação(ões) humana(s) pendente(s)")).toHaveCount(0, { timeout: 15000 });
   });
 });

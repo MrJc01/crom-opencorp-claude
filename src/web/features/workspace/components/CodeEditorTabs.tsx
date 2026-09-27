@@ -245,6 +245,8 @@ export const CodeEditorTabs: FC<CodeEditorTabsProps> = ({
                   <span
                     className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0"
                     title="Alterações não salvas"
+                    role="img"
+                    aria-label="Alterações não salvas"
                   />
                 )}
 

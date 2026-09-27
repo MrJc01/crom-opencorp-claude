@@ -18,31 +18,33 @@ test.describe("Config — Motores, autenticação e provedores", () => {
     await page.goto("/config?tab=motores");
     await page.locator("button[data-engine-id='claude-code']").click();
 
-    await page.getByRole("button", { name: /Autenticar \/ Chave/i }).click();
-    await esperarElementoTexto(page, "Acesse o console da Anthropic");
+    await page.getByRole("button", { name: /Autenticar \/ Conectar|Adicionar Conta/i }).first().click();
+    await expect(page.getByRole("heading", { name: "Autenticar: Claude Code" })).toBeVisible({ timeout: 10000 });
 
     await page.getByRole("button", { name: "Terminal CLI" }).click();
-    await esperarElementoTexto(page, "Autenticação Necessária");
-    await expect(page.getByText("$ claude login").first()).toBeVisible();
+    await expect(page.getByText("$ claude auth login").first()).toBeVisible();
 
     await page.getByRole("button", { name: "Token / Chave Manual" }).click();
-    await expect(page.getByText("Token, Chave de API ou Credencial (ANTHROPIC_API_KEY)").first()).toBeVisible();
+    await expect(page.getByText("ANTHROPIC_API_KEY").first()).toBeVisible();
 
-    await page.getByRole("button", { name: "Fechar" }).click();
-    await expect(page.getByText("Acesse o console da Anthropic")).toHaveCount(0);
+    await page.getByTitle("Fechar modal").click();
+    await expect(page.getByRole("heading", { name: "Autenticar: Claude Code" })).toHaveCount(0);
   });
 
   test("provedores contextuais do motor selecionado (OpenCode universais)", async ({ page }) => {
     await page.goto("/config?tab=motores");
     await page.locator("button[data-engine-id='opencode']").click();
-    await esperarElementoTexto(page, "OpenRouter (Universal & BYOK)");
-    await esperarElementoTexto(page, "Google AI Studio Direto");
+    await page.getByRole("button", { name: /Autenticar \/ Conectar|Adicionar Conta/i }).first().click();
+    // Provedores universais do OpenCode aparecem no seletor de provedor.
+    await expect(page.locator("option", { hasText: "OpenRouter (Universal & BYOK)" })).toHaveCount(1, { timeout: 10000 });
+    await expect(page.locator("option", { hasText: "Google AI Studio / Gemini" })).toHaveCount(1);
+    await page.getByTitle("Fechar modal").click();
   });
 
   test("alterna para Chaves de API e Modelos sem erros", async ({ page }) => {
     await page.goto("/config?tab=motores");
-    await page.getByRole("button", { name: /Chaves de API/i }).click();
-    await esperarElementoTexto(page, "Gerenciamento Seguro de Chaves de API");
+    await page.getByRole("button", { name: "Chaves de API & Secrets" }).click();
+    await esperarElementoTexto(page, "Chaves de API dos Motores de IA (BYOK)");
 
     await page.getByRole("button", { name: /^Modelos$/i }).click();
     await esperarElementoTexto(page, "Modelo Padrão");

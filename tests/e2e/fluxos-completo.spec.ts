@@ -46,18 +46,18 @@ test.describe("E2E Completo — OpenCorp Fluxos & Studio n8n-style", () => {
     await page.goto("/fluxos");
 
     // Filtro Agendados (Cron)
-    const btnCron = page.locator('button:has-text("Agendados (Cron)")');
+    const btnCron = page.getByRole("button", { name: /^Cron \d+/ });
     await expect(btnCron).toBeVisible();
     await btnCron.click();
     await expect(page.locator("text=Fluxo Agendado Alpha").first()).toBeVisible();
 
     // Filtro Todos
-    const btnTodos = page.locator('button:has-text("Todos")').first();
+    const btnTodos = page.getByRole("button", { name: /^Todos \d+/ });
     await btnTodos.click();
     await expect(page.locator("text=Fluxo Agendado Alpha").first()).toBeVisible();
 
     // Pesquisa por texto
-    const inputBusca = page.locator('input[placeholder*="Pesquisar fluxos"]');
+    const inputBusca = page.getByPlaceholder("Buscar por nome, id ou descrição...");
     await inputBusca.fill("Alpha");
     await expect(page.locator("text=Fluxo Agendado Alpha").first()).toBeVisible();
 
@@ -79,7 +79,7 @@ test.describe("E2E Completo — OpenCorp Fluxos & Studio n8n-style", () => {
     await page.goto("/fluxos");
 
     // Clica no botão Abrir Canvas
-    const btnAbrir = page.locator('button:has-text("Abrir Canvas")').first();
+    const btnAbrir = page.locator('button:has-text("Studio")').first();
     await expect(btnAbrir).toBeVisible();
     await btnAbrir.click();
 
@@ -91,7 +91,7 @@ test.describe("E2E Completo — OpenCorp Fluxos & Studio n8n-style", () => {
     await btnVoltar.click();
 
     // Valida que retornou para a lista geral
-    await expect(page.locator('h1:has-text("Fluxos")')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h1:has-text("Studio de Fluxos")')).toBeVisible({ timeout: 10000 });
     await expect(page).not.toHaveURL(/fluxo=/);
   });
 
@@ -108,11 +108,11 @@ test.describe("E2E Completo — OpenCorp Fluxos & Studio n8n-style", () => {
 
     await page.goto("/fluxos");
 
-    const btnAbrir = page.locator('button:has-text("Abrir Canvas")').first();
+    const btnAbrir = page.locator('button:has-text("Studio")').first();
     await btnAbrir.click();
 
     // Abre o catálogo lateral de nós
-    const btnAddNode = page.locator('button:has-text("Adicionar Node")').first();
+    const btnAddNode = page.getByTitle("Abrir paleta de nós");
     await expect(btnAddNode).toBeVisible();
     await btnAddNode.click();
 
@@ -120,7 +120,7 @@ test.describe("E2E Completo — OpenCorp Fluxos & Studio n8n-style", () => {
     await expect(page.locator('text="Executar Sub-Fluxo"')).toBeVisible();
     await expect(page.locator('text="Requisição HTTP / API"')).toBeVisible();
     await expect(page.locator('text="Aguardar / Delay"')).toBeVisible();
-    await expect(page.locator('text="Loop / HLE"')).toBeVisible();
+    await expect(page.locator('text="Loop / Repetição"')).toBeVisible();
     await expect(page.locator('text="Gatilho Cron / Agenda"')).toBeVisible();
     await expect(page.locator('text="Gatilho Webhook"')).toBeVisible();
 
@@ -144,7 +144,7 @@ test.describe("E2E Completo — OpenCorp Fluxos & Studio n8n-style", () => {
 
     await page.goto("/fluxos");
 
-    const btnAbrir = page.locator('button:has-text("Abrir Canvas")').first();
+    const btnAbrir = page.locator('button:has-text("Studio")').first();
     await btnAbrir.click();
 
     // Abre o painel inferior de logs
@@ -153,6 +153,6 @@ test.describe("E2E Completo — OpenCorp Fluxos & Studio n8n-style", () => {
     await btnLogs.click();
 
     // Verifica que o painel inferior abriu
-    await expect(page.locator('span:has-text("Execuções & Dados I/O")')).toBeVisible();
+    await expect(page.locator('text=Execuções & Telemetria I/O')).toBeVisible();
   });
 });

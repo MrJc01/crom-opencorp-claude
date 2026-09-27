@@ -29,7 +29,7 @@ test.describe("Notificações", () => {
     await page.goto("/");
     await esperarNavegacao(page, "home");
 
-    await page.click('.nav-item[data-view="notificacoes"]');
+    await page.click("#btn-notificacoes-topbar");
     await page.waitForURL(/\/notificacoes/);
     await esperarNavegacao(page, "notificacoes");
 
@@ -47,10 +47,10 @@ test.describe("Notificações", () => {
 
     const cardA = page.locator(`.not-card[data-not-id="${idA}"]`);
     await expect(cardA).toHaveClass(/nao-lida/);
-    await cardA.locator("button:has-text('Marcar lida')").click();
+    await cardA.getByRole("button", { name: "Marcar como lida" }).click();
 
     await expect(page.locator("#nav-badge-notificacoes")).toHaveText("1", { timeout: 10000 });
-    await expect(page.locator(`.not-card[data-not-id="${idA}"]`)).toHaveClass(/lida/);
+    await expect(page.locator(`.not-card[data-not-id="${idA}"]`)).toHaveAttribute("data-lida", "true");
     await expect(page.locator(`.not-card[data-not-id="${idA}"]`)).not.toHaveClass(/nao-lida/);
   });
 

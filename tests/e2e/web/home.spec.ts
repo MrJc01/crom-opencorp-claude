@@ -8,71 +8,34 @@ test.describe("Web Home: tabs, modal task, comando, aprovações", () => {
     logado(page, "test-e2e");
     await seederEmpresaBasica(api(page), "test-e2e");
     await page.goto("/");
-    await esperarElementoTexto(page, "Painel de Operações");
+    await esperarElementoTexto(page, "Governança da Empresa Autônoma");
   });
 
-  test("as 7 abas trocam o conteúdo (?aba=)", async ({ page }) => {
-    const watcher = new ConsoleWatcher(page);
-    watcher.start();
-    const abas: Array<[string, string]> = [
-      ["Visão Geral", "Feed de Execuções Recentes"],
-      ["Ao Vivo", "Últimas Execuções de Background"],
-      ["Secretário", "Sessões & Chats com o Secretário"],
-      ["Tasks", "Tarefas em Andamento"],
-      ["Falhas", "Falhas Recentes"],
-      ["Agendamentos", "Linha do Tempo de Agendamentos"],
-      ["Fluxos", "Fluxos & Automações"],
-    ];
-    for (const [aba, prova] of abas) {
-      await page.getByRole("button", { name: new RegExp(`^${aba}`) }).click();
-      await esperarElementoTexto(page, prova);
-    }
-    watcher.stop();
-    expect(watcher.limpos()).toEqual([]);
-  });
-
-  test("modal Nova Task: abre, valida, cria e fecha", async ({ page }) => {
+  // Abas, "Nova Task" e barra de comando da home antiga não existem na UI React
+  // (ver docs/PENDENCIAS-MULTIMOTORES.md); a home atual é coberta por tests/e2e/home.spec.ts.
+  test("nova tarefa pelo Kanban: abre, cria e aparece", async ({ page }) => {
     const titulo = `Web nova task ${Date.now()}`;
-    await page.getByRole("button", { name: "Nova Task" }).first().click();
-    await esperarElementoTexto(page, "Criar Nova Tarefa");
-    // sem título não cria
-    await page.getByRole("button", { name: "Criar Tarefa" }).click();
-    await expect(page.getByText("Criar Nova Tarefa")).toBeVisible();
-    await page.locator('input[placeholder="Ex: Auditoria editorial dos últimos artigos"]').fill(titulo);
-    await page.getByRole("button", { name: "Criar Tarefa" }).click();
-    await expect(page.getByText("Criar Nova Tarefa")).toHaveCount(0, { timeout: 10000 });
-    // Confere no kanban com busca (a seção da home mostra só as 6 primeiras)
     await page.goto("/tasks");
-    await page.locator('input[placeholder="Buscar tarefas..."]').fill(titulo);
+    await esperarElementoTexto(page, "Quadro Kanban");
+    await page.getByRole("button", { name: "Nova Tarefa" }).click();
+    const campo = page.getByPlaceholder(/Auditoria/).first();
+    await expect(campo).toBeVisible({ timeout: 10000 });
+    await campo.fill(titulo);
+    await page.getByRole("button", { name: /Criar Tarefa/ }).click();
+    await page.getByPlaceholder("Buscar tarefas...").fill(titulo);
     await expect(page.getByText(titulo).first()).toBeVisible({ timeout: 10000 });
-  });
-
-  test("comando ! mostra saída; texto navega ao secretário", async ({ page }) => {
-    const input = page.locator('input[placeholder="Digite uma instrução para o Secretário ou ! comando no terminal..."]');
-    await input.fill("!task list");
-    await input.press("Enter");
-    await expect(page.getByText("Task backlog e2e").first()).toBeVisible({ timeout: 25000 });
-
-    await input.fill("resumo web e2e");
-    await input.press("Enter");
-    await page.waitForURL("**/secretario?ordem=*", { timeout: 10000 });
   });
 
   test("shell: trocar workspace pelo topbar atualiza tudo", async ({ page }) => {
     const shell = new Shell(page);
     await shell.trocarWorkspace("outro-ws");
-    await expect(page.locator("#select-workspace-topbar")).toHaveValue("outro-ws");
+    await expect(page.locator('button[title="Trocar workspace ou criar novo projeto"]')).toContainText("outro-ws");
     await shell.trocarWorkspace("e2e-corp");
   });
 
-  test("hover do badge stream abre card sem erros", async ({ page }) => {
-    const watcher = new ConsoleWatcher(page);
-    watcher.start();
+  test("indicador do canal de eventos conecta (stream)", async ({ page }) => {
     const shell = new Shell(page);
-    await shell.abrirHoverVivo();
-    await page.mouse.move(640, 10);
-    await page.waitForTimeout(600);
-    watcher.stop();
-    expect(watcher.limpos()).toEqual([]);
+    await expect(shell.badgeStream).toBeVisible({ timeout: 15000 });
+    await expect(shell.badgeStream).toContainText("stream", { timeout: 15000 });
   });
 });

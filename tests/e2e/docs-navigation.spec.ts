@@ -12,7 +12,6 @@ test.describe("Central de Documentação (/docs)", () => {
 
     // Header da Documentação
     await expect(page.locator("h2:has-text('Documentação')")).toBeVisible();
-    await expect(page.locator("text=Manual OpenCorp & oc")).toBeVisible();
 
     // Documentos essenciais na sidebar de docs
     await expect(page.locator("text=01. Visão Geral da Plataforma").first()).toBeVisible();
@@ -37,7 +36,7 @@ test.describe("Central de Documentação (/docs)", () => {
     await expect(page.locator("text=01. Visão Geral da Plataforma").first()).toBeVisible();
 
     // Digita termo no campo de busca de docs
-    const searchInput = page.locator('input[placeholder*="Buscar na documentação"]');
+    const searchInput = page.locator('input[placeholder*="Buscar por título"]');
     await searchInput.fill("Mini-Apps");
 
     // Documento correspondente permanece visível

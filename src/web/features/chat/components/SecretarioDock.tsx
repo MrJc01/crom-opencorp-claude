@@ -85,7 +85,11 @@ export const SecretarioDock: FC<SecretarioDockProps> = ({ aberto, aoFechar }) =>
   if (!aberto) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 flex flex-col w-full sm:w-[480px] lg:w-[540px] bg-zinc-950 border-l border-zinc-800 shadow-2xl animate-in slide-in-from-right duration-200">
+    <div
+      data-testid="secretario-dock"
+      role="dialog"
+      aria-label="Secretário Executivo"
+      className="fixed inset-y-0 right-0 z-50 flex flex-col w-full sm:w-[480px] lg:w-[540px] bg-zinc-950 border-l border-zinc-800 shadow-2xl animate-in slide-in-from-right duration-200">
       {/* Header do Dock */}
       <div className="flex items-center justify-between h-14 px-4 bg-zinc-900/80 border-b border-zinc-800 shrink-0 backdrop-blur-xs">
         <div className="flex items-center gap-2.5">
@@ -128,6 +132,8 @@ export const SecretarioDock: FC<SecretarioDockProps> = ({ aberto, aoFechar }) =>
           <button
             type="button"
             onClick={aoFechar}
+            data-testid="secretario-dock-fechar"
+            aria-label="Fechar Secretário"
             className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors cursor-pointer"
             title="Fechar (Esc ou Ctrl+J)"
           >
@@ -152,6 +158,7 @@ export const SecretarioDock: FC<SecretarioDockProps> = ({ aberto, aoFechar }) =>
       <div className="flex-1 min-h-0 overflow-hidden relative">
         <SecretarioChat
           key={sessaoAtivaId}
+          emDock
           sessaoId={sessaoAtivaId}
           contextoInicial={contextoInicial}
           aoAtualizarTitulo={(sid, titulo) => setAbas((atuais) => {

@@ -275,6 +275,8 @@ export const NotificacoesView: FC = () => {
         <button
           type="button"
           onClick={() => setFiltro("todas")}
+          id="not-filtro-todas"
+          aria-pressed={filtro === "todas"}
           className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
             filtro === "todas"
               ? "bg-zinc-800 text-zinc-100 font-semibold"
@@ -287,6 +289,8 @@ export const NotificacoesView: FC = () => {
         <button
           type="button"
           onClick={() => setFiltro("nao_lidas")}
+          id="not-filtro-nao-lidas"
+          aria-pressed={filtro === "nao_lidas"}
           className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
             filtro === "nao_lidas"
               ? "bg-zinc-800 text-zinc-100 font-semibold"
@@ -357,7 +361,8 @@ export const NotificacoesView: FC = () => {
               <div
                 key={item.id}
                 data-not-id={item.id}
-                className={`flex flex-col sm:flex-row sm:items-start justify-between gap-4 p-4 rounded-2xl border transition-all ${
+                data-lida={lida ? "true" : "false"}
+                className={`not-card ${lida ? "lida" : "nao-lida"} flex flex-col sm:flex-row sm:items-start justify-between gap-4 p-4 rounded-2xl border transition-all ${
                   lida
                     ? "bg-zinc-950/40 border-zinc-900/80 text-zinc-400 opacity-75 hover:opacity-100"
                     : "bg-zinc-900/80 border-emerald-500/30 text-zinc-100 shadow-sm hover:border-emerald-500/50"
@@ -440,6 +445,7 @@ export const NotificacoesView: FC = () => {
                     onClick={() => handleMarcarLida(item.id)}
                     className="self-end sm:self-start p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-emerald-300 border border-zinc-700/60 transition-colors cursor-pointer shrink-0"
                     title="Marcar como lida"
+                    aria-label="Marcar como lida"
                   >
                     <Check size={14} />
                   </button>

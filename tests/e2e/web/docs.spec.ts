@@ -12,9 +12,9 @@ test.describe("Web Docs: busca, leitura e copiar", () => {
   test("busca filtra e abrir doc mostra conteúdo + copiar", async ({ page }) => {
     const watcher = new ConsoleWatcher(page);
     watcher.start();
-    await page.locator('input[placeholder="Buscar na documentação..."]').fill("wordpress");
+    await page.locator('input[placeholder="Buscar por título, slug ou categoria..."]').fill("wordpress");
     await page.waitForTimeout(500);
-    await page.locator('input[placeholder="Buscar na documentação..."]').fill("");
+    await page.locator('input[placeholder="Buscar por título, slug ou categoria..."]').fill("");
     await page.getByText("01. Visão Geral da Plataforma").first().click();
     await page.waitForURL("**/docs?doc=*", { timeout: 10000 });
     await page.getByRole("button", { name: /Copiar/ }).first().click();

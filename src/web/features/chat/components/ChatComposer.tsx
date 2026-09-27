@@ -132,6 +132,9 @@ export const MENTIONS_PADRAO: AutocompleteItem[] = [
 
 export interface ChatComposerProps {
   placeholder?: string;
+  /** Ids do campo e do botão de envio (o dock usa ids próprios). */
+  inputId?: string;
+  enviarId?: string;
   modeloAtivo?: string;
   onTrocarModelo?: (modelo: string) => void;
   agenteAtivo?: string | null;
@@ -156,6 +159,8 @@ export interface ChatComposerProps {
 
 export const ChatComposer: FC<ChatComposerProps> = ({
   placeholder = "Pergunte ao Secretário ou digite / para comandos...",
+  inputId = "chat-input",
+  enviarId = "btn-enviar",
   agenteAtivo,
   onDefinirAgente,
   chipsContexto = [],
@@ -218,7 +223,7 @@ export const ChatComposer: FC<ChatComposerProps> = ({
   }, [popoverAberto, tipoGatilho, termoFiltro]);
 
   const aplicarTextoNoInput = useCallback((novoTexto: string) => {
-    const inputEl = document.getElementById("chat-input") as HTMLTextAreaElement | null;
+    const inputEl = document.getElementById(inputId) as HTMLTextAreaElement | null;
     if (!inputEl) return;
     const protoSetter = Object.getOwnPropertyDescriptor(
       window.HTMLTextAreaElement.prototype,
@@ -232,7 +237,7 @@ export const ChatComposer: FC<ChatComposerProps> = ({
     inputEl.dispatchEvent(new Event("input", { bubbles: true }));
     inputEl.dispatchEvent(new Event("change", { bubbles: true }));
     inputEl.focus();
-  }, []);
+  }, [inputId]);
 
   const selecionarItemAutocomplete = useCallback(
     (item: AutocompleteItem) => {
@@ -243,7 +248,7 @@ export const ChatComposer: FC<ChatComposerProps> = ({
       if (item.tipo === "at") {
         const idAgente = item.gatilho.replace(/^@/, "");
         onDefinirAgente?.(idAgente);
-        const inputEl = document.getElementById("chat-input") as HTMLTextAreaElement | null;
+        const inputEl = document.getElementById(inputId) as HTMLTextAreaElement | null;
         if (inputEl) {
           const valAtual = inputEl.value;
           const limpo = valAtual.replace(/@[a-zA-Z0-9_-]*$/, "").trim();
@@ -255,7 +260,7 @@ export const ChatComposer: FC<ChatComposerProps> = ({
       // / ou !
       aplicarTextoNoInput(item.gatilho);
     },
-    [aplicarTextoNoInput, onDefinirAgente],
+    [aplicarTextoNoInput, onDefinirAgente, inputId],
   );
 
   const verificarGatilhos = useCallback((texto: string, posCursor: number) => {
@@ -328,14 +333,14 @@ export const ChatComposer: FC<ChatComposerProps> = ({
 
   const inserirGatilhoRapido = useCallback(
     (gatilho: "/" | "@" | "!") => {
-      const inputEl = document.getElementById("chat-input") as HTMLTextAreaElement | null;
+      const inputEl = document.getElementById(inputId) as HTMLTextAreaElement | null;
       if (!inputEl) return;
       const atual = inputEl.value;
       const prefixo = atual.length > 0 && !atual.endsWith(" ") ? `${atual} ` : atual;
       aplicarTextoNoInput(`${prefixo}${gatilho}`);
       verificarGatilhos(`${prefixo}${gatilho}`, `${prefixo}${gatilho}`.length);
     },
-    [aplicarTextoNoInput, verificarGatilhos],
+    [aplicarTextoNoInput, verificarGatilhos, inputId],
   );
 
   const handleFileChange = useCallback(
@@ -489,7 +494,8 @@ export const ChatComposer: FC<ChatComposerProps> = ({
           INPUT PRIMITIVO DO ASSISTANT-UI COM AUTORESIZE E EVENTOS
          ───────────────────────────────────────────────────────────── */}
       <ComposerPrimitive.Input
-        id="chat-input"
+        id={inputId}
+        aria-label="Mensagem para o Secretário"
         autoFocus
         placeholder={placeholder}
         onKeyDown={handleKeyDown}
@@ -563,7 +569,9 @@ export const ChatComposer: FC<ChatComposerProps> = ({
           {/* Botão de Enviar nativo exibido quando o chat está ocioso */}
           <ThreadPrimitive.If running={false}>
             <ComposerPrimitive.Send
-              id="btn-enviar"
+              id={enviarId}
+              data-testid={enviarId}
+              aria-label="Enviar mensagem"
               className="flex items-center justify-center h-8 w-8 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white transition-all cursor-pointer shadow-md shadow-emerald-950/50"
               title="Enviar (Enter)"
             >

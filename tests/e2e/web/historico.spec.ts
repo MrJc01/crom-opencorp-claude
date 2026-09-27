@@ -81,17 +81,18 @@ test.describe("Web Histórico: filtros, modal e ações", () => {
     logado(page, "test-e2e");
     await seederEmpresaBasica(api(page), "test-e2e");
     await page.goto("/historico");
-    await esperarElementoTexto(page, "Histórico de Atividades");
+    await esperarElementoTexto(page, "Identificador / Ordem");
   });
 
-  test("tabs de tipo filtram sem erro", async ({ page }) => {
+  test("filtros de tipo filtram sem erro", async ({ page }) => {
     const watcher = new ConsoleWatcher(page);
     watcher.start();
-    for (const tab of ["Execuções", "Fluxos", "Tasks", "Conversas"]) {
-      await page.getByRole("button", { name: tab, exact: true }).click();
-      await page.waitForTimeout(400);
+    for (const tab of ["Agentes", "Fluxos DAG", "Kanban", "Rotinas", "Secretário"]) {
+      const botao = page.getByRole("button", { name: tab, exact: true });
+      await botao.click();
+      await expect(botao).toHaveAttribute("aria-pressed", "true");
     }
-    await page.getByRole("button", { name: "Tudo", exact: true }).click();
+    await page.getByRole("button", { name: "Todos", exact: true }).click();
     watcher.stop();
     expect(watcher.limpos()).toEqual([]);
   });
@@ -99,24 +100,25 @@ test.describe("Web Histórico: filtros, modal e ações", () => {
   test("status e agente filtram a lista", async ({ page }) => {
     const selects = page.locator("main select");
     await expect(selects.first()).toBeVisible();
-    await selects.first().selectOption("concluido");
-    await page.waitForTimeout(500);
+    await selects.first().selectOption("sucesso");
+    await expect(selects.first()).toHaveValue("sucesso");
     await selects.first().selectOption("todos");
-    await page.waitForTimeout(500);
   });
 
   test("pausar tempo-real interrompe o polling", async ({ page }) => {
-    const botao = page.getByRole("button", { name: /Pausado|Ao Vivo/ });
-    await expect(botao.first()).toBeVisible();
-    await botao.first().click();
-    await expect(page.getByText("Pausado").first()).toBeVisible({ timeout: 5000 });
-    await botao.first().click();
+    const botao = page.getByTestId("historico-tempo-real");
+    await expect(botao).toBeVisible();
+    const antes = await botao.getAttribute("aria-pressed");
+    await botao.click();
+    await expect(botao).not.toHaveAttribute("aria-pressed", antes ?? "");
+    await botao.click();
+    await expect(botao).toHaveAttribute("aria-pressed", antes ?? "");
   });
 
-  test("modal de task abre e fecha sem erro", async ({ page }) => {
+  test("painel de task abre e fecha sem erro", async ({ page }) => {
     const watcher = new ConsoleWatcher(page);
     watcher.start();
-    const linha = page.getByText("TASK", { exact: true }).first();
+    const linha = page.locator("tr[data-tipo='task']").first();
     await expect(linha).toBeVisible({ timeout: 15000 });
     await linha.click();
     await page.waitForTimeout(800);
@@ -139,9 +141,9 @@ test.describe("Web Histórico: filtros, modal e ações", () => {
     // O modal lê o registro direto (/registries/execucoes/:id); a lista
     // (/historico) só exibe sessões reais (tag "sessao") — abre via ?run=
     await page.goto(`/historico?run=${encodeURIComponent(execId)}`);
-    await esperarElementoTexto(page, `Execução: ${execId}`);
+    await expect(page.getByRole("heading", { name: execId })).toBeVisible({ timeout: 15000 });
 
-    for (const aba of ["Telemetria", "Terminal Raw", "Diff de Arquivos"]) {
+    for (const aba of ["Telemetria", "Terminal", "Diff / Git"]) {
       await page.getByRole("button", { name: new RegExp(aba) }).click();
       await page.waitForTimeout(400);
     }
@@ -209,12 +211,12 @@ test.describe("Web Histórico: agrupamento de fluxo (F2-T02)", () => {
 
     // UI: o grupo expande e mostra as filhas (status por filho).
     await page.goto("/historico");
-    await esperarElementoTexto(page, "Histórico de Atividades");
-    await expect(page.getByText("FLUXO", { exact: true }).first()).toBeVisible({ timeout: 15000 });
-    const botao = page.locator('button[title="Expandir execuções agrupadas"]').first();
-    await expect(botao).toBeVisible({ timeout: 15000 });
-    await botao.click();
-    await expect(page.getByText(idsFilhas[0]).first()).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(idsFilhas[1]).first()).toBeVisible({ timeout: 10000 });
+    await esperarElementoTexto(page, "Identificador / Ordem");
+    // UI: a linha do fluxo abre o painel na aba "Grafo DAG" com um item por nó.
+    const linhaFluxo = page.getByTestId(`historico-item-${execId}`);
+    await expect(linhaFluxo).toHaveAttribute("data-tipo", "fluxo", { timeout: 15000 });
+    await linhaFluxo.click();
+    await expect(page.getByText("no-a1").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("no-b2").first()).toBeVisible({ timeout: 10000 });
   });
 });

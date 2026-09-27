@@ -24,7 +24,7 @@ test.describe("Fluxos — Canvas n8n-style, Catálogo de Nós e Split-View", () 
     await page.goto("/fluxos");
 
     // 2. Abre o canvas clicando no card do fluxo recém-criado
-    const btnAbrir = page.locator('button:has-text("Abrir Canvas")').first();
+    const btnAbrir = page.locator('button:has-text("Studio")').first();
     await expect(btnAbrir).toBeVisible();
     await btnAbrir.click();
 

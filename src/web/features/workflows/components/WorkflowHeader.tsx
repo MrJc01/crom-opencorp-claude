@@ -69,6 +69,8 @@ export const WorkflowHeader: FC<WorkflowHeaderProps> = ({
         <button
           type="button"
           onClick={onVoltar}
+          id="btn-voltar-fluxos"
+          aria-label="Voltar para Lista de Fluxos"
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-300 hover:text-white transition-colors cursor-pointer shrink-0"
           title="Voltar para Lista de Fluxos"
         >
@@ -183,6 +185,7 @@ export const WorkflowHeader: FC<WorkflowHeaderProps> = ({
               : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-850"
           }`}
           title="Visualizar execuções e dados I/O"
+          id="btn-painel-logs"
         >
           <History size={13} className="text-zinc-400" />
           <span className="hidden md:inline">Logs & I/O</span>

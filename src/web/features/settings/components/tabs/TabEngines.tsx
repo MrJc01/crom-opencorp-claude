@@ -426,7 +426,12 @@ export const TabEngines: FC<TabEnginesProps> = ({
                       : "bg-zinc-900/40 border-zinc-850 hover:border-zinc-750 hover:bg-zinc-900/70"
                   }`}
                 >
-                  <div>
+                  <button
+                    type="button"
+                    data-engine-id={m.id}
+                    aria-pressed={isSel}
+                    className="block w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 rounded-md"
+                  >
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-xs text-zinc-100 font-mono truncate">
                         {m.name}
@@ -439,10 +444,10 @@ export const TabEngines: FC<TabEnginesProps> = ({
                         }`}
                       />
                     </div>
-                    <p className="text-[11px] text-zinc-400 line-clamp-2 mt-1">
+                    <span className="block text-[11px] text-zinc-400 line-clamp-2 mt-1">
                       {m.description}
-                    </p>
-                  </div>
+                    </span>
+                  </button>
 
                   <div className="flex items-center justify-between pt-2 border-t border-zinc-800/60 text-[10px] font-mono text-zinc-500">
                     <span>{m.installed ? (m.version || "Versão detectada") : "Não instalado"}</span>

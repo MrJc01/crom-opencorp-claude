@@ -120,6 +120,8 @@ export const HistoryTable: FC<HistoryTableProps> = ({
               return (
                 <tr
                   key={item.id}
+                  data-testid={`historico-item-${item.id}`}
+                  data-tipo={item.tipo}
                   onClick={() => onSelecionarItem(item)}
                   className={`group transition-colors cursor-pointer ${
                     isSelected

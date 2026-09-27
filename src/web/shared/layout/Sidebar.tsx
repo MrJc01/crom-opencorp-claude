@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { useOpenCorp } from "../../providers/OpenCorpProvider.js";
+import { workspacePath } from "../../lib/routes.js";
 
 interface ItemNav {
   to: string;
@@ -75,6 +76,14 @@ export interface SidebarProps {
 
 export const Sidebar: FC<SidebarProps> = ({ mobileAberta, aoFecharMobile }) => {
   const { workspaceId } = useOpenCorp();
+  // Dentro de um workspace os links apontam direto para /w/<ws>/<módulo>
+  // (sem passar pelo redirecionamento legado), e o item ativo fica destacado.
+  const destino = (to: string): string => {
+    if (!workspaceId || to === "/docs") return to;
+    if (to === "/home") return workspacePath(workspaceId);
+    if (to === "/secrets") return workspacePath(workspaceId, "config", { tab: "chaves" });
+    return workspacePath(workspaceId, to.slice(1));
+  };
   const [recolhida, setRecolhida] = useState<boolean>(() => {
     return typeof window !== "undefined" && localStorage.getItem("oc_sidebar_collapsed") === "1";
   });
@@ -100,6 +109,8 @@ export const Sidebar: FC<SidebarProps> = ({ mobileAberta, aoFecharMobile }) => {
       )}
 
       <aside
+        id="sidebar-principal"
+        aria-label="Navegação principal"
         className={`fixed inset-y-0 left-0 z-50 flex w-72 shrink-0 flex-col bg-zinc-950 border-r border-zinc-850 select-none transition-[transform,width] duration-300 md:relative md:z-30 md:translate-x-0 ${
           mobileAberta ? "translate-x-0" : "-translate-x-full"
         } ${recolhida ? "md:w-16" : "md:w-60"}`}
@@ -151,7 +162,8 @@ export const Sidebar: FC<SidebarProps> = ({ mobileAberta, aoFecharMobile }) => {
                 return (
                   <NavLink
                     key={item.to}
-                    to={item.to}
+                    to={destino(item.to)}
+                    end={item.to === "/home"}
                     onClick={aoFecharMobile}
                     className={({ isActive }) =>
                       `flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all group relative ${

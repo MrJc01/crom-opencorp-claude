@@ -1,3 +1,6 @@
+// Script MANUAL (fora da suíte E2E): roda contra um servidor real em :4100 e grava
+// vídeos/GIFs no diretório do autor. Execute só conscientemente, com
+// `npx playwright test -c <config> scripts/manual/secretario-stress-animations.spec.ts`.
 import { test, expect } from "@playwright/test";
 import { execSync } from "node:child_process";
 import { existsSync, readdirSync, mkdirSync } from "node:fs";

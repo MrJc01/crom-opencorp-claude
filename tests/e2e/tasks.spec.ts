@@ -13,14 +13,14 @@ test.describe("Tasks / Kanban", () => {
     const titulo = `Nova task e2e via UI ${Date.now()}`;
     await page.getByRole("button", { name: "Nova Tarefa" }).click();
     await esperarElementoTexto(page, "Criar Nova Tarefa");
-    await page.locator('input[placeholder="Ex: Auditoria técnica do site"]').fill(titulo);
+    await page.getByPlaceholder("Ex: Auditoria técnica de endpoints ou refatoração").fill(titulo);
     await page.getByRole("button", { name: "Criar Tarefa" }).click();
 
     // Modal fecha e o card aparece (filtra pela busca para isolar)
     await page.locator('input[placeholder="Buscar tarefas..."]').fill(titulo);
     await expect(page.getByText(titulo).first()).toBeVisible({ timeout: 10000 });
     // Card está dentro da coluna Backlog (header exato "Backlog")
-    const colunaBacklog = page.locator("div.flex-col", { has: page.locator("span", { hasText: /^Backlog$/ }) }).first();
+    const colunaBacklog = page.getByTestId("kanban-coluna-backlog");
     await expect(colunaBacklog.getByText(titulo)).toBeVisible();
   });
 

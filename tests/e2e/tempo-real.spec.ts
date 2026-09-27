@@ -57,7 +57,7 @@ test.describe("Tempo real: execução ao vivo no web", () => {
 
     // Histórico: badge FLUXO + status executando + nó em execução
     await page.goto(`/historico?run=${execId}`);
-    await esperarElementoTexto(page, "Histórico de Atividades");
+    await esperarElementoTexto(page, "Identificador / Ordem");
     await expect(page.getByText("FLUXO", { exact: true }).first()).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("executando", { exact: true }).first()).toBeVisible({ timeout: 15000 });
 
@@ -72,7 +72,7 @@ test.describe("Tempo real: execução ao vivo no web", () => {
 
     // Aba Resultado do fluxo mostra Entrada + Resultado (visão de circuito, sem chat)
     await page.goto(`/historico?run=${execId}`);
-    await esperarElementoTexto(page, "Histórico de Atividades");
+    await esperarElementoTexto(page, "Identificador / Ordem");
     await page.getByRole("button", { name: /Resultado/ }).click();
     await expect(page.getByText("Resultado", { exact: false }).first()).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("Circuito", { exact: false }).first()).toBeVisible({ timeout: 10000 });
@@ -91,7 +91,7 @@ test.describe("Tempo real: execução ao vivo no web", () => {
     await esperarStatus(page, fid, execId, "cancelado", 60000);
 
     await page.goto("/historico?tipo=fluxo");
-    await esperarElementoTexto(page, "Histórico de Atividades");
+    await esperarElementoTexto(page, "Identificador / Ordem");
     await page.locator("main select").first().selectOption("cancelado");
     await expect(page.getByText(execId).first()).toBeVisible({ timeout: 15000 });
   });

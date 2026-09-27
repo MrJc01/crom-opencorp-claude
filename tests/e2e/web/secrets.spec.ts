@@ -10,7 +10,7 @@ test.describe("Web Secrets: templates, filtros e CRUD", () => {
     logado(page, "test-e2e");
     await seederEmpresaBasica(api(page), "test-e2e");
     await page.goto("/secrets");
-    await esperarElementoTexto(page, "Segredos & Credenciais");
+    await esperarElementoTexto(page, "Cofre de Segredos & Credenciais");
   });
 
   test("templates trocam o form e filtros alternam", async ({ page }) => {

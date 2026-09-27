@@ -1,6 +1,6 @@
 /**
  * CLI do `opencode` falso usado pelo servidor do E2E (via PATH).
- * Suporta `--version` e `serve --port <n> --hostname 127.0.0.1`, com a senha
+ * Suporta `--version`, `run` (one-shot) e `serve --port <n> --hostname 127.0.0.1`, com a senha
  * em OPENCODE_SERVER_PASSWORD, como o binário real.
  */
 import { startFakeOpenCode } from "../../fixtures/fake-opencode-server.js";
@@ -8,6 +8,30 @@ import { startFakeOpenCode } from "../../fixtures/fake-opencode-server.js";
 const args = process.argv.slice(2);
 if (args.includes("--version")) {
   console.log("1.18.32");
+  process.exit(0);
+}
+if (args[0] === "run") {
+  // Execução one-shot (nós de agente dos fluxos): responde e sai com sucesso.
+  const semFlags: string[] = [];
+  for (let i = 1; i < args.length; i++) {
+    if (args[i]!.startsWith("--")) {
+      if (!["--auto"].includes(args[i]!)) i++;
+      continue;
+    }
+    semFlags.push(args[i]!);
+  }
+  const prompt = semFlags.join(" ").trim();
+  // Contratos dos nós de equipe (review/debate): respeita o formato exigido.
+  const contrato = prompt.includes("[contrato de revisão]")
+    ? "APROVADO\n"
+    : prompt.includes("[contrato de moderação]")
+      ? "DECISÃO: seguir a proposta A\n"
+      : "";
+  if (args.includes("--format") && args[args.indexOf("--format") + 1] === "json") {
+    console.log(JSON.stringify({ type: "text", part: { type: "text", text: `${contrato}Resposta do assistant para: ${prompt}` } }));
+  } else {
+    console.log(`${contrato}Resposta do assistant para: ${prompt}`);
+  }
   process.exit(0);
 }
 if (args[0] !== "serve") {

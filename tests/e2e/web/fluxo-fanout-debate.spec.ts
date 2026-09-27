@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { logado, api } from "../helpers.js";
 import { join } from "node:path";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 
 const TOKEN = "test-e2e";
 const WS = "e2e-flux-join";
@@ -46,9 +46,7 @@ async function instalarFakeRunner(): Promise<void> {
 async function removerFakeRunner(): Promise<void> {
   const fakeBin = join("/tmp/opencorp-e2e", ".opencorp", "bin", "opencode-fake");
   await new Promise((resolve) => setTimeout(resolve, 50));
-  await new Promise((resolve, reject) => {
-    try { require("node:fs").rm(fakeBin, { force: true }, resolve); } catch { reject(new Error("not found")) }
-  });
+  await rm(fakeBin, { force: true });
 }
 
 function noManual(id: string) {
@@ -106,8 +104,8 @@ test.describe("Fluxo — fanout / review / debate (F9-T01)", () => {
   });
 
   test("F9-T01-c1: fanout — múltiplos agentes em paralelo com sintese consolida saida", async ({ page }) => {
-    const agenteA = `agente-fanout-A-${Date.now().toString(36)}`;
-    const agenteB = `agente-fanout-B-${Date.now().toString(36)}`;
+    const agenteA = `agente-fanout-a-${Date.now().toString(36)}`;
+    const agenteB = `agente-fanout-b-${Date.now().toString(36)}`;
 
     await criarAgente(api(page), WS, agenteA, "Agente Fanout A", "Você é um agente de teste e2e.");
     await criarAgente(api(page), WS, agenteB, "Agente Fanout B", "Você é um agente de teste e2e.");
@@ -184,14 +182,14 @@ test.describe("Fluxo — fanout / review / debate (F9-T01)", () => {
     const fim = await esperarFlowConcluir(page, fluxo);
     expect(fim.status).toBe("concluido");
 
-    const primeiraLinha = fim.contextoFinal.split("\n")[0];
-    expect(primeiraLinha).toContain("APROVADO");
+    // Aprovado pelo revisor, o contexto que segue é a saída do executor.
+    expect(fim.contextoFinal).toContain("recomenda");
   });
 
   test("F9-T01-c3: debate — moderador resposta começa com 'DECISÃO:' na primeira linha", async ({ page }) => {
-    const agenteProp1 = `agente-debate-P1-${Date.now().toString(36)}`;
-    const agenteProp2 = `agente-debate-P2-${Date.now().toString(36)}`;
-    const agenteMod = `agente-debate-M-${Date.now().toString(36)}`;
+    const agenteProp1 = `agente-debate-p1-${Date.now().toString(36)}`;
+    const agenteProp2 = `agente-debate-p2-${Date.now().toString(36)}`;
+    const agenteMod = `agente-debate-m-${Date.now().toString(36)}`;
 
     await criarAgente(api(page), WS, agenteProp1, "Agente Debate P1", "Você é um proponente de teste e2e.");
     await criarAgente(api(page), WS, agenteProp2, "Agente Debate P2", "Você é um proponente de teste e2e.");

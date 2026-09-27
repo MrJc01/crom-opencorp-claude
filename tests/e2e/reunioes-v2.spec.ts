@@ -12,7 +12,7 @@ test.describe("Reuniões (sala + histórico + agendamento)", () => {
     logado(page, "test-e2e");
     await seederEmpresaBasica(api(page), "test-e2e");
     await page.goto("/");
-    await esperarElementoTexto(page, "Painel de Operações");
+    await esperarElementoTexto(page, "Governança da Empresa Autônoma");
   });
 
   test("(a) Convocar pela UI abre a sala; POST /meetings responde 202 com id", async ({ page }) => {
@@ -72,35 +72,34 @@ test.describe("Reuniões (sala + histórico + agendamento)", () => {
     await page.waitForURL(`**/reunioes?reuniao=${salaId}`, { timeout: 10000 });
   });
 
-  test("(c) Agendar reunião cria job meeting + excluir remove", async ({ page }) => {
+  test("(c) Agendar reunião = fluxo cron + nó reunião; aparece na agenda e excluir remove", async ({ page }) => {
     const pauta = `revisao agendada e2e-${sufixo}`;
-    const criado = await api(page).post("/schedules", {
+    const fid = `reuniao-agendada-${sufixo}`.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+    const criado = await api(page).post("/flows", {
       headers: HDR,
       data: {
-        nome: `reuniao-agendada-${sufixo}`,
-        agenda_tipo: "intervalo_min",
-        agenda_valor: 1440,
-        args: `meeting iniciar --pauta "${pauta}" --nao-interativo`,
-        workspace: "e2e-corp",
+        id: fid,
+        nome: `Reunião agendada ${sufixo}`,
+        nos: [
+          { id: "gatilho", tipo: "cron", config: { expressao_cron: "0 9 * * 1" } },
+          { id: "reuniao", tipo: "reuniao", config: { pauta } },
+        ],
+        arestas: [{ de: "gatilho", para: "reuniao" }],
       },
     });
-    expect(criado.status()).toBe(201);
-    const job = await criado.json();
+    expect([200, 201]).toContain(criado.status());
 
-    const resp = await api(page).get("/schedules?workspace=e2e-corp", { headers: HDR });
-    const jobs = (await resp.json()) as Array<{ id: string; args: string[] }>;
-    const rotina = jobs.find((j) => j.id === job.id);
-    expect(rotina).toBeTruthy();
-    expect(rotina!.args[0]).toBe("meeting");
-    expect(rotina!.args.join(" ")).toContain(pauta);
+    const doFluxo = (j: { id: string; nome?: string }) => j.id === `flow:${fid}` || j.id === fid || j.nome === fid;
+    const jobs = (await (await api(page).get("/schedules?workspace=e2e-corp", { headers: HDR })).json()) as Array<{ id: string; nome?: string }>;
+    expect(jobs.some(doFluxo)).toBe(true);
 
-    // aparece na Home (aba Agendamentos → Linha do Tempo)
-    await page.goto("/?aba=agendamentos");
-    await esperarElementoTexto(page, "Linha do Tempo de Agendamentos");
+    // aparece na agenda (/agenda → fluxos filtrados por cron)
+    await page.goto("/agenda");
+    await expect(page.getByTestId(`fluxo-card-${fid}`)).toBeVisible({ timeout: 15000 });
 
-    const del = await api(page).delete(`/schedules/${job.id}`, { headers: HDR });
-    expect(del.status()).toBe(200);
-    const depois = (await (await api(page).get("/schedules?workspace=e2e-corp", { headers: HDR })).json()) as Array<{ id: string }>;
-    expect(depois.some((j) => j.id === job.id)).toBe(false);
+    const del = await api(page).delete(`/flows/${fid}`, { headers: HDR });
+    expect(del.ok()).toBe(true);
+    const depois = (await (await api(page).get("/schedules?workspace=e2e-corp", { headers: HDR })).json()) as Array<{ id: string; nome?: string }>;
+    expect(depois.some(doFluxo)).toBe(false);
   });
 });

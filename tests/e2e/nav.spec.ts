@@ -2,12 +2,12 @@ import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarNavegacao } from "./helpers.js";
 
 const views = [
-  { path: "home", seletor: "h1:has-text('Painel de Operações')" },
-  { path: "tasks", seletor: "h1:has-text('Quadro Kanban')" },
-  { path: "fluxos", seletor: "h1:has-text('Fluxos')" },
-  { path: "historico", seletor: "h1:has-text('Histórico')" },
-  { path: "secretario", seletor: "#chat-input" },
-  { path: "apps", seletor: "h1:has-text('Mini-Apps')" },
+  { path: "home", link: "Home Dashboard", seletor: "h1:has-text('Governança da Empresa Autônoma')" },
+  { path: "tasks", link: "Tarefas & Kanban", seletor: "text=Quadro Kanban" },
+  { path: "fluxos", link: "Fluxos de Automação", seletor: "h1:has-text('Fluxos')" },
+  { path: "historico", link: "Histórico de Auditoria", seletor: "h1:has-text('Histórico')" },
+  { path: "secretario", link: "Secretário Executivo", seletor: "#chat-input" },
+  { path: "apps", link: "Apps & MCPs", seletor: "h1:has-text('Mini-Apps')" },
 ];
 
 test.describe("Navegação Sidebar", () => {
@@ -24,13 +24,13 @@ test.describe("Navegação Sidebar", () => {
       await esperarNavegacao(page, pontoPartida);
 
       // Clica no item correspondente da sidebar
-      const navItem = page.locator(`aside a[href="/${view.path}"], .nav-item[data-view="${view.path}"]`).first();
+      const navItem = page.locator("aside").getByRole("link", { name: view.link }).first();
       await expect(navItem).toBeVisible();
       await navItem.click();
 
       // Aguarda navegação
-      await page.waitForURL(`**/${view.path}*`);
-      await expect(page).toHaveURL(new RegExp(`/${view.path}`));
+      if (view.path === "home") await page.waitForURL(/\/w\/[^/]+\/?$/);
+      else await page.waitForURL(new RegExp(`/${view.path}`));
 
       // Verifica que o elemento identificador da página está visível
       await expect(page.locator(view.seletor).first()).toBeVisible({ timeout: 10000 });

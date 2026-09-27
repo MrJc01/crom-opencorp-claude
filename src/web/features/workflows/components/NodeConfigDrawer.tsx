@@ -311,7 +311,10 @@ export const NodeConfigDrawer: FC<NodeConfigDrawerProps> = ({
   };
 
   return (
-    <aside className="absolute top-0 right-0 bottom-0 w-full sm:w-[420px] md:w-[440px] max-w-full z-40 bg-zinc-950/95 backdrop-blur-md border-l border-zinc-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-150">
+    <aside
+      data-testid="ndv-panel"
+      aria-label={`Configuração do nó ${noEditado.id}`}
+      className="ndv-panel absolute top-0 right-0 bottom-0 w-full sm:w-[420px] md:w-[440px] max-w-full z-40 bg-zinc-950/95 backdrop-blur-md border-l border-zinc-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-150">
         {/* Topo da Gaveta */}
         <div className="p-4 border-b border-zinc-800 flex items-center justify-between shrink-0 bg-zinc-900/60">
           <div className="flex items-center gap-2.5 min-w-0">

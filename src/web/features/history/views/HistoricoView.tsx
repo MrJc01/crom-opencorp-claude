@@ -461,6 +461,7 @@ export const HistoricoView: FC = () => {
 
   return (
     <div className="flex flex-col h-full w-full bg-zinc-950 p-4 sm:p-6 md:p-8 space-y-4 overflow-hidden relative select-none">
+      <h1 className="text-lg font-bold text-zinc-100 tracking-tight">Histórico de Execuções</h1>
       {/* Topo: Cards de Métricas e Telemetria */}
       <HistoryMetricsHeader
         resumo={resumoTelemetria}

@@ -11,9 +11,9 @@ export class Shell extends BasePage {
   constructor(page: Page) {
     super(page);
     this.sidebar = page.locator("#sidebar-principal");
-    this.topbarWorkspace = page.locator("#select-workspace-topbar");
-    this.badgeStream = page.getByRole("link", { name: /stream|offline/ }).first();
-    this.btnNotificacoes = page.locator('[data-view="notificacoes"]');
+    this.topbarWorkspace = page.locator('button[title="Trocar workspace ou criar novo projeto"]');
+    this.badgeStream = page.getByTitle(/Canal de eventos/).first();
+    this.btnNotificacoes = page.locator("#btn-notificacoes-topbar");
   }
 
   async navegar(label: string | RegExp): Promise<void> {
@@ -21,13 +21,9 @@ export class Shell extends BasePage {
   }
 
   async trocarWorkspace(wsId: string): Promise<void> {
-    await this.topbarWorkspace.selectOption(wsId);
+    await this.topbarWorkspace.click();
+    await this.page.getByRole("option", { name: new RegExp(wsId) }).first().click();
+    await this.page.waitForURL(new RegExp(`/w/${wsId}(/|$)`), { timeout: 10000 });
     await expect.poll(async () => this.page.evaluate(() => localStorage.getItem("oc-ws")), { timeout: 10000 }).toBe(wsId);
-  }
-
-  async abrirHoverVivo(): Promise<void> {
-    await expect(this.badgeStream).toBeVisible({ timeout: 15000 });
-    await this.badgeStream.hover();
-    await expect(this.page.getByText("Execução em Tempo Real")).toBeVisible({ timeout: 10000 });
   }
 }

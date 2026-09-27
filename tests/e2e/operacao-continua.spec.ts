@@ -30,26 +30,13 @@ test.describe("Operação contínua (sem travas)", () => {
     expect(body.exec_id).toBeTruthy();
   });
 
-  test("job agendado espelha como fluxo visível no Studio", async ({ page }) => {
-    const nome = `job-espelho-e2e-${Date.now().toString(36)}`;
+  test("criação de job legado é recusada (410) e orienta a usar fluxo com nó cron", async ({ page }) => {
     const criado = await api(page).post("/schedules", {
       headers: HDR,
-      data: { nome, agenda_tipo: "intervalo_min", agenda_valor: 1440, args: "task list", workspace: "e2e-corp" },
+      data: { nome: "job-legado-e2e", agenda_tipo: "intervalo_min", agenda_valor: 1440, args: "task list", workspace: "e2e-corp" },
     });
-    expect(criado.status()).toBe(201);
-    const job = await criado.json();
-
-    try {
-      const fluxos = await api(page).get("/flows", { headers: HDR });
-      const lista = await fluxos.json();
-      const espelho = lista.find((f: any) => f.id.includes(nome.slice(0, 20).toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 10)));
-      expect(espelho || lista.length > 0).toBeTruthy();
-
-      await page.goto("/fluxos");
-      await esperarElementoTexto(page, "Fluxos");
-    } finally {
-      await api(page).delete(`/schedules/${job.id}`, { headers: HDR }).catch(() => undefined);
-    }
+    expect(criado.status()).toBe(410);
+    expect(JSON.stringify(await criado.json())).toContain("POST /flows");
   });
 
   test("duplo run do mesmo fluxo não colide (ids únicos)", async ({ page }) => {

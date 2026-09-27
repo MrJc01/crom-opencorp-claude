@@ -79,17 +79,17 @@ export async function seederEmpresaBasica(api: APIRequestContext, token: string,
     console.warn(`App creation failed: ${appResp.status()} ${body}`);
   }
 
-  // 5. Criar job/agenda no workspace
-  // args deve estar na whitelist COMANDOS_AGENDA (validada no POST /schedules) —
-  // "echo" não está e rejeitava a criação com 422 (agenda.spec ficava sem job).
-  await api.post("/schedules", {
+  // 5. Rotina agendada = fluxo com nó cron (POST /schedules foi aposentado → 410).
+  await api.post("/flows", {
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     data: {
+      id: "job-e2e-corp",
       nome: "job-e2e-corp",
-      agenda_tipo: "intervalo_min",
-      agenda_valor: 60,
-      args: "task list",
-      workspace: wsId,
+      nos: [
+        { id: "gatilho", tipo: "cron", config: { expressao_cron: "0 * * * *" } },
+        { id: "espera", tipo: "delay", config: { segundos: 1 } },
+      ],
+      arestas: [{ de: "gatilho", para: "espera" }],
     },
   });
 }
@@ -97,7 +97,11 @@ export async function seederEmpresaBasica(api: APIRequestContext, token: string,
 export async function esperarNavegacao(page: Page, hash: string): Promise<void> {
   const caminho = hash.startsWith("/") ? hash : `/${hash}`;
   await page.goto(caminho);
-  await page.waitForURL(`**${caminho}*`, { timeout: 10000 });
+  // Rotas legadas redirecionam para /w/<workspace>/<módulo>; a home é o índice /w/<workspace>.
+  await page.waitForURL(
+    (u) => (caminho === "/home" || caminho === "/" ? /^\/w\/[^/]+\/?$/.test(u.pathname) : u.pathname.endsWith(caminho)),
+    { timeout: 10000 },
+  );
   // Aguarda a view ter conteúdo (não vazia) - espera renderização assíncrona
   await page.waitForFunction(
     (h) => {

@@ -54,6 +54,7 @@ export const HistoryFilterBar: FC<HistoryFilterBarProps> = ({
                 key={t.id}
                 type="button"
                 onClick={() => setTipoFiltro(t.id)}
+                aria-pressed={isSel}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors ${
                   isSel
                     ? "bg-zinc-800 text-orange-400 font-bold border border-zinc-700 shadow-xs"
@@ -72,6 +73,8 @@ export const HistoryFilterBar: FC<HistoryFilterBarProps> = ({
           <button
             type="button"
             onClick={() => setTempoReal(!tempoReal)}
+            aria-pressed={tempoReal}
+            data-testid="historico-tempo-real"
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono transition-colors cursor-pointer border ${
               tempoReal
                 ? "bg-emerald-950/40 border-emerald-800 text-emerald-400"
