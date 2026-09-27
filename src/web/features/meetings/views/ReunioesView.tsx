@@ -71,7 +71,12 @@ export const ReunioesView: FC = () => {
 
       const arrayReunioes = Array.isArray(listaReunioes) ? listaReunioes : [];
       setReunioes(arrayReunioes);
-      setAgentesDisponiveis(Array.isArray(listaAgentes) ? listaAgentes : []);
+      // Agentes desativados não podem participar (o turno deles falharia).
+      setAgentesDisponiveis(
+        Array.isArray(listaAgentes)
+          ? listaAgentes.filter((a: any) => a?.ativo !== false && a?.active !== false)
+          : [],
+      );
 
       // Se há um parâmetro ou precisa abrir o primeiro
       if (reuniaoParam) {

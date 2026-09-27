@@ -259,18 +259,23 @@ export const EngineAuthModal: FC<EngineAuthModalProps> = ({
       };
     }
 
+    // Instruções fixas por motor são a base; o backend só sobrescreve o que informar.
+    const fixas = instrucoesFixas();
     if (instrucoesBackend) {
       return {
-        title: instrucoesBackend.title || motorNome || motorId,
-        cliCommand: instrucoesBackend.cliCommand || `${motorId} login`,
-        envVar: instrucoesBackend.envVar || "API_KEY",
-        url: instrucoesBackend.url || "",
-        urlText: instrucoesBackend.urlText || "Console do Provedor",
-        desc: instrucoesBackend.desc || "Configuração e autorização do motor.",
-        webPrompt: instrucoesBackend.webPrompt || "Inicie a autorização no navegador para vincular sua conta.",
+        title: instrucoesBackend.title || fixas.title || motorNome || motorId,
+        cliCommand: instrucoesBackend.cliCommand || fixas.cliCommand,
+        envVar: instrucoesBackend.envVar || fixas.envVar,
+        url: instrucoesBackend.url || fixas.url,
+        urlText: instrucoesBackend.urlText || fixas.urlText,
+        desc: instrucoesBackend.desc || fixas.desc,
+        webPrompt: instrucoesBackend.webPrompt || fixas.webPrompt,
       };
     }
+    return fixas;
+  };
 
+  const instrucoesFixas = () => {
     switch (motorId) {
       case "copilot":
         return {
@@ -285,7 +290,7 @@ export const EngineAuthModal: FC<EngineAuthModalProps> = ({
       case "claude-code":
         return {
           title: "Claude Code (Anthropic)",
-          cliCommand: "claude login",
+          cliCommand: "claude auth login",
           envVar: "ANTHROPIC_API_KEY",
           url: "https://console.anthropic.com/settings/keys",
           urlText: "Anthropic Console",
@@ -336,7 +341,8 @@ export const EngineAuthModal: FC<EngineAuthModalProps> = ({
         const provAtual = PROVEDORES_DISPONIVEIS.find((p) => p.id === provedor) || PROVEDORES_DISPONIVEIS[0]!;
         return {
           title: motorNome || motorId || "Motor de IA",
-          cliCommand: `opencode auth login`,
+          // Só o OpenCode tem login próprio; os demais usam a chave do provedor.
+          cliCommand: !motorId || motorId === "opencode" ? "opencode auth login" : `export ${provAtual.envVar}=...`,
           envVar: provAtual.envVar,
           url: provAtual.url,
           urlText: provAtual.urlText,
