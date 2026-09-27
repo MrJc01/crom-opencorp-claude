@@ -62,20 +62,29 @@ test.describe("Orquestração Multi-Motor (e2e isolado)", () => {
     expect(estado.mensagens.length).toBeGreaterThan(0);
   });
 
-  test("4. Drawer de Motor & Modelo abre no Secretário e aplica ao chat", async ({ page }) => {
+  test("4. Drawer do Secretário troca o motor de conversa do workspace", async ({ page }) => {
     await page.goto("/secretario");
     await page.locator('[data-testid="btn-configurar-motor"]').click();
 
     const drawer = page.locator('[data-testid="drawer-lateral-config"]');
     await expect(drawer).toBeVisible({ timeout: 10000 });
-    await esperarElementoTexto(page, "Configurar Motor & Modelo");
-    await esperarElementoTexto(page, "Agente do Workspace");
-    await esperarElementoTexto(page, "Motor de Execução (Harness)");
+    const seletor = drawer.getByTestId("secretario-motor-conversa");
+    // Só motores com runtime conversacional são oferecidos
+    await expect(seletor.locator("option[value='codex']")).toHaveCount(1, { timeout: 10000 });
+    await expect(seletor.locator("option[value='claude-code']")).toHaveCount(0);
 
-    const btnAplicar = drawer.getByRole("button", { name: /Aplicar ao Chat/i });
-    await expect(btnAplicar).toBeVisible();
-    await btnAplicar.click();
-    await expect(drawer).not.toBeVisible({ timeout: 10000 });
+    await seletor.selectOption("codex");
+    await expect.poll(async () => {
+      const r = await api(page).get("/secretario/status?workspace=e2e-corp", { headers: HDR });
+      const j = await r.json();
+      return `${j.motor?.engineId}:${j.motor?.origem}`;
+    }, { timeout: 10000 }).toBe("codex:workspace_override");
+
+    await seletor.selectOption("opencode");
+    await expect.poll(async () => {
+      const r = await api(page).get("/secretario/status?workspace=e2e-corp", { headers: HDR });
+      return (await r.json()).motor?.engineId;
+    }, { timeout: 10000 }).toBe("opencode");
   });
 
   test("5. Fluxo fanout cria e inicia (202 com exec_id)", async ({ page }) => {

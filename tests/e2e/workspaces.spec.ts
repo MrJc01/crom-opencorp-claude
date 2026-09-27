@@ -15,7 +15,7 @@ test.describe("Workspaces / Empresas", () => {
     await seletor.click();
     const opcoes = page.getByRole("option");
     expect(await opcoes.count()).toBeGreaterThan(1);
-    await expect(page.getByRole("option", { name: /e2e-corp/ })).toHaveCount(1);
+    await expect(page.getByRole("option", { name: /^e2e-corp(\s|$)/ })).toHaveCount(1);
   });
 
   test("sem localStorage oc-ws: UI auto-seleciona a primeira empresa", async ({ page }) => {

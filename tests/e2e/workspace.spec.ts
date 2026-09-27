@@ -21,9 +21,9 @@ test.describe("View Workspace", () => {
   });
 
   async function irParaWorkspace(page: import("@playwright/test").Page): Promise<void> {
-    logado(page, "test-e2e", WS);
+    await logado(page, "test-e2e", WS);
     await page.goto("/workspace");
-    await esperarElementoTexto(page, "Explorador");
+    await esperarElementoTexto(page, "Buscar (Ctrl+P)");
   }
 
   async function abrirProjeto(page: import("@playwright/test").Page): Promise<void> {
@@ -48,7 +48,7 @@ test.describe("View Workspace", () => {
     await expect(page.getByText(".opencorp/projeto.json").first()).toBeVisible({ timeout: 10000 });
     const editor = page.locator("textarea").first();
     await expect(editor).toHaveValue(/E2E Files/, { timeout: 10000 });
-    await expect(page.getByRole("button", { name: "Salvar (Ctrl+S)" })).toBeDisabled();
+    await expect(page.getByTitle("Salvar alterações (Ctrl+S)")).toBeDisabled();
   });
 
   test("(c) editar + Salvar → PUT grava no server e marca some", async ({ page }) => {
@@ -58,11 +58,11 @@ test.describe("View Workspace", () => {
     await expect(editor).toHaveValue(/E2E/, { timeout: 10000 });
 
     await editor.fill('{\n  "empresa": "E2E Editada",\n  "nicho": "teste"\n}\n');
-    await expect(page.getByText("(modificado)").first()).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole("button", { name: "Salvar (Ctrl+S)" })).toBeEnabled();
+    await expect(page.getByTitle("Alterações não salvas").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTitle("Salvar alterações (Ctrl+S)")).toBeEnabled();
 
-    await page.getByRole("button", { name: "Salvar (Ctrl+S)" }).click();
-    await expect(page.getByText("(modificado)")).toHaveCount(0, { timeout: 10000 });
+    await page.getByTitle("Salvar alterações (Ctrl+S)").click();
+    await expect(page.getByTitle("Alterações não salvas")).toHaveCount(0, { timeout: 10000 });
 
     const resp = await page.request.get(`/files?workspace=${WS}&path=${encodeURIComponent(ARQ)}`, {
       headers: { authorization: "Bearer test-e2e" },
@@ -74,7 +74,7 @@ test.describe("View Workspace", () => {
 
   test("(d) terminal: 'task list' (whitelist) ok e comando fora mostra erro", async ({ page }) => {
     await irParaWorkspace(page);
-    await expect(page.getByRole("button", { name: "Terminal 1" })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Terminal 1").first()).toBeVisible({ timeout: 10000 });
 
     const input = page.locator('input[placeholder="Digite um comando (ex: tasks list, doctor, flow list)..."]');
     await input.fill("task list");

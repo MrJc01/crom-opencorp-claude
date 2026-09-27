@@ -20,6 +20,7 @@ import {
   InvalidEngineManifestError,
   CANONICAL_ENGINE_MANIFESTS,
   type EngineCapabilityManifest,
+  manifestSupportsConversation,
 } from "./manifests.js";
 
 export interface EngineSummary {
@@ -34,6 +35,8 @@ export interface EngineSummary {
   path: string | null;
   version: string | null;
   health?: EngineHealth;
+  /** Tem ConversationRuntime: pode ser o motor do Secretário. */
+  supportsConversation: boolean;
 }
 
 export class EngineRegistry {
@@ -176,6 +179,11 @@ export class EngineRegistry {
         path: status.path,
         version: status.version,
         health,
+        // Pode ser o motor do Secretário (tem ConversationRuntime).
+        supportsConversation: (() => {
+          const manifest = this.getManifest(driver.id);
+          return manifest ? manifestSupportsConversation(manifest) : false;
+        })(),
       };
     });
 

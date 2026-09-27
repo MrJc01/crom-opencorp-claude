@@ -10,6 +10,7 @@ import {
   Info,
 } from "lucide-react";
 import { obterAuthHeaders } from "../runtime/secretary-runtime-adapter.js";
+import { showToast } from "../../../shared/ui/Toast.js";
 import { ModelPicker } from "../../../shared/ui/ModelPicker.js";
 
 export const MODELOS_PRESETS_POPULARES = [
@@ -84,6 +85,10 @@ export const SecretarioSettingsDrawer: FC<SecretarioSettingsDrawerProps> = ({
     latencyMs?: number;
   } | null>(null);
 
+  // Motores com runtime conversacional (candidatos a motor do Secretário)
+  const [motoresConversa, setMotoresConversa] = useState<Array<{ id: string; name: string; installed: boolean }>>([]);
+  const [trocandoMotor, setTrocandoMotor] = useState(false);
+
   // Estados de salvamento
   const [salvando, setSalvando] = useState<boolean>(false);
   const [salvoSucesso, setSalvoSucesso] = useState<boolean>(false);
@@ -104,6 +109,18 @@ export const SecretarioSettingsDrawer: FC<SecretarioSettingsDrawerProps> = ({
         if (Array.isArray(data)) {
           setAgentes(data);
         }
+      })
+      .catch(() => {});
+
+    fetch(`${origin}/api/motores`, { headers })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const lista = Array.isArray(data?.motores) ? data.motores : [];
+        setMotoresConversa(
+          lista
+            .filter((m: any) => m?.supportsConversation)
+            .map((m: any) => ({ id: String(m.id), name: String(m.name || m.id), installed: Boolean(m.installed) })),
+        );
       })
       .catch(() => {});
 
@@ -246,6 +263,32 @@ export const SecretarioSettingsDrawer: FC<SecretarioSettingsDrawerProps> = ({
     }
   };
 
+  const trocarMotorConversa = async (engineId: string) => {
+    if (!engineId || engineId === motorInfo?.engineId) return;
+    setTrocandoMotor(true);
+    try {
+      const origin = window.location.origin;
+      const headers = {
+        "Content-Type": "application/json",
+        ...obterAuthHeaders(),
+        ...(workspaceId ? { "x-opencorp-workspace": workspaceId } : {}),
+      };
+      const res = await fetch(`${origin}/settings?workspace=${encodeURIComponent(workspaceId)}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({ chave: "default_conversation_engine", valor: engineId, scope: "workspace" }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const status = await fetch(`${origin}/secretario/status?workspace=${encodeURIComponent(workspaceId)}`, { headers }).then((r) => (r.ok ? r.json() : null));
+      if (status?.motor) setMotorInfo(status.motor);
+      showToast(`Secretário deste workspace agora usa ${engineId}.`, "sucesso");
+    } catch (err) {
+      showToast(`Não foi possível trocar o motor: ${err instanceof Error ? err.message : String(err)}`, "erro");
+    } finally {
+      setTrocandoMotor(false);
+    }
+  };
+
   return (
     <>
       <div
@@ -320,6 +363,31 @@ export const SecretarioSettingsDrawer: FC<SecretarioSettingsDrawerProps> = ({
                 Informe 1 modelo por linha na ordem de prioridade. Em caso de esgotamento de cotas, rate limit ou timeout, o motor rotaciona automaticamente.
               </p>
             </div>
+          </div>
+
+          {/* Escolha do motor conversacional do Secretário (neste workspace) */}
+          <div className="space-y-1.5 pt-1 border-t border-zinc-800/80">
+            <label htmlFor="secretario-motor-conversa" className="font-medium text-zinc-300 block">
+              Motor de conversa do Secretário
+            </label>
+            <select
+              id="secretario-motor-conversa"
+              data-testid="secretario-motor-conversa"
+              disabled={trocandoMotor || motoresConversa.length === 0}
+              value={motorInfo?.engineId ?? ""}
+              onChange={(e) => void trocarMotorConversa(e.target.value)}
+              className="w-full bg-zinc-900 border border-zinc-700/80 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-emerald-500/80 cursor-pointer disabled:opacity-60"
+            >
+              {!motorInfo && <option value="">Carregando…</option>}
+              {motoresConversa.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}{m.installed ? "" : " (não instalado)"}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-zinc-500">
+              Vale para este workspace. Motor indisponível gera erro explícito — o Secretário não troca de motor sozinho.
+            </p>
           </div>
 
           {/* Motor Conversacional Efetivo */}
