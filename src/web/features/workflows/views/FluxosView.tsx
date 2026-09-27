@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, type FC } from "react
 import { useSearchParams } from "react-router-dom";
 import { useOpenCorp } from "../../../providers/OpenCorpProvider.js";
 import { showToast } from "../../../shared/ui/Toast.js";
+import { montarTemplateFluxo } from "../templates.js";
 import type { FluxoCompleto, NoGrafo, FlowRunLog } from "../types.js";
 import {
   GraphCanvas,
@@ -488,55 +489,7 @@ export const FluxosView: FC = () => {
   }) => {
     setSalvandoNovo(true);
     try {
-      let nos: NoGrafo[] = [];
-      let arestas: any[] = [];
-
-      if (template === "pipeline") {
-        nos = [
-          { id: "gatilho-manual", tipo: "manual", pos: { x: 80, y: 140 } },
-          {
-            id: "agente-executor",
-            tipo: "agente",
-            config: { modelo: "nemotron-3-super-120b", ordem: "Executar instrução" },
-            pos: { x: 380, y: 140 },
-          },
-          { id: "saida", tipo: "saida", pos: { x: 680, y: 140 } },
-        ];
-        arestas = [
-          { de: "gatilho-manual", para: "agente-executor" },
-          { de: "agente-executor", para: "saida" },
-        ];
-      } else if (template === "fanout") {
-        nos = [
-          { id: "gatilho-manual", tipo: "manual", pos: { x: 80, y: 140 } },
-          { id: "equipe-fanout", tipo: "fanout", pos: { x: 380, y: 140 } },
-          { id: "saida", tipo: "saida", pos: { x: 680, y: 140 } },
-        ];
-        arestas = [
-          { de: "gatilho-manual", para: "equipe-fanout" },
-          { de: "equipe-fanout", para: "saida" },
-        ];
-      } else if (template === "review") {
-        nos = [
-          { id: "gatilho-manual", tipo: "manual", pos: { x: 80, y: 140 } },
-          { id: "equipe-review", tipo: "review", pos: { x: 380, y: 140 } },
-          { id: "saida", tipo: "saida", pos: { x: 680, y: 140 } },
-        ];
-        arestas = [
-          { de: "gatilho-manual", para: "equipe-review" },
-          { de: "equipe-review", para: "saida" },
-        ];
-      } else {
-        nos = [
-          { id: "gatilho-manual", tipo: "manual", pos: { x: 80, y: 140 } },
-          { id: "equipe-debate", tipo: "debate", pos: { x: 380, y: 140 } },
-          { id: "saida", tipo: "saida", pos: { x: 680, y: 140 } },
-        ];
-        arestas = [
-          { de: "gatilho-manual", para: "equipe-debate" },
-          { de: "equipe-debate", para: "saida" },
-        ];
-      }
+      const { nos, arestas } = montarTemplateFluxo(template);
 
       const novo = await client.flows.criar(
         {
