@@ -92,6 +92,40 @@ describe("nós fundidos — fanout (F9-T01/T02)", () => {
   });
 });
 
+describe("nós fundidos — fanout sem placeholder na síntese", () => {
+  it("anexa as saídas dos paralelos quando a ordem da síntese não usa {{entrada}}/{{anterior}}", async () => {
+    const { ws } = await wsNovo();
+    const flow = {
+      id: "fanout-sem-placeholder",
+      nome: "Fanout sem placeholder",
+      nos: [
+        { id: "gatilho", tipo: "manual", config: {} },
+        {
+          id: "disparar",
+          tipo: "fanout",
+          config: {
+            paralelos: [
+              { agente: "a", ordem: "A {{entrada}}" },
+              { agente: "b", ordem: "B {{entrada}}" },
+            ],
+            sintese: { agente: "sint", ordem: "concatene as duas saídas" },
+          },
+        },
+      ],
+      arestas: [{ de: "gatilho", para: "disparar" }],
+    };
+    const { store, chamadas } = sessaoFalsa((op) => ok(`e-${op.agente}`, op.agente === "sint" ? "OK" : `SAIDA-${op.agente}`));
+    await store.salvar(ws, flow as never);
+    const r = await store.executar(ws, "fanout-sem-placeholder", { entrada: "x" });
+
+    expect(r.status).toBe("concluido");
+    const ordemSint = chamadas.find((c) => c.agente === "sint")!.ordem!;
+    expect(ordemSint.startsWith("concatene as duas saídas")).toBe(true);
+    expect(ordemSint).toContain("SAIDA-a");
+    expect(ordemSint).toContain("SAIDA-b");
+  });
+});
+
 describe("nós fundidos — review (F9-T01/T02)", () => {
   it("executor recebe {{ajustes}} e revisor recebe saída completa até APROVADO", async () => {
     const { ws } = await wsNovo();

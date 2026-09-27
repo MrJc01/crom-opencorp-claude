@@ -1318,9 +1318,14 @@ export class FlowStore {
               // F9-T02: saída COMPLETA (não truncada) dos paralelos chega à síntese.
               // {{entrada}} preserva o contrato antigo (= saída agregada); {{anterior}}
               // é a mesma saída agregada (paridade com o orquestrador legado).
-              contexto = config.sintese
-                ? await rodarPasso(config.sintese.agente, interpolarPasso(config.sintese.ordem, { entrada: bruto, anterior: bruto }), "/sintese")
-                : bruto;
+              // Sem {{entrada}}/{{anterior}} na ordem, a síntese ficaria sem as saídas
+              // dos paralelos; nesse caso elas são anexadas ao fim da ordem.
+              const ordemSintese = config.sintese
+                ? /\{\{\s*(entrada|anterior)\s*\}\}/.test(config.sintese.ordem)
+                  ? interpolarPasso(config.sintese.ordem, { entrada: bruto, anterior: bruto })
+                  : `${config.sintese.ordem}\n\nSaídas dos passos paralelos:\n\n${bruto}`
+                : "";
+              contexto = config.sintese ? await rodarPasso(config.sintese.agente, ordemSintese, "/sintese") : bruto;
               eventBus.emit("flow-no", { flow: flowId, no: no.id, status: "ok" });
               await marcarNo(no.id, "ok");
             } catch (erro) {
