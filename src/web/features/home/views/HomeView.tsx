@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, type FC } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useOpenCorp } from "../../../providers/OpenCorpProvider.js";
 import { HomeZeroState } from "../components/HomeZeroState.js";
+import { PendingApprovalsCard } from "../components/PendingApprovalsCard.js";
 import type { WorkspaceResumo } from "@opencorp/sdk";
 import {
   LayoutDashboard,
@@ -191,6 +192,9 @@ export const HomeView: FC = () => {
           <span className="text-[11px] text-zinc-500">Supervisão pontual ativa</span>
         </div>
       </div>
+
+      {/* Aprovações humanas (HITL) pendentes */}
+      <PendingApprovalsCard />
 
       {/* Atalhos Rápidos Operacionais */}
       <div className="space-y-3">
