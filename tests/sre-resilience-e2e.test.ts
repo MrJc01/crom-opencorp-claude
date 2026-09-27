@@ -218,7 +218,7 @@ describe("SRE Resilience & Hardening E2E", () => {
         extras: {
           status: "executando",
           modelo: "opencode-go/glm-5.3-flash",
-          pid: process.pid, // pid vivo do próprio runner de teste para simular processo vivo!
+          pid: 424242, // process.kill é mockado abaixo: simula processo externo vivo
           fim: null,
           exit_code: null,
           duracao_ms: null,
@@ -239,7 +239,7 @@ describe("SRE Resilience & Hardening E2E", () => {
       const metaFinal = await (sessoes as any).registros.lerMeta(ws.path, "execucoes", "exec-antiga-zumbi");
       expect(metaFinal.extras.status).toBe("falhou");
       expect(metaFinal.extras.duracao_ms).toBeGreaterThanOrEqual(20 * 60_000);
-      expect(killSpy).toHaveBeenCalledWith(process.pid, "SIGTERM");
+      expect(killSpy).toHaveBeenCalledWith(424242, "SIGTERM");
 
       killSpy.mockRestore();
     });

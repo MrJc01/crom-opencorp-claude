@@ -2,7 +2,7 @@
 
 Lista do que ficou para depois da conclusão das Etapas 0–15 do
 [plano de execução](PLANO-EXECUCAO-ARQUITETURA-MULTIMOTORES.md) (seção 13 do plano tem o histórico completo).
-Estado de referência: branch `claude/brave-tesla-q1dcyv`, commit `82a8739` (26/09/2026).
+Estado de referência: `main` (27/09/2026). **Checklist consolidado para retomar o trabalho: [CHECKLIST-HANDOFF.md](CHECKLIST-HANDOFF.md).**
 
 Legenda de prioridade: 🔴 alta · 🟡 média · 🟢 baixa.
 
@@ -25,17 +25,17 @@ A lógica foi validada com fakes fiéis aos protocolos reais; falta confirmar co
 
 | ID | Prioridade | Pendência | Detalhe | Pronto quando |
 |---|---|---|---|---|
-| P-12 | 🔴 | **15 testes Playwright falhando** | `config.spec` ×5, `agentes-catalogo.spec` ×4, `chat.spec` ×2, `engine-accounts-limits.spec` ×2, `engine-live-tokens-full.spec` ×2. As mesmas falhas ocorrem na base `fcc5f2d` (não são regressões da migração), mas bloqueiam o item "E2E verdes" da definição de pronto | `npm run test:e2e` 100% verde |
-| P-13 | 🟢 | Sem suíte de **acessibilidade** para as seleções/erros novos (seletor de motor, banner de migração, chips de saúde, selos do catálogo) | Sugestão: `@axe-core/playwright` nas telas de Configurações › Motores e no `ModelPicker` | Zero violações sérias/críticas nessas telas |
+| P-12 | ✅ | ~~15 testes Playwright falhando~~ | Resolvido: specs reescritos para a UI React; funcionalidades removidas marcadas `test.fixme` (lista no CHECKLIST-HANDOFF §2) | — |
+| P-13 | ✅ | ~~Sem suíte de acessibilidade~~ | Resolvido: `tests/e2e/a11y-motores.spec.ts` (axe-core) | — |
 
 ## 3. Comportamento e produto
 
 | ID | Prioridade | Pendência | Detalhe | Pronto quando |
 |---|---|---|---|---|
-| P-03 | 🟡 | Desconectar o motor padrão ainda troca para **`opencode` fixo** | Já grava em `settings.run_engine`, só troca se o motor era o padrão e informa na resposta (UI confirma). Falta deixar o usuário escolher o substituto ou deixar o padrão vazio com erro explícito na próxima execução (D1). Rota: `POST /api/motores/:id/desconectar` em `src/server/routes/config.ts` | Nenhum motor é escolhido implicitamente |
-| P-02 | 🟢 | Sessões do adaptador **Codex** ficam só em memória | Após reinício a conversa é retomada via `thread/resume`, mas título/modelo da sessão se perdem | Metadados persistidos (ex.: junto do `ProcessRegistry` ou do workspace) |
+| P-03 | ✅ | ~~Desconectar troca para `opencode` fixo~~ | Resolvido: exige `novoPadrao` (409 com `candidatos`); UI pergunta o substituto | — |
+| P-02 | ✅ | ~~Sessões Codex só em memória~~ | Resolvido: `~/.opencorp/codex-sessions.json` | — |
 | P-06 | 🟢 | **Instalação gerenciada** só tem artefatos aprovados para Codex e OpenCode | Demais motores dependem de instalação manual / `PATH` / `binary_path` | Entradas adicionadas apenas com SHA-256 publicado pelo fornecedor |
-| — | 🟢 | `opencorp doctor` ainda verifica "opencode no PATH" | Deveria verificar os motores efetivamente configurados (`run_engine.default`, `default_conversation_engine`, overrides de workspace) | `doctor` não exige OpenCode quando ele não está configurado |
+| — | ✅ | ~~`doctor` verifica "opencode no PATH"~~ | Resolvido: `checkConfiguredEngines` | — |
 
 ## 4. Depreciação do formato legado (D6)
 

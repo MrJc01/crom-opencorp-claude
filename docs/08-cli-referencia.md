@@ -6,7 +6,7 @@ Binário: `opencorp` (em `bin/opencorp.mjs`). Convenções: `--workspace <id>` s
 
 ```bash
 opencorp init [--dir .]        # prepara repo: estrutura, settings global, template default
-opencorp doctor                # diagnóstico: node, opencode no PATH, configs válidas, segredos fora dos ws
+opencorp doctor                # diagnóstico: node, motores configurados (instalados/autenticados), configs válidas, segredos fora dos ws
 opencorp --version
 opencorp <cmd> --help
 ```

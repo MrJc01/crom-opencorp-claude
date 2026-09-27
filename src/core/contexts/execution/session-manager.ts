@@ -1929,10 +1929,9 @@ export class SessionManager {
 
     if (viva) {
       if (duracao < MAX_RUN_TIME_MS) return;
-      // Execução dentro do próprio processo (fluxo): nunca matar o OpenCorp.
-      if (!pidSinalizavel(pid)) return;
-      // Processo vivo há mais de 15 minutos sem finalizar — trava/hang detectado pelo reaper
-      try {
+      // Processo vivo há mais de 15 minutos sem finalizar — trava/hang detectado pelo reaper.
+      // Execução dentro do próprio processo (fluxo): marca como falha, mas nunca sinaliza o OpenCorp.
+      if (pidSinalizavel(pid)) try {
         process.kill(pid, "SIGTERM");
         setTimeout(() => {
           try {
