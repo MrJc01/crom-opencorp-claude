@@ -38,7 +38,8 @@ test.describe("Criação de workspace (empresa)", () => {
   });
 
   test("cria workspace com template → POST 201 e ativa no seletor", async ({ page }) => {
-    await page.locator('button[title="Novo Workspace ou Conectar Pasta"]').click();
+    await page.getByTitle("Trocar workspace ou criar novo projeto").click();
+    await page.getByRole("button", { name: "+ Novo Workspace" }).click();
     await esperarElementoTexto(page, "Criar ou Conectar Workspace");
 
     await page.locator('input[placeholder="ex: meu-projeto, portal-vendas, assistente-docs"]').fill(WS_ID);
@@ -56,11 +57,12 @@ test.describe("Criação de workspace (empresa)", () => {
       .poll(() => page.evaluate(() => localStorage.getItem("oc-ws")), { timeout: 20000 })
       .toBe(WS_ID);
     // seletor do topbar reflete o novo ativo
-    await expect(page.locator("#select-workspace-topbar")).toHaveValue(WS_ID, { timeout: 10000 });
+    await expect(page.getByTitle("Trocar workspace ou criar novo projeto")).toContainText(WS_ID, { timeout: 10000 });
   });
 
   test("id vazio bloqueia criação (toast de erro, modal continua aberto)", async ({ page }) => {
-    await page.locator('button[title="Novo Workspace ou Conectar Pasta"]').click();
+    await page.getByTitle("Trocar workspace ou criar novo projeto").click();
+    await page.getByRole("button", { name: "+ Novo Workspace" }).click();
     await esperarElementoTexto(page, "Criar ou Conectar Workspace");
 
     await page.getByRole("button", { name: "Criar Workspace" }).click();

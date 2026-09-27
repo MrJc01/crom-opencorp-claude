@@ -216,6 +216,7 @@ export const TeamManageModal: FC<TeamManageModalProps> = ({
               <button
                 type="button"
                 onClick={() => setPadrao("pipeline")}
+                aria-pressed={padrao === "pipeline"}
                 className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5 ${
                   padrao === "pipeline"
                     ? "bg-blue-950/50 border-blue-600 text-blue-300 font-semibold"
@@ -229,6 +230,7 @@ export const TeamManageModal: FC<TeamManageModalProps> = ({
               <button
                 type="button"
                 onClick={() => setPadrao("fanout")}
+                aria-pressed={padrao === "fanout"}
                 className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5 ${
                   padrao === "fanout"
                     ? "bg-purple-950/50 border-purple-600 text-purple-300 font-semibold"
@@ -242,6 +244,7 @@ export const TeamManageModal: FC<TeamManageModalProps> = ({
               <button
                 type="button"
                 onClick={() => setPadrao("review")}
+                aria-pressed={padrao === "review"}
                 className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5 ${
                   padrao === "review"
                     ? "bg-amber-950/50 border-amber-600 text-amber-300 font-semibold"
@@ -255,6 +258,7 @@ export const TeamManageModal: FC<TeamManageModalProps> = ({
               <button
                 type="button"
                 onClick={() => setPadrao("debate")}
+                aria-pressed={padrao === "debate"}
                 className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5 ${
                   padrao === "debate"
                     ? "bg-emerald-950/50 border-emerald-600 text-emerald-300 font-semibold"

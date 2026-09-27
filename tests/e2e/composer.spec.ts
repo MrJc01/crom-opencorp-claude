@@ -34,7 +34,9 @@ test.describe("Composer — autocomplete / @ !", () => {
     await expect(page.getByText("Mencionar Agente (@)").first()).toBeVisible({ timeout: 10000 });
 
     await page.getByText("@executor-padrao", { exact: true }).first().click();
-    await expect(page.locator("#chat-input")).toHaveValue(/@executor-padrao /, { timeout: 5000 });
+    // A menção vira o destinatário da mensagem (chip), sem texto solto no campo.
+    await expect(page.getByText("para @executor-padrao").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("#chat-input")).not.toHaveValue(/@/);
   });
 
   test("(c) ! abre comandos de terminal", async ({ page }) => {

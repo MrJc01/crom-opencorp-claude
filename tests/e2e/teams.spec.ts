@@ -15,11 +15,11 @@ test.describe("Teams / Grupos de Agentes", () => {
       { timeout: 20000 },
     );
     await page.goto("/agentes");
-    await esperarElementoTexto(page, "Grupos de Agentes / Teams");
+    await esperarElementoTexto(page, "Catálogo de Agentes & Equipes Multi-Agente");
     const res = await respTeams;
     expect(res.status()).toBe(200);
-    await page.getByRole("button", { name: /Grupos de Agentes/ }).click();
-    await expect(page.getByText("team:e2e-pipe").first()).toBeVisible({ timeout: 15000 });
+    await page.getByRole("button", { name: /^Equipes \d+/ }).click();
+    await expect(page.getByText("ID: e2e-pipe").first()).toBeVisible({ timeout: 15000 });
   });
 
   test("POST /flows/migrate-teams converte team legado em fluxo", async ({ page }) => {
@@ -36,13 +36,15 @@ test.describe("Teams / Grupos de Agentes", () => {
     expect(flows.some((f: any) => f.id === "e2e-pipe" || f.nome?.includes("e2e-pipe") || f.nome?.includes("Pipe E2E"))).toBe(true);
   });
 
-  test("modal Novo Grupo oferece padrões Pipeline/Fanout/Debate", async ({ page }) => {
+  test("modal Nova Equipe oferece padrões Pipeline/Fan-out/Review/Debate", async ({ page }) => {
     await page.goto("/agentes");
-    await esperarElementoTexto(page, "Grupos de Agentes / Teams");
-    await page.getByRole("button", { name: "Novo Grupo" }).click();
-    await esperarElementoTexto(page, "Criar Novo Grupo Multi-Agente");
-    await expect(page.getByText("Pipeline (Sequencial)").first()).toBeVisible();
-    await expect(page.getByText("Simultâneo (Fanout)").first()).toBeVisible();
-    await expect(page.getByText("Debate Multi-Agente").first()).toBeVisible();
+    await esperarElementoTexto(page, "Catálogo de Agentes & Equipes Multi-Agente");
+    await page.getByRole("button", { name: "Nova Equipe" }).click();
+    await esperarElementoTexto(page, "Criar Nova Equipe Multi-Agente");
+    for (const padrao of ["Pipeline", "Fan-out", "Review", "Debate"]) {
+      const botao = page.getByRole("button", { name: new RegExp(padrao) }).first();
+      await botao.click();
+      await expect(botao).toHaveAttribute("aria-pressed", "true");
+    }
   });
 });

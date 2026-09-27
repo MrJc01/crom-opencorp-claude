@@ -21,9 +21,9 @@ test.describe("Web Notificações: filtros, excluir e console limpo", () => {
   test("filtro Não lidas e Todas via URL sem erro", async ({ page }) => {
     const watcher = new ConsoleWatcher(page);
     watcher.start();
-    await page.getByRole("button", { name: /Não lidas/ }).click();
+    await page.locator("#not-filtro-nao-lidas").click();
     await expect(page.locator(".not-card")).toHaveCount(1);
-    await page.getByRole("button", { name: /^Todas/ }).click();
+    await page.locator("#not-filtro-todas").click();
     await expect(page.locator(".not-card")).toHaveCount(1);
     watcher.stop();
     expect(watcher.limpos()).toEqual([]);
@@ -31,7 +31,7 @@ test.describe("Web Notificações: filtros, excluir e console limpo", () => {
 
   test("excluir todas com confirm limpa a lista", async ({ page }) => {
     page.once("dialog", (d) => d.accept());
-    await page.locator('button[title="Limpar todas as notificações"]').click();
-    await expect(page.getByText("Nenhuma notificação registrada neste workspace.").first()).toBeVisible({ timeout: 10000 });
+    await page.getByTitle("Limpar histórico").click();
+    await expect(page.getByText("Nenhuma notificação registrada no momento.").first()).toBeVisible({ timeout: 10000 });
   });
 });
