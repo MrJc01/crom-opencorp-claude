@@ -13,18 +13,18 @@ test.describe("Reuniões e Fluxos", () => {
     await page.goto("/reunioes");
     // Com ou sem sala ativa (outros testes podem ter criado salas), o header
     // e a ação de convocar sempre existem
-    await expect(page.locator('button[title="Convocar nova reunião"]')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("button", { name: "Nova Reunião" }).first()).toBeVisible({ timeout: 15000 });
 
-    await page.locator('button[title="Convocar nova reunião"]').click();
-    await esperarElementoTexto(page, "Convocar Nova Reunião Multi-Agente");
-    await expect(page.locator('textarea[placeholder="Ex: Alinhar lançamento da nova home e definir responsabilidade de cada agente..."]')).toBeVisible();
-    await expect(page.getByRole("button", { name: "Abrir Sala de Chat" })).toBeVisible();
+    await page.getByRole("button", { name: "Nova Reunião" }).first().click();
+    await esperarElementoTexto(page, "Convocar Nova Reunião Colegiada");
+    await expect(page.getByPlaceholder(/Definir linha editorial/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Iniciar Deliberação" })).toBeVisible();
   });
 
-  test("Fluxos: lista com busca e botão Adicionar Fluxo", async ({ page }) => {
+  test("Fluxos: lista com busca e botão Novo Fluxo", async ({ page }) => {
     await page.goto("/fluxos");
-    await esperarElementoTexto(page, "Fluxos");
-    await expect(page.locator('input[placeholder="Pesquisar fluxos..."]')).toBeVisible();
-    await expect(page.getByRole("button", { name: "Adicionar Fluxo" })).toBeVisible();
+    await esperarElementoTexto(page, "Studio de Fluxos Declarativos (DAG)");
+    await expect(page.getByPlaceholder("Buscar por nome, id ou descrição...")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Novo Fluxo", exact: true })).toBeVisible();
   });
 });

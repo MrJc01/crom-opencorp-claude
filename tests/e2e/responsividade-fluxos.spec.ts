@@ -18,29 +18,28 @@ test.describe("Responsividade do Studio de Fluxos", () => {
       },
     });
     await page.goto("/fluxos");
-    await esperarElementoTexto(page, "Fluxos");
+    await esperarElementoTexto(page, "Studio de Fluxos Declarativos (DAG)");
   });
 
   async function abrirCanvas(page: import("@playwright/test").Page) {
-    await page.locator('input[placeholder="Pesquisar fluxos..."]').fill("flow-resp-test");
-    const btnAbrir = page.locator('button:has-text("Abrir Canvas")').first();
+    await page.getByPlaceholder("Buscar por nome, id ou descrição...").fill("flow-resp-test");
+    const btnAbrir = page.getByTestId("abrir-editor-flow-resp-test");
     await expect(btnAbrir).toBeVisible({ timeout: 15000 });
     await btnAbrir.click();
-    await expect(page.locator('[data-node-id="inicio"]').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.react-flow__node[data-id="inicio"]').first()).toBeVisible({ timeout: 15000 });
   }
 
   test("Desktop (1280x800) — toolbar, canvas e NDV", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await abrirCanvas(page);
 
-    await expect(page.locator('button[title="Foco no Chat do Secretário"]')).toBeVisible();
-    await expect(page.locator('button[title="Chat e Canvas Lado a Lado"]')).toBeVisible();
-    await expect(page.locator('button[title="Foco no Canvas de Nós"]')).toBeVisible();
-    await expect(page.getByRole("button", { name: /Executar/ })).toBeVisible();
+    // A visão dividida Chat/Canvas foi removida na UI React (ver pendências).
+    await expect(page.getByRole("button", { name: "Executar", exact: true })).toBeVisible();
+    await expect(page.getByTitle("Abrir paleta de nós")).toBeVisible();
     await page.screenshot({ path: "test-results/resp-desktop-1280-canvas.png" });
 
-    await page.locator('[data-node-id="inicio"]').first().click();
-    const ndv = page.locator(".ndv-panel");
+    await page.locator('.react-flow__node[data-id="inicio"]').first().click();
+    const ndv = page.getByTestId("ndv-panel");
     await expect(ndv).toBeVisible();
     await page.screenshot({ path: "test-results/resp-desktop-1280-ndv.png" });
   });
@@ -49,11 +48,11 @@ test.describe("Responsividade do Studio de Fluxos", () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await abrirCanvas(page);
 
-    await expect(page.locator('button[title="Foco no Canvas de Nós"]')).toBeVisible();
+    await expect(page.getByTitle("Abrir paleta de nós")).toBeVisible();
     await page.screenshot({ path: "test-results/resp-mobile-375-canvas.png" });
 
-    await page.locator('[data-node-id="inicio"]').first().click();
-    const ndv = page.locator(".ndv-panel");
+    await page.locator('.react-flow__node[data-id="inicio"]').first().click();
+    const ndv = page.getByTestId("ndv-panel");
     await expect(ndv).toBeVisible();
     const box = await ndv.boundingBox();
     expect(box).not.toBeNull();

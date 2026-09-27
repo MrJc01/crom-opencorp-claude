@@ -65,9 +65,10 @@ test.describe("Chat do Secretário", () => {
   test("gatilho @ abre menções e cria pílula de destinatário", async ({ page }) => {
     await page.locator('button[title="Mencionar agente, arquivo ou task (@)"]').click();
     await expect(page.locator("[data-autocomplete-popover]")).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText("@agente:secretario-exec").first()).toBeVisible();
-
-    await page.getByText("@agente:secretario-exec").first().click();
+    // As menções vêm dos agentes ativos do workspace
+    const opcao = page.locator("[data-autocomplete-popover] button", { hasText: "@secretario-exec" }).first();
+    await expect(opcao).toBeVisible();
+    await opcao.click();
     await expect(page.getByText("para @secretario-exec")).toBeVisible();
 
     // Botão de remover destinatário limpa a pílula

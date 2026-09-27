@@ -24,26 +24,17 @@ test.describe("Fluxos — Canvas n8n-style, Catálogo de Nós e Split-View", () 
     await page.goto("/fluxos");
 
     // 2. Abre o canvas clicando no card do fluxo recém-criado
-    const btnAbrir = page.locator('button:has-text("Studio")').first();
+    const btnAbrir = page.getByTestId("abrir-editor-flow-hle-e2e");
     await expect(btnAbrir).toBeVisible();
     await btnAbrir.click();
 
-    // 3. Valida botões de alternância de visualização Split-View (Chat / Lado a Lado / Canvas)
-    const btnChat = page.locator('button:has-text("Chat")');
-    const btnSplit = page.locator('button:has-text("Lado a Lado")');
-    const btnCanvas = page.locator('button:has-text("Canvas")');
-
-    await expect(btnChat).toBeVisible();
-    await expect(btnSplit).toBeVisible();
-    await expect(btnCanvas).toBeVisible();
-
-    // 4. Abre o modal de adicionar nós
-    const btnAddNode = page.locator('button:has-text("Adicionar Node")').first();
+    // 3. Abre a paleta de nós (a visão dividida Chat/Canvas foi removida na UI React)
+    const btnAddNode = page.getByTitle("Abrir paleta de nós");
     await expect(btnAddNode).toBeVisible();
     await btnAddNode.click();
 
     // 5. Valida que os novos nós de Loop, Cron e Componente estão no catálogo visual
-    await expect(page.locator('text="Loop / HLE"')).toBeVisible();
+    await expect(page.locator('text="Loop / Repetição"')).toBeVisible();
     await expect(page.locator('text="Gatilho Cron / Agenda"')).toBeVisible();
     await expect(page.locator('text="Componente Modular"')).toBeVisible();
   });

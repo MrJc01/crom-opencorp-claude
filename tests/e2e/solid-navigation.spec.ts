@@ -14,32 +14,32 @@ test.describe("Navegação SolidJS e Transição entre Views", () => {
     await expect(page.locator("h1, h2").first()).toBeVisible();
 
     // Clica em Tasks
-    await page.locator('aside a[href="/tasks"]').click();
+    await page.locator("aside").getByRole("link", { name: "Tarefas & Kanban", exact: true }).click();
     await expect(page).toHaveURL(/\/tasks/);
-    await expect(page.locator("h1:has-text('Quadro Kanban')")).toBeVisible();
+    await expect(page.locator("text=Quadro Kanban").first()).toBeVisible();
 
     // Clica em Agentes
-    await page.locator('aside a[href="/agentes"]').click();
+    await page.locator("aside").getByRole("link", { name: "Agentes & Teams", exact: true }).click();
     await expect(page).toHaveURL(/\/agentes/);
     await expect(page.locator("h1:has-text('Agentes')")).toBeVisible();
 
     // Clica em Apps
-    await page.locator('aside a[href="/apps"]').click();
+    await page.locator("aside").getByRole("link", { name: "Apps & MCPs", exact: true }).click();
     await expect(page).toHaveURL(/\/apps/);
     await expect(page.locator("h1:has-text('Mini-Apps')")).toBeVisible();
 
     // Clica em Segredos
-    await page.locator('aside a[href="/secrets"]').click();
-    await expect(page).toHaveURL(/\/secrets/);
-    await expect(page.locator("h1:has-text('Segredos & Credenciais')")).toBeVisible();
+    await page.locator("aside").getByRole("link", { name: "Segredos & Chaves", exact: true }).click();
+    await expect(page).toHaveURL(/\/config\?tab=chaves/);
+    await expect(page.locator("text=Cofre de Segredos & Credenciais").first()).toBeVisible();
 
     // Clica em Documentação
-    await page.locator('aside a[href="/docs"]').click();
+    await page.locator("aside").getByRole("link", { name: "Documentação", exact: true }).click();
     await expect(page).toHaveURL(/\/docs/);
     await expect(page.locator("h2:has-text('Documentação')")).toBeVisible();
 
     // Clica em Configurações
-    await page.locator('aside a[href="/config"]').click();
+    await page.locator("aside").getByRole("link", { name: "Configurações", exact: true }).click();
     await expect(page).toHaveURL(/\/config/);
     await expect(page.locator("h1:has-text('Configurações')")).toBeVisible();
   });

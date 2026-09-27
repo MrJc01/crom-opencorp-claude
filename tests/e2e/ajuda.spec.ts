@@ -17,12 +17,13 @@ test.describe("Ajuda contextual e Docs", () => {
 
   test("catálogo de nós do Studio descreve cada tipo (ajuda inline)", async ({ page }) => {
     await page.goto("/fluxos");
-    await esperarElementoTexto(page, "Fluxos");
-    await page.getByRole("button", { name: "Adicionar Fluxo" }).click();
-    await esperarElementoTexto(page, "Criar Novo Fluxo");
-    await esperarElementoTexto(page, "Template Inicial");
-    const opt = page.locator('option[value="pipeline"]');
-    await expect(opt).toHaveText(/Pipeline Sequencial/);
+    await esperarElementoTexto(page, "Studio de Fluxos Declarativos (DAG)");
+    await page.getByRole("button", { name: "Novo Fluxo", exact: true }).click();
+    await esperarElementoTexto(page, "Criar Novo Fluxo DAG");
+    await esperarElementoTexto(page, "Template Inicial de Nós");
+    // Cada modelo traz uma descrição curta do que monta
+    await esperarElementoTexto(page, "Trigger ➔ Agente ➔ Saída");
+    await esperarElementoTexto(page, "Múltiplos agentes paralelos");
   });
 
   test("botões de ícone têm tooltip de ajuda (title)", async ({ page }) => {

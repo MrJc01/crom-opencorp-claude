@@ -18,11 +18,12 @@ test.describe("Reuniões (sala + histórico + agendamento)", () => {
   test("(a) Convocar pela UI abre a sala; POST /meetings responde 202 com id", async ({ page }) => {
     const pauta = `Pauta v2 e2e-${sufixo}`;
     await page.goto("/reunioes");
-    await page.locator('button[title="Convocar nova reunião"]').click();
-    await page.locator('textarea[placeholder="Ex: Alinhar lançamento da nova home e definir responsabilidade de cada agente..."]').fill(pauta);
-    await page.getByRole("button", { name: "Abrir Sala de Chat" }).click();
+    await page.getByRole("button", { name: "Nova Reunião" }).first().click();
+    await page.getByPlaceholder(/Definir linha editorial/).fill(pauta);
+    await page.locator("button[aria-pressed]", { hasText: /@/ }).first().click();
+    await page.getByRole("button", { name: "Iniciar Deliberação" }).click();
 
-    await page.waitForURL("**/reunioes?reuniao=*", { timeout: 15000 });
+    await page.waitForURL(/reuniao=/, { timeout: 15000 });
     await expect(page.getByText(pauta).first()).toBeVisible({ timeout: 15000 });
 
     const resp = await api(page).post("/meetings?workspace=e2e-corp", {
@@ -65,11 +66,10 @@ test.describe("Reuniões (sala + histórico + agendamento)", () => {
     expect(salas.some((s: any) => s.id === salaId)).toBe(true);
 
     await page.goto("/reunioes");
-    await page.getByRole("button", { name: /Reuniões \(\d+\)/ }).click();
-    await esperarElementoTexto(page, "Histórico de Reuniões da Empresa");
+    await expect(page.getByRole("button", { name: /Histórico \(\d+\)/ })).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("pauta da sala viva e2e").first()).toBeVisible({ timeout: 10000 });
     await page.getByText("pauta da sala viva e2e").first().click();
-    await page.waitForURL(`**/reunioes?reuniao=${salaId}`, { timeout: 10000 });
+    await page.waitForURL(new RegExp(`reuniao=${salaId}`), { timeout: 10000 });
   });
 
   test("(c) Agendar reunião = fluxo cron + nó reunião; aparece na agenda e excluir remove", async ({ page }) => {
