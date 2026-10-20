@@ -1,0 +1,52 @@
+{
+  "id": "compliance-legal",
+  "nome": "Auditoria & Governança Jurídica",
+  "versao": "1.0.0",
+  "descricao": "Validação determinística de termos de uso, políticas de privacidade e auditoria contínua de modelos e licenças.",
+  "categoria": "Governança & Legal",
+  "autor": "OpenCorp Core",
+  "icone": "Scale",
+  "destaque": false,
+  "requisitos": {
+    "engines": [
+      "openrouter"
+    ]
+  },
+  "conteudo": {
+    "agentes": [
+      {
+        "id": "auditor-compliance",
+        "role": "Auditor de Políticas e LGPD",
+        "skills": [
+          "model-governance"
+        ]
+      },
+      {
+        "id": "analista-politicas",
+        "role": "Revisor de Termos e Licenças",
+        "skills": [
+          "workspace-auditor"
+        ]
+      }
+    ],
+    "fluxos": [
+      {
+        "id": "compliance-revisao-semanal",
+        "nome": "Revisão Semanal de Conformidade",
+        "trigger": "cron"
+      }
+    ],
+    "skills": [
+      {
+        "id": "model-governance",
+        "nome": "model-governance",
+        "description": "Diretrizes de xB e segurança"
+      },
+      {
+        "id": "workspace-auditor",
+        "nome": "workspace-auditor",
+        "description": "Checklists de auditoria"
+      }
+    ]
+  }
+}

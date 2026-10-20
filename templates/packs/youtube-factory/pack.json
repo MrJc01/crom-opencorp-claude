@@ -1,0 +1,120 @@
+{
+  "id": "youtube-factory",
+  "nome": "YouTube Shorts Factory",
+  "versao": "1.0.0",
+  "descricao": "Esteira autônoma ponta a ponta para garimpo de pautas, redação de roteiros dinâmicos e produção automatizada de vídeos verticais.",
+  "categoria": "Mídia & Criação",
+  "autor": "OpenCorp Core",
+  "icone": "Video",
+  "destaque": true,
+  "requisitos": {
+    "system": [
+      "ffmpeg",
+      "piper-tts"
+    ],
+    "engines": [
+      "openrouter"
+    ]
+  },
+  "conteudo": {
+    "agentes": [
+      {
+        "id": "pautador-youtube",
+        "role": "Pautador de Notícias",
+        "skills": [
+          "web-search"
+        ],
+        "template": {
+          "role": "Pautador de Notícias e Tendências",
+          "category": "pesquisador",
+          "model": "openrouter/nvidia/nemotron-3.5-lightning:free",
+          "tools": [
+            "read",
+            "write",
+            "bash"
+          ],
+          "permissions": "level-2",
+          "descricao": "Garimpa notícias quentes na web, filtra fontes de credibilidade e gera pautas estruturadas para produção."
+        }
+      },
+      {
+        "id": "roteirista-video",
+        "role": "Roteirista de Vídeos Curtos",
+        "skills": [
+          "web-search"
+        ],
+        "template": {
+          "role": "Roteirista de Vídeos Curtos",
+          "category": "redator",
+          "model": "openrouter/nvidia/nemotron-3.5-lightning:free",
+          "tools": [
+            "read",
+            "write",
+            "bash"
+          ],
+          "permissions": "level-2",
+          "descricao": "Cria roteiros persuasivos para shorts/reels com ganchos de alta retenção, quebras de padrão e call to action."
+        }
+      },
+      {
+        "id": "analista-qualidade",
+        "role": "Analista de Qualidade e Compliance",
+        "skills": [],
+        "template": {
+          "role": "Analista de Qualidade e Compliance",
+          "category": "revisor",
+          "model": "openrouter/nvidia/nemotron-3.5-lightning:free",
+          "skills": [
+            "model-governance"
+          ],
+          "tools": [
+            "read",
+            "write"
+          ],
+          "permissions": "level-1",
+          "descricao": "Revisa saídas das esteiras, valida conformidade ética, precisão factual e políticas corporativas."
+        }
+      }
+    ],
+    "fluxos": [
+      {
+        "id": "yt-pautador",
+        "nome": "Garimpo Diário de Pautas",
+        "trigger": "cron"
+      },
+      {
+        "id": "yt-esteira-shorts",
+        "nome": "Renderização e Produção de Shorts",
+        "trigger": "manual",
+        "template": {
+          "nome": "Esteira Autônoma de YouTube Shorts",
+          "descricao": "Garimpa notícias matinais, gera roteiro narrado via Piper TTS e renderiza vídeo vertical com FFMPEG.",
+          "trigger": "cron (08:00 diário)",
+          "nos": 4,
+          "tags": [
+            "Mídia",
+            "Vídeo",
+            "FFMPEG",
+            "TTS"
+          ]
+        }
+      }
+    ],
+    "skills": [
+      {
+        "id": "web-search",
+        "nome": "web-search",
+        "description": "Busca de dados e fontes na web"
+      },
+      {
+        "id": "flow-orchestrator",
+        "nome": "flow-orchestrator",
+        "description": "Padrões de fluxos declarativos"
+      }
+    ],
+    "assets": [
+      "pautas.sample.json",
+      "video-template/"
+    ]
+  }
+}

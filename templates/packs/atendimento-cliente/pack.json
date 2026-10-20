@@ -1,0 +1,52 @@
+{
+  "id": "atendimento-cliente",
+  "nome": "Atendimento ao Cliente",
+  "versao": "1.0.0",
+  "descricao": "Triagem de chamados, respostas assistidas com base de conhecimento e escalonamento para humanos. Exemplo de pack de outro domínio.",
+  "categoria": "Atendimento & Suporte",
+  "autor": "OpenCorp Core",
+  "icone": "Headphones",
+  "destaque": false,
+  "requisitos": {
+    "engines": [
+      "openrouter"
+    ]
+  },
+  "conteudo": {
+    "agentes": [
+      {
+        "id": "triador-chamados",
+        "role": "Triador de Chamados",
+        "skills": [
+          "base-conhecimento"
+        ]
+      },
+      {
+        "id": "redator-respostas",
+        "role": "Redator de Respostas ao Cliente",
+        "skills": [
+          "base-conhecimento"
+        ]
+      }
+    ],
+    "fluxos": [
+      {
+        "id": "atendimento-triagem",
+        "nome": "Triagem de Novos Chamados",
+        "trigger": "webhook"
+      },
+      {
+        "id": "atendimento-relatorio-semanal",
+        "nome": "Relatório Semanal de Satisfação",
+        "trigger": "cron"
+      }
+    ],
+    "skills": [
+      {
+        "id": "base-conhecimento",
+        "nome": "base-conhecimento",
+        "description": "Consulta à base de conhecimento e políticas de atendimento"
+      }
+    ]
+  }
+}

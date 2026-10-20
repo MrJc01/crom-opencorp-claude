@@ -1,0 +1,64 @@
+{
+  "id": "sre-devops",
+  "nome": "SRE & Automação de Infraestrutura",
+  "versao": "1.0.0",
+  "descricao": "Monitoramento proativo de logs do daemon, recuperação automática de processos zumbis e checkpoints Git semânticos.",
+  "categoria": "DevOps & SRE",
+  "autor": "OpenCorp Core",
+  "icone": "ShieldCheck",
+  "destaque": true,
+  "requisitos": {
+    "system": [
+      "git",
+      "lsof"
+    ],
+    "engines": [
+      "openrouter"
+    ]
+  },
+  "conteudo": {
+    "agentes": [
+      {
+        "id": "auditor-infra",
+        "role": "Auditor de Infraestrutura e Processos",
+        "skills": [
+          "workspace-auditor"
+        ]
+      },
+      {
+        "id": "engenheiro-deploy",
+        "role": "Engenheiro de Git e Checkpoints",
+        "skills": [
+          "git-ops"
+        ]
+      }
+    ],
+    "fluxos": [
+      {
+        "id": "sre-healthcheck",
+        "nome": "Diagnóstico Periódico de Saúde",
+        "trigger": "cron"
+      },
+      {
+        "id": "sre-auto-remediation",
+        "nome": "Limpeza de Zumbis e Locks",
+        "trigger": "webhook"
+      }
+    ],
+    "skills": [
+      {
+        "id": "workspace-auditor",
+        "nome": "workspace-auditor",
+        "description": "Rotinas de auditoria de integridade"
+      },
+      {
+        "id": "git-ops",
+        "nome": "git-ops",
+        "description": "Gestão automatizada de Git e branches"
+      }
+    ],
+    "assets": [
+      "healthcheck-rules.json"
+    ]
+  }
+}

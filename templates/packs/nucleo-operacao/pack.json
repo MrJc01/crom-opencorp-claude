@@ -1,0 +1,117 @@
+{
+  "id": "nucleo-operacao",
+  "nome": "Operação Essencial do Workspace",
+  "versao": "1.0.0",
+  "descricao": "Secretário residente, vigilância de saúde com autocura e auditoria semanal de orçamento e modelos. Serve a qualquer tipo de empresa.",
+  "categoria": "Núcleo",
+  "autor": "OpenCorp Core",
+  "icone": "Layers",
+  "destaque": false,
+  "requisitos": {
+    "engines": [
+      "openrouter"
+    ]
+  },
+  "conteudo": {
+    "agentes": [
+      {
+        "id": "secretario-exec",
+        "role": "Secretário Executivo Residente",
+        "skills": [
+          "workspace-auditor",
+          "model-governance",
+          "flow-orchestrator"
+        ],
+        "template": {
+          "role": "Secretário Executivo Residente",
+          "category": "supervisor",
+          "model": "openrouter/google/gemini-2.5-pro",
+          "tools": [
+            "read",
+            "write",
+            "bash",
+            "registry",
+            "doctor"
+          ],
+          "permissions": "level-3",
+          "descricao": "Guardião residente do workspace, coordenação de fluxos, diagnóstico de incidentes e orquestração autônoma."
+        }
+      },
+      {
+        "id": "auditor-sre",
+        "role": "Auditor de Infraestrutura & SRE",
+        "skills": [
+          "workspace-auditor",
+          "git-ops"
+        ],
+        "template": {
+          "role": "Auditor de Infraestrutura & SRE",
+          "category": "operario",
+          "model": "openrouter/nvidia/nemotron-3.5-lightning:free",
+          "tools": [
+            "read",
+            "write",
+            "bash"
+          ],
+          "permissions": "level-3",
+          "descricao": "Monitora integridade do daemon, faz auto-remediação de processos órfãos e grava checkpoints Git semânticos."
+        }
+      }
+    ],
+    "fluxos": [
+      {
+        "id": "sre-watchdog-autocura",
+        "nome": "Watchdog SRE & Autocura de Incidentes",
+        "trigger": "cron",
+        "template": {
+          "descricao": "Verificação periódica dos endpoints de saúde, purge de logs rotativos e autocura via OpenCorp Doctor.",
+          "trigger": "cron (*/10 min)",
+          "nos": 3,
+          "tags": [
+            "DevOps",
+            "SRE",
+            "Doctor",
+            "Resiliência"
+          ]
+        }
+      },
+      {
+        "id": "auditoria-governanca-modelos",
+        "nome": "Auditoria Semanal de Orçamento e Modelos",
+        "trigger": "cron",
+        "template": {
+          "descricao": "Audita custos por token, valida cumprimento dos limites xB e gera relatório semanal para a secretária.",
+          "trigger": "cron (Segunda 09:00)",
+          "nos": 3,
+          "tags": [
+            "Governança",
+            "FinOps",
+            "Tokens"
+          ]
+        }
+      }
+    ],
+    "skills": [
+      {
+        "id": "workspace-auditor",
+        "nome": "workspace-auditor",
+        "description": "Rotinas de auditoria de integridade"
+      },
+      {
+        "id": "model-governance",
+        "nome": "model-governance",
+        "description": "Alocação eficiente de modelos"
+      },
+      {
+        "id": "flow-orchestrator",
+        "nome": "flow-orchestrator",
+        "description": "Padrões de fluxos declarativos"
+      },
+      {
+        "id": "git-ops",
+        "nome": "git-ops",
+        "description": "Gestão automatizada de Git e branches"
+      }
+    ]
+  }
+}

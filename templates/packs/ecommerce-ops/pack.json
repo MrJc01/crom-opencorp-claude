@@ -1,0 +1,60 @@
+{
+  "id": "ecommerce-ops",
+  "nome": "E-Commerce & Operações",
+  "versao": "1.0.0",
+  "descricao": "Controle de estoque, triagem de pedidos pendentes e atendimento automatizado com inteligência artificial.",
+  "categoria": "Operações & Vendas",
+  "autor": "OpenCorp Partner",
+  "icone": "ShoppingBag",
+  "destaque": false,
+  "requisitos": {
+    "engines": [
+      "openrouter"
+    ]
+  },
+  "conteudo": {
+    "agentes": [
+      {
+        "id": "gerente-estoque",
+        "role": "Controlador de Estoque e Catálogo",
+        "skills": [
+          "model-governance"
+        ]
+      },
+      {
+        "id": "analista-pedidos",
+        "role": "Triador de Pedidos e Rastreio",
+        "skills": [
+          "web-search"
+        ]
+      }
+    ],
+    "fluxos": [
+      {
+        "id": "ecommerce-sincronizacao",
+        "nome": "Sincronização Noturna de Catálogo",
+        "trigger": "cron"
+      },
+      {
+        "id": "ecommerce-alertas",
+        "nome": "Alertas de Baixo Estoque",
+        "trigger": "webhook"
+      }
+    ],
+    "skills": [
+      {
+        "id": "model-governance",
+        "nome": "model-governance",
+        "description": "Alocação eficiente de modelos"
+      },
+      {
+        "id": "web-search",
+        "nome": "web-search",
+        "description": "Pesquisa de fornecedores e produtos"
+      }
+    ],
+    "assets": [
+      "catalogo-modelo.json"
+    ]
+  }
+}
