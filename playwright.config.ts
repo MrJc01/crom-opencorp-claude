@@ -31,7 +31,7 @@ export default defineConfig({
     url: "http://127.0.0.1:4399/health",
     reuseExistingServer: !process.env.CI,
     env: {
-      OPENCORP_HOME: "/tmp/opencorp-e2e",
+      OPENCORP_HOME: "/dev/shm/opencorp-e2e",
       OPENCODE_SERVER_BIN: fakeOpencodePath,
       OPENHEINERSS_BIN: resolve(fakeEngineBin, "openheinerss"),
       PATH: `${fakeEngineBin}:${process.env.PATH ?? ""}`,

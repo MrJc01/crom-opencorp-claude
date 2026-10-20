@@ -4,7 +4,7 @@ import { rmSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { T } from "./helpers.js";
 
 const WS_ID = "wizard-test-e2e";
-const E2E_HOME = "/tmp/opencorp-e2e";
+const E2E_HOME = "/dev/shm/opencorp-e2e";
 
 function limparWsTeste(): void {
   for (const base of [

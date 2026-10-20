@@ -10,7 +10,7 @@ import { SessionManager } from "../../../src/core/contexts/execution/session-man
 // Roda contra o servidor de teste do playwright (:4399), nunca produção :4100.
 
 const TOKEN = "test-e2e";
-const E2E_HOME = "/tmp/opencorp-e2e";
+const E2E_HOME = "/dev/shm/opencorp-e2e";
 const WS = "e2e-flux-join";
 const AGENTE = "agente-flux-join";
 const HDR = { authorization: `Bearer ${TOKEN}`, "content-type": "application/json" };

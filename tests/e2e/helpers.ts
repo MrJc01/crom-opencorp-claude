@@ -33,6 +33,26 @@ export async function comRetryTransporte<R>(fn: () => Promise<R>, tentativas = 5
   throw ultimo;
 }
 
+/**
+ * Cria um recurso pela API (workspace, agente...). Repete só erro de transporte e FALHA ALTO se o status for
+ * inesperado: engolir o erro faz o teste continuar sem o recurso e estourar longe da causa ("agente não encontrado").
+ * "Já estava criado" é aceito por status (`existe`, padrão 409) ou pela mensagem "já existe" do servidor (hoje ele
+ * responde 422 com esse texto ao recriar um workspace/agente).
+ */
+export async function criarRecurso(
+  client: APIRequestContext,
+  caminho: string,
+  data: unknown,
+  headers: Record<string, string>,
+  existe: number[] = [409],
+): Promise<void> {
+  const resp = await comRetryTransporte(() => client.post(caminho, { headers, data }));
+  if (resp.ok() || existe.includes(resp.status())) return;
+  const corpo = await resp.text();
+  if (/já existe/i.test(corpo)) return;
+  throw new Error(`falha ao criar recurso em POST ${caminho}: HTTP ${resp.status()} ${corpo.slice(0, 300)}`);
+}
+
 /** Espera o servidor responder /health (e aceitar a API autenticada) antes de semear. */
 export async function esperarServidorPronto(api: APIRequestContext, token = "test-e2e"): Promise<void> {
   await expectPollSimples(async () => {

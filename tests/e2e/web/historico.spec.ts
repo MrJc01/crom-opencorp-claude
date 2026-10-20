@@ -10,7 +10,7 @@ const HDR = { authorization: "Bearer test-e2e", "content-type": "application/jso
 
 // F2-T02 — histórico agrupado: flow com N nós vira 1 pai + N filhas (sem duplicata).
 const TOKEN = "test-e2e";
-const E2E_HOME = "/tmp/opencorp-e2e";
+const E2E_HOME = "/dev/shm/opencorp-e2e";
 const WS = "e2e-hist-agrupado";
 const AGENTE = "agente-hist-agrupado";
 const FAKE_BIN = join(E2E_HOME, ".opencorp", "bin", "opencode");

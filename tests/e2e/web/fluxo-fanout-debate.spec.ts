@@ -33,8 +33,8 @@ async function criarAgente(client: ReturnType<typeof api>, wsId: string, agenteI
 }
 
 async function instalarFakeRunner(): Promise<void> {
-  const fakeBin = join("/tmp/opencorp-e2e", ".opencorp", "bin", "opencode-fake");
-  await mkdir(join("/tmp/opencorp-e2e", ".opencorp", "bin"), { recursive: true });
+  const fakeBin = join("/dev/shm/opencorp-e2e", ".opencorp", "bin", "opencode-fake");
+  await mkdir(join("/dev/shm/opencorp-e2e", ".opencorp", "bin"), { recursive: true });
   await writeFile(
     fakeBin,
     '#!/bin/sh\nsleep 0.2\nlast=""\nfor arg do last="$arg"; done\nprintf "SAIDA: %s\\n" "$last"\nexit 0\n',
@@ -44,7 +44,7 @@ async function instalarFakeRunner(): Promise<void> {
 }
 
 async function removerFakeRunner(): Promise<void> {
-  const fakeBin = join("/tmp/opencorp-e2e", ".opencorp", "bin", "opencode-fake");
+  const fakeBin = join("/dev/shm/opencorp-e2e", ".opencorp", "bin", "opencode-fake");
   await new Promise((resolve) => setTimeout(resolve, 50));
   await rm(fakeBin, { force: true });
 }

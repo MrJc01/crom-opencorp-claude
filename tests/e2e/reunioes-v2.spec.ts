@@ -39,7 +39,7 @@ test.describe("Reuniões (sala + histórico + agendamento)", () => {
 
   test("(b) Sala semeada aparece no histórico e abre pelo modal", async ({ page }) => {
     const salaId = "reuniao-e2e-viva";
-    const dir = join("/tmp/opencorp-e2e", ".opencorp", "workspaces", "e2e-corp", ".opencorp", "registries", "chats", salaId);
+    const dir = join("/dev/shm/opencorp-e2e", ".opencorp", "workspaces", "e2e-corp", ".opencorp", "registries", "chats", salaId);
     await mkdir(dir, { recursive: true });
     const meta = {
       id: salaId,

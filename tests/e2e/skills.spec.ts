@@ -9,7 +9,7 @@ import { join } from "node:path";
 // CLI-level: roda `node bin/opencorp.mjs` com OPENCORP_HOME de e2e, nunca contra
 // a produção :4100.
 
-const E2E_HOME = "/tmp/opencorp-e2e";
+const E2E_HOME = "/dev/shm/opencorp-e2e";
 const WS = "e2e-corp";
 const WS_PATH = join(E2E_HOME, ".opencorp", "workspaces", WS);
 const SUFIXO = Date.now().toString(36);

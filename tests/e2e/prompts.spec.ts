@@ -7,7 +7,7 @@ import { join } from "node:path";
 // F3-T02 — prompts.json: CLI-level. Cria ws, set chave, e verifica que o corpo de
 // um agente com {{prompt:chave}} resolve no system prompt sincronizado.
 
-const E2E_HOME = "/tmp/opencorp-e2e";
+const E2E_HOME = "/dev/shm/opencorp-e2e";
 const SUFIXO = Date.now().toString(36);
 const WS = `e2e-prompts-${SUFIXO}`;
 const CHAVE = `saudacao-${SUFIXO}`;

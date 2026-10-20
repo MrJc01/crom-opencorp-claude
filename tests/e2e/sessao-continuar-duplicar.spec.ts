@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { chmod, mkdir, rm, writeFile, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { logado, api } from "./helpers.js";
+import { logado, api, criarRecurso, esperarServidorPronto } from "./helpers.js";
 import { SessionManager } from "../../src/core/contexts/execution/session-manager.js";
 
 // F1-T02 — continuar/duplicar no SessionManager (CLI-level via API:
@@ -10,32 +10,31 @@ import { SessionManager } from "../../src/core/contexts/execution/session-manage
 // nunca contra a produção :4100.
 
 const TOKEN = "test-e2e";
-const E2E_HOME = "/tmp/opencorp-e2e";
+const E2E_HOME = "/dev/shm/opencorp-e2e";
 const WS = "e2e-sess-cont";
 const AGENTE = "agente-sess-cont";
 const HDR = { authorization: `Bearer ${TOKEN}`, "content-type": "application/json" };
 const FAKE_BIN = join(E2E_HOME, ".opencorp", "bin", "opencode");
 
 async function garantirBase(client: ReturnType<typeof api>): Promise<void> {
-  await client
-    .post("/workspaces", { headers: HDR, data: { id: WS } })
-    .catch(() => undefined);
-  await client
-    .post(`/agents?workspace=${WS}`, {
-      headers: HDR,
-      data: {
-        id: AGENTE,
-        name: "Agente Sessão E2E",
-        role: "Executor E2E",
-        category: "operario",
-        model: "openrouter/auto",
-        tools: ["bash"],
-        permissions: "level-1",
-        budget: { daily_usd: 10, max_turns: 10 },
-        prompt: "Você é um agente de teste e2e.",
-      },
-    })
-    .catch(() => undefined);
+  await esperarServidorPronto(client, TOKEN);
+  await criarRecurso(client, "/workspaces", { id: WS }, HDR);
+  await criarRecurso(
+    client,
+    `/agents?workspace=${WS}`,
+    {
+      id: AGENTE,
+      name: "Agente Sessão E2E",
+      role: "Executor E2E",
+      category: "operario",
+      model: "openrouter/auto",
+      tools: ["bash"],
+      permissions: "level-1",
+      budget: { daily_usd: 10, max_turns: 10 },
+      prompt: "Você é um agente de teste e2e.",
+    },
+    HDR,
+  );
 }
 
 // Runner fake: o SessionManager resolve o binário opencode em
