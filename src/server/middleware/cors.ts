@@ -71,6 +71,8 @@ export function obterHeadersCors(
   const headers: Record<string, string> = {
     "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS",
     "access-control-allow-headers": "authorization,content-type,x-opencorp-token",
+    // O front lê estes cabeçalhos de GET /secretario/sessoes/:id/mensagens para reassinar o turno em andamento.
+    "access-control-expose-headers": "x-oc-log-entradas,x-oc-em-execucao",
   };
 
   if (!origemReq) {

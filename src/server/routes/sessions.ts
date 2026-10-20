@@ -19,6 +19,8 @@ import { opencorpHome } from "../../utils/paths.js";
 import type { MetaRegistro } from "../../core/contexts/storage/registry-store.js";
 import type { RouteContext } from "./types.js";
 import { streamsSecretarioAtivos } from "./secretario/stream.js";
+import { obterRuntimeSecretario } from "./secretario/runtime-service.js";
+import { EventLog, reduzirHistorico } from "../../core/engines/event-log.js";
 
 function fallbackGerarIdExec(): string {
   return `exec-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -670,8 +672,32 @@ export async function handleSessionRoutes(ctx: RouteContext): Promise<boolean> {
   const mMensagens = /^\/secretario\/sessoes\/([^/]+)\/mensagens$/.exec(rota);
   if (mMensagens && req.method === "GET") {
     try {
-      const porta = await getPortaOpencode();
       const sessionId = decodeURIComponent(mMensagens[1]!);
+      // Conversas gravadas pelo servidor (qualquer motor) vêm do log de eventos, com o status real das aprovações.
+      const wsLog = await resolverWs(url);
+      const entradasLog = await new EventLog(homeDir ?? opencorpHome()).ler(wsLog.id, sessionId);
+      if (entradasLog.length > 0) {
+        const historico = reduzirHistorico(entradasLog, streamsSecretarioAtivos.has(sessionId));
+        for (const m of historico) {
+          m.aprovacoes = m.aprovacoes?.map((a) => ({ ...a, workspace: wsLog.id }));
+        }
+        // O front usa os cabeçalhos para reassinar um turno vivo (GET /secretario/sessoes/:id/eventos?desde=N).
+        enviar(res, 200, historico, {
+          "x-oc-log-entradas": String(entradasLog.length),
+          "x-oc-em-execucao": streamsSecretarioAtivos.has(sessionId) ? "1" : "0",
+        });
+        return true;
+      }
+      // Conversa de antes do log: o próprio motor pode reconstruir o histórico (ex.: transcrição do SDK).
+      try {
+        const { runtime } = await obterRuntimeSecretario(ctx, wsLog, false);
+        const anterior = await runtime.history?.({ id: sessionId, engineId: runtime.engineId, workspaceId: wsLog.id });
+        if (anterior && anterior.length > 0) {
+          enviar(res, 200, anterior);
+          return true;
+        }
+      } catch { /* sem runtime: segue para o opencode */ }
+      const porta = await getPortaOpencode();
       const opencodeUrl = `http://127.0.0.1:${porta}/session/${sessionId}/message`;
       const [resOpencode, resStatus] = await Promise.all([
         fetchOpencode(opencodeUrl, { signal: AbortSignal.timeout(5000) }),

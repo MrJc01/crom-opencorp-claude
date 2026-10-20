@@ -1,3 +1,4 @@
+import { EventLog } from "../../../core/engines/event-log.js";
 import { opencorpHome } from "../../../utils/paths.js";
 import { formatProcessKey, ProcessRegistry } from "../../../core/runtime/index.js";
 import {
@@ -22,6 +23,16 @@ export interface SecretaryRuntimeContext {
 /**
  * Resolve o runtime conversacional configurado para o workspace do Secretário.
  */
+/**
+ * O front numera abas novas como `sessao-<ts>`/`draft-<ts>` até o motor devolver o id real. Esses ids de rascunho
+ * nunca podem chegar ao motor como conversa a retomar: o histórico ficaria sob o id de rascunho e a aba nunca seria
+ * promovida. Devolve undefined para eles, e o runtime cria a conversa e devolve o id nativo.
+ */
+export function idConversaNativo(id: string | null | undefined): string | undefined {
+  const limpo = id?.trim();
+  return limpo && !/^(sessao|draft)-/i.test(limpo) ? limpo : undefined;
+}
+
 export async function obterRuntimeSecretario(
   ctx: RouteContext,
   ws: { id: string; path: string },
@@ -97,7 +108,7 @@ export async function adquirirSessaoSecretario(
   const home = ctx.homeDir ?? opencorpHome();
 
   const ref = await runtime.create({
-    conversationId: options.conversationId,
+    conversationId: idConversaNativo(options.conversationId),
     workspaceId: ws.id,
     workspacePath: ws.path,
     model: options.model || "default",
@@ -226,7 +237,15 @@ export async function responderAprovacaoDoRuntime(
   try {
     const { runtime } = await obterRuntimeSecretario(ctx, ws, false);
     if (!runtime.respondApproval) return false;
-    return await runtime.respondApproval(id, acao, { workspaceId: ws.id });
+    const respondida = await runtime.respondApproval(id, acao, { workspaceId: ws.id });
+    // Ponto único das rotas de aprovação (/approvals/... e /secretario/hitl/...): a decisão vai para o log
+    // da conversa, que é de onde o histórico lê o status do cartão.
+    if (respondida) {
+      await new EventLog(ctx.homeDir ?? opencorpHome())
+        .registrarAprovacaoResolvida(ws.id, id, acao === "approve" ? "approved" : "rejected")
+        .catch(() => false);
+    }
+    return respondida;
   } catch (erro) {
     console.warn(
       `[secretario/hitl] runtime indisponível para a aprovação ${id}; usando o armazenamento HITL: ${erro instanceof Error ? erro.message : String(erro)}`

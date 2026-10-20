@@ -9,7 +9,7 @@ import { dirOpencodeHome, dirOpencodeData } from "../../core/contexts/execution/
 import {
   engineRegistry,
   getEngineAuthInstructions,
-  checkEngineAuthStatus,
+  checkEngineAuthStatusAsync,
   logoutCliSession,
   ManagedEngineInstaller,
   ManagedInstallUnsupportedError,
@@ -38,6 +38,45 @@ import type { EngineAccount } from "../../core/engines/engine-account-store.js";
 import { listarProvedoresStatus, testarModeloDirect, completarChatDirect } from "../../core/contexts/execution/llm-client.js";
 import type { SecretOrigem } from "../../core/contexts/storage/secrets-store.js";
 import type { RouteContext } from "./types.js";
+
+/** Login pelo navegador por motor (usado só se o manifest não declarar `details.login`). */
+const LOGIN_WEB_PADRAO: Record<string, { web: boolean; codigo: boolean; importar?: boolean }> = {
+  codex: { web: true, codigo: false },
+  cursor: { web: true, codigo: false },
+  copilot: { web: true, codigo: false, importar: true },
+  antigravity: { web: true, codigo: false },
+  "claude-code": { web: true, codigo: true },
+};
+
+/**
+ * Perfil de autenticação do motor no formato que a UI consome. Vem do manifest
+ * (`details.auth` / `details.login`) quando o motor declara; senão das instruções
+ * do credentials-bridge.
+ */
+function perfilAuthMotor(motorId: string) {
+  const base = getEngineAuthInstructions(motorId);
+  const det = (engineRegistry.getManifest(motorId)?.details ?? {}) as {
+    auth?: Record<string, string>;
+    login?: { web?: boolean; codigo?: boolean; importar?: boolean };
+  };
+  const a = det.auth ?? {};
+  const login = LOGIN_WEB_PADRAO[motorId];
+  return {
+    ...base,
+    title: a.title ?? base.engineName,
+    cliCommand: a.cliCommand ?? base.terminalCommand,
+    envVar: a.envVar ?? base.envVarName,
+    url: a.url ?? base.webUrl,
+    urlText: a.urlText ?? base.urlLabel,
+    desc: a.desc ?? base.guideText,
+    webPrompt: a.webPrompt,
+    login: {
+      web: det.login?.web ?? login?.web ?? false,
+      codigo: det.login?.codigo ?? login?.codigo ?? false,
+      importar: det.login?.importar ?? login?.importar ?? false,
+    },
+  };
+}
 import { ROTACAO_AGENTES_RECOMENDADA } from "../../core/contexts/agents/recommended-models.js";
 
 export async function detectarOpencodeInfo(homeDir: string) {
@@ -466,11 +505,23 @@ export async function handleConfigRoutes(ctx: RouteContext): Promise<boolean> {
     const checkHealth = rota.includes("/status") || url.searchParams.get("checkHealth") === "true";
     const rawMotores = await engineRegistry.listSummaries(home, checkHealth);
     const instaladorGerenciado = new ManagedEngineInstaller({ homeDir: home });
-    const motores = rawMotores.map((m) => {
-      const authStatus = checkEngineAuthStatus(m.id, home);
+    // Sem execFileSync: devolve o último status conhecido na hora e atualiza em segundo plano (credentials-bridge).
+    const authStatuses = await Promise.all(rawMotores.map((m) => checkEngineAuthStatusAsync(m.id, home, { aceitarVencido: true })));
+    const motores = rawMotores.map((m, i) => {
+      const authStatus = authStatuses[i]!;
       const artefato = instaladorGerenciado.artifactFor(m.id);
+      const manifest = engineRegistry.getManifest(m.id);
       return {
         ...m,
+        manifest: manifest
+          ? {
+              limits: manifest.limits ?? null,
+              modelPrefixes: manifest.modelPrefixes ?? null,
+              instructionFiles: manifest.instructionFiles ?? null,
+              toolPolicyModes: manifest.toolPolicyModes ?? null,
+            }
+          : null,
+        auth: perfilAuthMotor(m.id),
         ativo: m.id === (runnerAtual.engine || "opencode"),
         authStatus,
         instalacaoGerenciada: {
@@ -843,7 +894,7 @@ export async function handleConfigRoutes(ctx: RouteContext): Promise<boolean> {
   const mAuthMotor = /^\/api\/motores\/([^/]+)\/auth-instructions$/.exec(rota);
   if (mAuthMotor && req.method === "GET") {
     const motorId = decodeURIComponent(mAuthMotor[1]!);
-    const instructions = getEngineAuthInstructions(motorId);
+    const instructions = perfilAuthMotor(motorId);
     enviar(res, 200, { ok: true, motorId, instructions });
     return true;
   }

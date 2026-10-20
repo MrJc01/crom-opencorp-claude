@@ -204,6 +204,12 @@ export async function handleFlowRoutes(ctx: RouteContext): Promise<boolean> {
     const ws = await resolverWs(url);
     const corpo = (await lerCorpo(req)) as { entrada?: string; model?: string; gatilho?: string };
     const flowId = decodeURIComponent(mFlowRun[1]!);
+    const dono = flows.emExecucao(ws.path, flowId);
+    if (dono) {
+      // Sem isto o cliente recebia um exec_id de uma execução que nunca existe (a trava recusa o 2º disparo).
+      enviar(res, 409, { erro: `flow "${flowId}" já está em execução (pid ${dono.pid}, desde ${dono.inicio ?? "?"})` });
+      return true;
+    }
     const execId = `exec-${Date.now().toString(36)}${randomBytes(3).toString("hex")}`;
     let gatilho: { tipo: string; origem: string } | undefined;
     if (typeof corpo.gatilho === "string" && corpo.gatilho.includes(":")) {
@@ -233,6 +239,13 @@ export async function handleFlowRoutes(ctx: RouteContext): Promise<boolean> {
     const rawCorpo = await lerCorpo(req);
     const flowId = decodeURIComponent(mFlowWebhook[1]!);
     const entradaStr = typeof rawCorpo === "string" ? rawCorpo : JSON.stringify(rawCorpo ?? {});
+    const donoWebhook = flows.emExecucao(ws.path, flowId);
+    if (donoWebhook) {
+      // Webhook tem que responder 2xx (o remetente reenvia qualquer outra coisa), mas a trava por flow recusa o
+      // 2º disparo: dizemos que foi ignorado, sem um exec_id que nunca existirá.
+      enviar(res, 202, { ok: true, status: "ignorado_em_execucao", flow: flowId, gatilho: "webhook", exec_id: null, motivo: `flow já está em execução (pid ${donoWebhook.pid}, desde ${donoWebhook.inicio ?? "?"})` });
+      return true;
+    }
     const execId = `exec-${Date.now().toString(36)}${randomBytes(3).toString("hex")}`;
     void flows.executar(ws.path, flowId, { entrada: entradaStr, execId, gatilho: { tipo: "webhook", origem: flowId } as any }).catch((err) => {
       console.error(`[flows] erro ao executar webhook do flow ${flowId}:`, err);

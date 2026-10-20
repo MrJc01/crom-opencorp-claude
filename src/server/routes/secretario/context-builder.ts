@@ -94,7 +94,7 @@ export async function construirContextoWorkspace(ws: { id: string; path: string 
           `1. Paradigma n8n: toda automação periódica, reação a eventos e agendamentos reside em fluxos (.opencorp/flows/<id>.json). Proibidos scripts de loop infinito (while true).\n` +
           `2. Supervisor Daemon: o agendamento é centralizado no supervisor. Não manipule crontab do sistema operacional.\n` +
           `3. Idioma: comunique-se estritamente em Português do Brasil (PT-BR) com o operador.\n` +
-          `4. Isolamento estrito de Workspace: você está operando exclusivamente no workspace "${ws.id}". Ao rodar ferramentas de terminal ('oc', scripts, python), passe sempre '--workspace ${ws.id}'. Nunca acesse dados de outros workspaces.`,
+          `4. Isolamento estrito de Workspace: você está operando exclusivamente no workspace "${ws.id}". Ao rodar ferramentas de terminal ('oc' — já aponta para este OpenCorp —, scripts, python), passe sempre '--workspace ${ws.id}'. Para operar a esteira do canal use a skill operar-canal e o CLAUDE.md do workspace. Nunca acesse dados de outros workspaces.`,
       );
     } catch {}
   } else {

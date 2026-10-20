@@ -10,6 +10,8 @@ import {
   type MensagemOc,
 } from "../../../core/contexts/execution/opencode-server.js";
 import { EngineAccountStore } from "../../../core/engines/index.js";
+import { EventLog, type EntradaLog } from "../../../core/engines/event-log.js";
+import type { AgentEvent } from "../../../core/engines/events.js";
 import { TelemetryCollector, gerarTraceId, type TraceContext } from "../../../core/contexts/platform/telemetry-collector.js";
 import {
   sleep,
@@ -23,7 +25,8 @@ import {
 import { construirContextoWorkspace } from "./context-builder.js";
 import { resolverMencoes } from "./mentions.js";
 import { processarSlash, textoAjudaSlash } from "./slash.js";
-import { obterRuntimeSecretario } from "./runtime-service.js";
+import { idConversaNativo, obterRuntimeSecretario } from "./runtime-service.js";
+import { criarTradutorSse, resumirFerramenta } from "./sse-eventos.js";
 import type { RouteContext } from "../types.js";
 
 /** Streams `/secretario/conversa/stream` em voo por sessão. */
@@ -276,7 +279,7 @@ export async function handleStreamRoutes(ctx: RouteContext): Promise<boolean> {
             const mensagemStreamComWs = `${contextoWs}\n${mensagem}`;
             // Sem ID, o runtime cria a conversa e devolve o ID nativo; inventar um
             // ID aqui faria motores com threads nativas tentarem retomar algo inexistente.
-            const sId = corpo.sessao_id || url.searchParams.get("sessao") || undefined;
+            const sId = idConversaNativo(corpo.sessao_id || url.searchParams.get("sessao"));
             const agente = resolvido.agente ?? "secretario-exec";
             const modelo = corpo.modelo || corpo.model || "default";
 
@@ -305,57 +308,55 @@ export async function handleStreamRoutes(ctx: RouteContext): Promise<boolean> {
               motor: runtimeCtx.engineId,
             });
 
-            let fullOutput = "";
-            const resumosFerramentas = new Map<string, string>();
+            const traduzir = criarTradutorSse({ workspaceId: ws.id, motor: runtimeCtx.engineId, sse });
+            const log = new EventLog(home);
+            let filaLog: Promise<void> = Promise.resolve();
+            const gravar = (entrada: EntradaLog): void => {
+              filaLog = filaLog
+                .then(() => log.anexar(ws.id, ref.id, entrada))
+                .catch((e) => console.warn(`[secretario/log] ${e instanceof Error ? e.message : String(e)}`));
+            };
+            let deltaPendente = "";
+            const gravarEvento = (ev: AgentEvent, resumo?: string): void => {
+              if (ev.type === "message.delta") {
+                deltaPendente += ev.text;
+                return;
+              }
+              if (deltaPendente) {
+                gravar({ t: new Date().toISOString(), tipo: "evento", ev: { type: "message.delta", runId: ev.runId, text: deltaPendente } });
+                deltaPendente = "";
+              }
+              gravar({ t: new Date().toISOString(), tipo: "evento", ev, ...(resumo ? { resumo } : {}) });
+            };
+            gravar({ t: new Date().toISOString(), tipo: "user", text: mensagem });
             const ac = new AbortController();
+            // Com uma aprovação pendente, sair da tela não pode matar o turno: o dono volta, vê o cartão
+            // no histórico e decide. O prazo da própria aprovação (10 min) limita a espera.
+            let aguardandoAprovacao = false;
             onClientClose = () => {
-              if (!res.writableEnded) ac.abort();
+              if (!res.writableEnded && !aguardandoAprovacao) ac.abort();
             };
             res.on("close", onClientClose);
 
             try {
               for await (const ev of runtimeCtx.runtime.send(ref, { text: mensagemStreamComWs }, ac.signal)) {
-                if (ev.type === "message.delta") {
-                  fullOutput += ev.text;
-                  sse("delta", { delta: ev.text });
-                } else if (ev.type === "tool.requested") {
-                  const resumo = resumirFerramenta(ev.call.name, ev.call.arguments);
-                  resumosFerramentas.set(ev.call.id, resumo);
-                  sse("acao", { itens: [{ ferramenta: ev.call.name, resumo, status: "running" }] });
-                } else if (ev.type === "tool.completed") {
-                  const resumo = resumosFerramentas.get(ev.result.id) ?? ev.result.name;
-                  sse("acao", {
-                    itens: [{
-                      ferramenta: ev.result.name,
-                      resumo,
-                      status: ev.result.isError ? "failed" : "completed",
-                      sucesso: !ev.result.isError,
-                    }],
-                  });
-                } else if (ev.type === "approval.requested") {
-                  sse("aprovacao", {
-                    id: ev.approval.id,
-                    acao: ev.approval.action,
-                    descricao: ev.approval.description,
-                    workspace: ws.id,
-                    motor: runtimeCtx.engineId,
-                  });
-                } else if (ev.type === "run.completed") {
-                  sse("fim", {
-                    content: fullOutput || ev.result.output,
-                    resposta: fullOutput || ev.result.output,
-                    stopReason: ev.result.stopReason,
-                  });
-                } else if (ev.type === "run.failed") {
-                  sse("erro", { erro: ev.error.message });
-                }
+                if (ev.type === "approval.requested") aguardandoAprovacao = true;
+                else if (ev.type === "tool.completed" || ev.type === "message.delta" || ev.type === "run.completed" || ev.type === "run.failed") aguardandoAprovacao = false;
+                gravarEvento(ev, ev.type === "tool.requested" ? resumirFerramenta(ev.call.name, ev.call.arguments) : undefined);
+                traduzir(ev);
               }
             } catch (err) {
               const msg = err instanceof Error ? err.message : String(err);
               sse("erro", { erro: msg });
             } finally {
+              if (deltaPendente) {
+                gravar({ t: new Date().toISOString(), tipo: "evento", ev: { type: "message.delta", runId: ref.id, text: deltaPendente } });
+                deltaPendente = "";
+              }
               if (chaveStreamRegistrada) liberarStreamSecretario(chaveStreamRegistrada, res);
               if (!res.writableEnded) res.end();
+              // Quem reassinou o log (GET /secretario/sessoes/:id/eventos) fecha ao fim do turno.
+              void filaLog.then(() => log.encerrarTurno(ws.id, ref.id));
             }
             return;
           }
@@ -835,10 +836,4 @@ export async function handleStreamRoutes(ctx: RouteContext): Promise<boolean> {
   }
 
   return false;
-}
-
-function resumirFerramenta(nome: string, args: Record<string, unknown>): string {
-  if (typeof args.command === "string" && args.command) return `$ ${args.command}`;
-  if (Array.isArray(args.files) && args.files.length > 0) return `Alterando ${args.files.join(", ")}`;
-  return nome;
 }

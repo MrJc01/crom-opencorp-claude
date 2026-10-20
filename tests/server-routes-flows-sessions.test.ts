@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createApiServer, type SessaoApi } from "../src/server/index.js";
@@ -265,12 +265,31 @@ describe("Rotas Modulares de Flows e Sessões (Micro-Passo 11)", () => {
       expect(j.flow).toBe("meu-fluxo-1");
       expect(typeof j.exec_id).toBe("string");
 
-      // Alias em português
-      const resPt = await fetchApi("/fluxos/meu-fluxo-1/run", {
+      // Alias em português (outro flow: o mesmo flow ainda pode estar rodando e a trava recusa o 2º disparo)
+      const resPt = await fetchApi("/fluxos/outro-fluxo/run", {
         method: "POST",
         body: JSON.stringify({ entrada: "teste alias" }),
       });
       expect(resPt.status).toBe(202);
+    });
+
+    it("POST /flows/:id/run responde 409 (sem exec_id) quando o flow já está em execução", async () => {
+      const dirTravas = join(wsPath, ".opencorp", "locks");
+      await mkdir(dirTravas, { recursive: true });
+      await writeFile(join(dirTravas, "executando-flow-ocupado.json"), JSON.stringify({ pid: process.pid, inicio: "agora" }));
+      const res = await fetchApi("/flows/flow-ocupado/run", { method: "POST", body: JSON.stringify({}) });
+      expect(res.status).toBe(409);
+      expect((res.json as { exec_id?: string }).exec_id).toBeUndefined();
+      expect((res.json as { erro: string }).erro).toContain("já está em execução");
+    });
+
+    it("POST /flows/:id/webhook responde 202 'ignorado' (sem exec_id falso) quando o flow já está em execução", async () => {
+      const dirTravas = join(wsPath, ".opencorp", "locks");
+      await mkdir(dirTravas, { recursive: true });
+      await writeFile(join(dirTravas, "executando-flow-webhook-ocupado.json"), JSON.stringify({ pid: process.pid, inicio: "agora" }));
+      const res = await fetchApi("/flows/flow-webhook-ocupado/webhook", { method: "POST", body: JSON.stringify({ x: 1 }) });
+      expect(res.status).toBe(202);
+      expect(res.json).toMatchObject({ ok: true, status: "ignorado_em_execucao", exec_id: null });
     });
 
     it("GET /audit/flows retorna histórico de auditoria de fluxos", async () => {

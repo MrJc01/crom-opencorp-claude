@@ -16,7 +16,7 @@ import {
 import { construirContextoWorkspace } from "./context-builder.js";
 import { resolverMencoes } from "./mentions.js";
 import { processarSlash, textoAjudaSlash } from "./slash.js";
-import { obterRuntimeSecretario } from "./runtime-service.js";
+import { idConversaNativo, obterRuntimeSecretario } from "./runtime-service.js";
 import { opencorpHome } from "../../../utils/paths.js";
 import type { RouteContext } from "../types.js";
 
@@ -122,7 +122,7 @@ export async function handleConversaRoutes(ctx: RouteContext): Promise<boolean> 
         const home = ctx.homeDir ?? opencorpHome();
 
         const ref = await runtimeCtx.runtime.create({
-          conversationId: corpo.sessao_id,
+          conversationId: idConversaNativo(corpo.sessao_id),
           workspaceId: ws.id,
           workspacePath: ws.path,
           model: corpo.modelo || corpo.model || "default",

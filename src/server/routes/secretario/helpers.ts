@@ -13,6 +13,9 @@ import { formatProcessKey, ProcessRegistry } from "../../../core/runtime/index.j
 import { resolverCadeiaModelosAgente } from "../../../core/contexts/agents/model-resolver.js";
 import type { RouteContext } from "../types.js";
 
+/** Modelo de contingência quando só há chave direta da Anthropic (provedor, não motor). */
+export const MODELO_CONTINGENCIA_ANTHROPIC = process.env.OPENCORP_MODELO_CONTINGENCIA_ANTHROPIC?.trim() || "anthropic/claude-3-7-sonnet";
+
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function normalizarNomeModelo(modelo: string): string {
@@ -209,7 +212,7 @@ export function obterModelosDefensivos(
     modelos.push("openai/gpt-4o-mini");
   }
   if (creds.ANTHROPIC_API_KEY || authData.anthropic?.key) {
-    modelos.push("anthropic/claude-3-7-sonnet");
+    modelos.push(MODELO_CONTINGENCIA_ANTHROPIC);
   }
 
   const modelosUnicos = [...new Set(modelos.filter(Boolean))];

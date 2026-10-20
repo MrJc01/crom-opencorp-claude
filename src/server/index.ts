@@ -326,6 +326,11 @@ export function createApiServer(opcoes: ApiServerOptions = {}): {
     })().catch(() => undefined);
   });
 
+  // Padrão do Node = 5 s: um cliente que reaproveita a conexão logo depois do fechamento recebe ECONNRESET
+  // (visto no E2E e em qualquer cliente HTTP com keep-alive). headersTimeout deve ficar acima do keep-alive.
+  server.keepAliveTimeout = 65_000;
+  server.headersTimeout = 66_000;
+
   let resolvePorta!: (p: number) => void;
   const porta = new Promise<number>((r) => (resolvePorta = r));
   server.on("listening", () => {
