@@ -39,41 +39,52 @@ test.describe("Operação contínua (sem travas)", () => {
     expect(JSON.stringify(await criado.json())).toContain("POST /flows");
   });
 
-  test("duplo run do mesmo fluxo não colide (ids únicos)", async ({ page }) => {
-    const fid = `flow-idem-${Date.now().toString(36)}`;
-    await api(page).post("/flows", {
-      headers: HDR,
-      data: {
-        id: fid,
-        nome: "Idempotente",
-        nos: [
-          { id: "inicio", tipo: "manual", config: {} },
-          { id: "gravar", tipo: "registro", config: { categoria: "documentos" } },
-        ],
-        arestas: [{ de: "inicio", para: "gravar" }],
-      },
-    });
-    const r1 = await api(page).post(`/flows/${fid}/run`, { headers: HDR, data: { entrada: "a" } });
-    const r2 = await api(page).post(`/flows/${fid}/run`, { headers: HDR, data: { entrada: "b" } });
-    const e1 = (await r1.json()).exec_id;
-    const e2 = (await r2.json()).exec_id;
-    expect(e1).toBeTruthy();
-    expect(e2).toBeTruthy();
-    expect(e1).not.toBe(e2);
-
-    for (const [flow, exec] of [[fid, e1], [fid, e2]]) {
+  // O mesmo flow não roda duas vezes ao mesmo tempo (trava em FlowStore.executar); a colisão de ids
+  // é verificada com dois flows disparados em paralelo e duas execuções sequenciais do mesmo flow.
+  test("runs paralelos de flows distintos e repetidos do mesmo flow têm ids únicos", async ({ page }) => {
+    const sufixo = Date.now().toString(36);
+    const fids = [`flow-idem-a-${sufixo}`, `flow-idem-b-${sufixo}`];
+    for (const fid of fids) {
+      await api(page).post("/flows", {
+        headers: HDR,
+        data: {
+          id: fid,
+          nome: "Idempotente",
+          nos: [
+            { id: "inicio", tipo: "manual", config: {} },
+            { id: "gravar", tipo: "registro", config: { categoria: "documentos" } },
+          ],
+          arestas: [{ de: "inicio", para: "gravar" }],
+        },
+      });
+    }
+    const disparar = async (fid: string, entrada: string): Promise<string> => {
+      const r = await api(page).post(`/flows/${fid}/run`, { headers: HDR, data: { entrada } });
+      const execId = (await r.json()).exec_id as string;
+      expect(execId).toBeTruthy();
+      return execId;
+    };
+    const aguardar = async (fid: string, exec: string): Promise<void> => {
       const ini = Date.now();
       for (;;) {
-        const st = await api(page).get(`/flows/${flow}/execucoes`, { headers: HDR });
+        const st = await api(page).get(`/flows/${fid}/execucoes`, { headers: HDR });
         const atual = ((await st.json()) as any[]).find((e: any) => e.execId === exec);
         if (atual && atual.status !== "executando") {
           expect(atual.status).toBe("concluido");
-          break;
+          return;
         }
         if (Date.now() - ini > 20000) throw new Error(`timeout fluxo ${exec}`);
         await new Promise((r) => setTimeout(r, 750));
       }
-    }
+    };
+    const [e1, e2] = await Promise.all([disparar(fids[0]!, "a"), disparar(fids[1]!, "b")]);
+    expect(e1).not.toBe(e2);
+    await aguardar(fids[0]!, e1);
+    await aguardar(fids[1]!, e2);
+    // Mesmo flow de novo, agora que a trava foi liberada.
+    const e3 = await disparar(fids[0]!, "c");
+    expect(new Set([e1, e2, e3]).size).toBe(3);
+    await aguardar(fids[0]!, e3);
   });
 
   test("GET /status expõe saúde do scheduler e secretário", async ({ page }) => {

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 const HDR = { authorization: "Bearer test-e2e", "content-type": "application/json" };
 
@@ -13,12 +14,12 @@ test.describe("Histórico", () => {
 
   test("timeline mostra itens (task semeada gera badge TASK)", async ({ page }) => {
     const linha = page.locator("tr[data-tipo='task']", { hasText: "Task backlog e2e" }).first();
-    await expect(linha).toBeVisible({ timeout: 15000 });
+    await expect(linha).toBeVisible({ timeout: T(15000) });
   });
 
   test("filtro Tasks mostra só tasks", async ({ page }) => {
     await page.getByRole("button", { name: "Kanban" }).click();
-    await expect(page.locator("tr[data-tipo='task']").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("tr[data-tipo='task']").first()).toBeVisible({ timeout: T(10000) });
     await expect(page.locator("tr[data-tipo]:not([data-tipo='task'])")).toHaveCount(0);
   });
 
@@ -43,7 +44,7 @@ test.describe("Histórico", () => {
     const { exec_id: execId } = await run.json();
 
     await page.getByRole("button", { name: "Fluxos DAG" }).click();
-    await expect(page.locator("tr[data-tipo='fluxo']").first()).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(execId).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator("tr[data-tipo='fluxo']").first()).toBeVisible({ timeout: T(15000) });
+    await expect(page.getByText(execId).first()).toBeVisible({ timeout: T(15000) });
   });
 });

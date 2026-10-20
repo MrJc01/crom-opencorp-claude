@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { T } from "./helpers.js";
 
 test.describe("E2E — Fluxo de Autenticação e Modal de Login", () => {
 
@@ -17,7 +18,7 @@ test.describe("E2E — Fluxo de Autenticação e Modal de Login", () => {
 
     // Modal de login deve estar visível
     const loginScreen = page.locator("#login-screen");
-    await expect(loginScreen).toBeVisible({ timeout: 5000 });
+    await expect(loginScreen).toBeVisible({ timeout: T(5000) });
     await expect(page.locator("#login-token")).toBeVisible();
     await expect(page.locator("#login-btn")).toBeVisible();
   });
@@ -34,7 +35,7 @@ test.describe("E2E — Fluxo de Autenticação e Modal de Login", () => {
     await page.click("#login-btn");
 
     const erro = page.locator("#login-error");
-    await expect(erro).toBeVisible({ timeout: 5000 });
+    await expect(erro).toBeVisible({ timeout: T(5000) });
     await expect(erro).toContainText("Token inválido");
   });
 
@@ -65,9 +66,9 @@ test.describe("E2E — Fluxo de Autenticação e Modal de Login", () => {
     await page.click("#login-btn");
 
     // Modal de login deve sumir e permanecer fora
-    await expect(page.locator("#login-screen")).toBeHidden({ timeout: 5000 });
+    await expect(page.locator("#login-screen")).toBeHidden({ timeout: T(5000) });
     await page.waitForTimeout(3000);
-    await expect(page.locator("#login-screen")).toBeHidden({ timeout: 5000 });
+    await expect(page.locator("#login-screen")).toBeHidden({ timeout: T(5000) });
 
     // Verifica que o token foi gravado no localStorage
     const savedToken = await page.evaluate(() => localStorage.getItem("oc-token"));

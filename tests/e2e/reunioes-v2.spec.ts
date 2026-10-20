@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 /** Reuniões: convocar pela UI + API, sala semeada no histórico e agendamento via scheduler. */
 test.describe("Reuniões (sala + histórico + agendamento)", () => {
@@ -23,8 +24,8 @@ test.describe("Reuniões (sala + histórico + agendamento)", () => {
     await page.locator("button[aria-pressed]", { hasText: /@/ }).first().click();
     await page.getByRole("button", { name: "Iniciar Deliberação" }).click();
 
-    await page.waitForURL(/reuniao=/, { timeout: 15000 });
-    await expect(page.getByText(pauta).first()).toBeVisible({ timeout: 15000 });
+    await page.waitForURL(/reuniao=/, { timeout: T(15000) });
+    await expect(page.getByText(pauta).first()).toBeVisible({ timeout: T(15000) });
 
     const resp = await api(page).post("/meetings?workspace=e2e-corp", {
       headers: HDR,
@@ -66,10 +67,10 @@ test.describe("Reuniões (sala + histórico + agendamento)", () => {
     expect(salas.some((s: any) => s.id === salaId)).toBe(true);
 
     await page.goto("/reunioes");
-    await expect(page.getByRole("button", { name: /Histórico \(\d+\)/ })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText("pauta da sala viva e2e").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("button", { name: /Histórico \(\d+\)/ })).toBeVisible({ timeout: T(15000) });
+    await expect(page.getByText("pauta da sala viva e2e").first()).toBeVisible({ timeout: T(10000) });
     await page.getByText("pauta da sala viva e2e").first().click();
-    await page.waitForURL(new RegExp(`reuniao=${salaId}`), { timeout: 10000 });
+    await page.waitForURL(new RegExp(`reuniao=${salaId}`), { timeout: T(10000) });
   });
 
   test("(c) Agendar reunião = fluxo cron + nó reunião; aparece na agenda e excluir remove", async ({ page }) => {
@@ -95,7 +96,7 @@ test.describe("Reuniões (sala + histórico + agendamento)", () => {
 
     // aparece na agenda (/agenda → fluxos filtrados por cron)
     await page.goto("/agenda");
-    await expect(page.getByTestId(`fluxo-card-${fid}`)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId(`fluxo-card-${fid}`)).toBeVisible({ timeout: T(15000) });
 
     const del = await api(page).delete(`/flows/${fid}`, { headers: HDR });
     expect(del.ok()).toBe(true);

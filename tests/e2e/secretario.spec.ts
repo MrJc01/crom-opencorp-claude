@@ -1,12 +1,13 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 test.describe("Secretário", () => {
   test.beforeEach(async ({ page }) => {
     logado(page, "test-e2e");
     await seederEmpresaBasica(api(page), "test-e2e");
     await page.goto("/secretario");
-    await page.waitForSelector("#chat-input", { timeout: 20000 });
+    await page.waitForSelector("#chat-input", { timeout: T(20000) });
   });
 
   test.afterAll(async ({ request }) => {
@@ -39,7 +40,7 @@ test.describe("Secretário", () => {
     await page.click("#btn-enviar");
 
     // Aguarda resposta do fake
-    await expect(page.locator(".oc-assistant").first()).toContainText("Resposta do assistant", { timeout: 15000 });
+    await expect(page.locator(".oc-assistant").first()).toContainText("Resposta do assistant", { timeout: T(15000) });
 
     // Abre modal de histórico de sessões
     const btnHist = page.locator('button[title="Histórico de Sessões"]');
@@ -47,6 +48,6 @@ test.describe("Secretário", () => {
     await btnHist.click();
 
     // Modal de histórico deve abrir
-    await expect(page.getByText("Histórico de Conversas")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Histórico de Conversas")).toBeVisible({ timeout: T(5000) });
   });
 });

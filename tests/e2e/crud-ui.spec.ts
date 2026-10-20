@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 const HDR = { authorization: "Bearer test-e2e", "content-type": "application/json" };
 
@@ -25,7 +26,7 @@ test.describe("CRUD via UI", () => {
 
     page.once("dialog", (d) => d.accept());
     await page.getByRole("button", { name: "Excluir", exact: true }).last().click();
-    await expect(page.getByText(titulo)).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByText(titulo)).toHaveCount(0, { timeout: T(10000) });
   });
 
   test("Criar fluxo pela UI → abre o canvas do novo fluxo", async ({ page }) => {
@@ -40,8 +41,8 @@ test.describe("CRUD via UI", () => {
     await page.getByRole("button", { name: "Criar no Studio" }).click();
 
     // Canvas abre (botão voltar + nome no editor)
-    await expect(page.locator('button[title="Voltar para Lista de Fluxos"]')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(nome).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('button[title="Voltar para Lista de Fluxos"]')).toBeVisible({ timeout: T(10000) });
+    await expect(page.getByText(nome).first()).toBeVisible({ timeout: T(10000) });
   });
 
   test("Excluir fluxo pela UI (confirm) → some da lista", async ({ page }) => {
@@ -53,11 +54,11 @@ test.describe("CRUD via UI", () => {
     await page.goto("/fluxos");
     await esperarElementoTexto(page, "Studio de Fluxos Declarativos (DAG)");
     await page.getByPlaceholder("Buscar por nome, id ou descrição...").fill(fid);
-    await expect(page.getByText(fid).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(fid).first()).toBeVisible({ timeout: T(10000) });
 
     page.once("dialog", (d) => d.accept());
     await page.getByTestId(`fluxo-card-${fid}`).getByRole("button", { name: "Excluir fluxo" }).click();
-    await expect(page.getByText(fid)).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByText(fid)).toHaveCount(0, { timeout: T(10000) });
   });
 
   test("Reunião: pauta + agente → Abrir Sala limpa o form e abre a sala", async ({ page }) => {
@@ -74,7 +75,7 @@ test.describe("CRUD via UI", () => {
 
     await page.getByRole("button", { name: "Iniciar Deliberação" }).click();
     // modal fecha e a sala abre com a pauta
-    await expect(page.getByText("Convocar Nova Reunião Colegiada")).toHaveCount(0, { timeout: 15000 });
-    await expect(page.getByText(pauta).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("Convocar Nova Reunião Colegiada")).toHaveCount(0, { timeout: T(15000) });
+    await expect(page.getByText(pauta).first()).toBeVisible({ timeout: T(15000) });
   });
 });

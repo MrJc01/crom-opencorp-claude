@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
 import { rmSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { T } from "./helpers.js";
 
 const WS_ID = "wizard-test-e2e";
 const E2E_HOME = "/tmp/opencorp-e2e";
@@ -46,7 +47,7 @@ test.describe("Criação de workspace (empresa)", () => {
 
     const postWs = page.waitForResponse(
       (r) => r.url().includes("/workspaces") && r.request().method() === "POST",
-      { timeout: 30000 },
+      { timeout: T(30000) },
     );
     await page.getByRole("button", { name: "Criar Workspace" }).click();
     const respCriacao = await postWs;
@@ -54,10 +55,10 @@ test.describe("Criação de workspace (empresa)", () => {
 
     // ws ativo trocado para o novo
     await expect
-      .poll(() => page.evaluate(() => localStorage.getItem("oc-ws")), { timeout: 20000 })
+      .poll(() => page.evaluate(() => localStorage.getItem("oc-ws")), { timeout: T(20000) })
       .toBe(WS_ID);
     // seletor do topbar reflete o novo ativo
-    await expect(page.getByTitle("Trocar workspace ou criar novo projeto")).toContainText(WS_ID, { timeout: 10000 });
+    await expect(page.getByTitle("Trocar workspace ou criar novo projeto")).toContainText(WS_ID, { timeout: T(10000) });
   });
 
   test("id vazio bloqueia criação (toast de erro, modal continua aberto)", async ({ page }) => {
@@ -67,6 +68,6 @@ test.describe("Criação de workspace (empresa)", () => {
 
     await page.getByRole("button", { name: "Criar Workspace" }).click();
     // modal continua aberto
-    await expect(page.getByText("Criar ou Conectar Workspace").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Criar ou Conectar Workspace").first()).toBeVisible({ timeout: T(5000) });
   });
 });

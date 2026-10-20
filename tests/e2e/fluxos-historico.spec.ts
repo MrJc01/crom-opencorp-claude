@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 const FLOW_BASE = "flow-hist-e2e";
 
@@ -117,7 +118,7 @@ test.describe("Fluxos no Histórico e Home (ABCD)", () => {
     await page.goto("/historico?tipo=fluxo");
     await esperarElementoTexto(page, "Identificador / Ordem");
     await esperarElementoTexto(page, "FLUXO");
-    await page.locator(`text=${execId}`).first().waitFor({ state: "visible", timeout: 15000 });
+    await page.locator(`text=${execId}`).first().waitFor({ state: "visible", timeout: T(15000) });
   });
 
   // A home não tem mais a aba Fluxos (ver pendências).
@@ -128,7 +129,7 @@ test.describe("Fluxos no Histórico e Home (ABCD)", () => {
     await esperarStatus(page, fid, execId);
     await page.goto("/?aba=fluxos");
     await esperarElementoTexto(page, "Últimas execuções");
-    await page.locator(`text=${execId}`).first().waitFor({ state: "visible", timeout: 15000 });
+    await page.locator(`text=${execId}`).first().waitFor({ state: "visible", timeout: T(15000) });
   });
 
   test("D1. gatilho cron enviado no run é preservado no histórico", async ({ page }) => {

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 test.describe("Tasks / Kanban", () => {
   test.beforeEach(async ({ page }) => {
@@ -18,7 +19,7 @@ test.describe("Tasks / Kanban", () => {
 
     // Modal fecha e o card aparece (filtra pela busca para isolar)
     await page.locator('input[placeholder="Buscar tarefas..."]').fill(titulo);
-    await expect(page.getByText(titulo).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(titulo).first()).toBeVisible({ timeout: T(10000) });
     // Card está dentro da coluna Backlog (header exato "Backlog")
     const colunaBacklog = page.getByTestId("kanban-coluna-backlog");
     await expect(colunaBacklog.getByText(titulo)).toBeVisible();
@@ -26,7 +27,7 @@ test.describe("Tasks / Kanban", () => {
 
   test("clicar no card abre drawer com título e metadados", async ({ page }) => {
     const card = page.getByText("Task backlog e2e").first();
-    await expect(card).toBeVisible({ timeout: 10000 });
+    await expect(card).toBeVisible({ timeout: T(10000) });
     await card.click();
 
     await esperarElementoTexto(page, "Detalhes da Tarefa");
@@ -41,7 +42,7 @@ test.describe("Tasks / Kanban", () => {
     await page.locator('input[placeholder="Instrução para o agente executar na tarefa..."]').fill(texto);
     await page.getByRole("button", { name: "Apenas comentar" }).click();
 
-    await expect(page.getByText(texto).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(texto).first()).toBeVisible({ timeout: T(10000) });
   });
 
   test("concluir task no drawer → sai do Backlog e aparece em Concluído", async ({ page }) => {
@@ -54,14 +55,14 @@ test.describe("Tasks / Kanban", () => {
     await esperarElementoTexto(page, "Quadro Kanban");
     await page.locator('input[placeholder="Buscar tarefas..."]').fill(titulo);
     const card = page.getByText(titulo).first();
-    await expect(card).toBeVisible({ timeout: 10000 });
+    await expect(card).toBeVisible({ timeout: T(10000) });
     await card.click();
     await esperarElementoTexto(page, "Detalhes da Tarefa");
 
     await page.getByRole("button", { name: "Concluir" }).click();
 
     // Drawer mostra novo status e o card migra de coluna
-    await expect(page.getByText("Concluído").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Concluído").first()).toBeVisible({ timeout: T(10000) });
     await page.locator('input[placeholder="Buscar tarefas..."]').fill("");
     await page.locator('input[placeholder="Buscar tarefas..."]').fill(titulo);
     await expect(page.getByText(titulo).first()).toBeVisible();

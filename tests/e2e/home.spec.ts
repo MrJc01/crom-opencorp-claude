@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 /**
  * Home do workspace (UI React). O antigo "Painel de Operações" (KPIs de custo/saúde,
@@ -16,19 +17,19 @@ test.describe("Home do workspace", () => {
 
   test("mostra tarefas em aberto (task semeada) e agentes", async ({ page }) => {
     await esperarElementoTexto(page, "Tarefas em Aberto");
-    await expect(page.getByText("Task backlog e2e").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Task backlog e2e").first()).toBeVisible({ timeout: T(10000) });
     await esperarElementoTexto(page, "Especialistas e Agentes");
   });
 
   test("Abrir Secretário navega ao chat", async ({ page }) => {
     await page.getByRole("link", { name: "Abrir Secretário" }).click();
-    await page.waitForURL(/\/secretario/, { timeout: 10000 });
-    await page.waitForSelector("#chat-input", { timeout: 20000 });
+    await page.waitForURL(/\/secretario/, { timeout: T(10000) });
+    await page.waitForSelector("#chat-input", { timeout: T(20000) });
   });
 
   test("Ver Kanban navega às tarefas", async ({ page }) => {
     await page.getByRole("link", { name: /Ver Kanban/ }).click();
-    await page.waitForURL(/\/tasks/, { timeout: 10000 });
+    await page.waitForURL(/\/tasks/, { timeout: T(10000) });
     await esperarElementoTexto(page, "Quadro Kanban");
   });
 

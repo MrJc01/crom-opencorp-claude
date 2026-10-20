@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 test.describe("Reuniões e Fluxos", () => {
   test.beforeEach(async ({ page }) => {
@@ -13,7 +14,7 @@ test.describe("Reuniões e Fluxos", () => {
     await page.goto("/reunioes");
     // Com ou sem sala ativa (outros testes podem ter criado salas), o header
     // e a ação de convocar sempre existem
-    await expect(page.getByRole("button", { name: "Nova Reunião" }).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("button", { name: "Nova Reunião" }).first()).toBeVisible({ timeout: T(15000) });
 
     await page.getByRole("button", { name: "Nova Reunião" }).first().click();
     await esperarElementoTexto(page, "Convocar Nova Reunião Colegiada");

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarNavegacao } from "./helpers.js";
+import { T } from "./helpers.js";
 
 const views = [
   { path: "home", link: "Home Dashboard", seletor: "h1:has-text('Governança da Empresa Autônoma')" },
@@ -33,7 +34,7 @@ test.describe("Navegação Sidebar", () => {
       else await page.waitForURL(new RegExp(`/${view.path}`));
 
       // Verifica que o elemento identificador da página está visível
-      await expect(page.locator(view.seletor).first()).toBeVisible({ timeout: 10000 });
+      await expect(page.locator(view.seletor).first()).toBeVisible({ timeout: T(10000) });
     });
   }
 
@@ -43,7 +44,7 @@ test.describe("Navegação Sidebar", () => {
     await page.evaluate(() => { window.location.hash = "#/reunioes"; });
     await page.waitForURL("**/reunioes*");
     await expect(page).toHaveURL(/\/reunioes/);
-    await expect(page.locator("main").getByText("Reunião", { exact: false }).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("main").getByText("Reunião", { exact: false }).first()).toBeVisible({ timeout: T(10000) });
   });
 
   test("botão recolher altera largura da sidebar e persiste após reload", async ({ page }) => {

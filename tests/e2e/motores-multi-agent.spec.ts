@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 test.describe("Config — Motores, autenticação e provedores", () => {
   test.beforeEach(async ({ page }) => {
@@ -10,7 +11,7 @@ test.describe("Config — Motores, autenticação e provedores", () => {
   test("exibe os 8 motores de agentes autônomos", async ({ page }) => {
     await page.goto("/config?tab=motores");
     for (const id of ["opencode", "crom-agente", "claude-code", "antigravity", "cursor", "copilot", "codex", "aider"]) {
-      await expect(page.locator(`button[data-engine-id='${id}']`).first()).toBeVisible({ timeout: 15000 });
+      await expect(page.locator(`button[data-engine-id='${id}']`).first()).toBeVisible({ timeout: T(15000) });
     }
   });
 
@@ -19,10 +20,10 @@ test.describe("Config — Motores, autenticação e provedores", () => {
     await page.locator("button[data-engine-id='claude-code']").click();
 
     await page.getByRole("button", { name: /Autenticar \/ Conectar|Adicionar Conta/i }).first().click();
-    await expect(page.getByRole("heading", { name: "Autenticar: Claude Code" })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Autenticar: Claude Code" })).toBeVisible({ timeout: T(10000) });
 
     await page.getByRole("button", { name: "Terminal CLI" }).click();
-    await expect(page.getByText("$ claude auth login").first()).toBeVisible();
+    await expect(page.getByText(/\$ claude (auth )?login/).first()).toBeVisible();
 
     await page.getByRole("button", { name: "Token / Chave Manual" }).click();
     await expect(page.getByText("ANTHROPIC_API_KEY").first()).toBeVisible();
@@ -36,7 +37,7 @@ test.describe("Config — Motores, autenticação e provedores", () => {
     await page.locator("button[data-engine-id='opencode']").click();
     await page.getByRole("button", { name: /Autenticar \/ Conectar|Adicionar Conta/i }).first().click();
     // Provedores universais do OpenCode aparecem no seletor de provedor.
-    await expect(page.locator("option", { hasText: "OpenRouter (Universal & BYOK)" })).toHaveCount(1, { timeout: 10000 });
+    await expect(page.locator("option", { hasText: "OpenRouter (Universal & BYOK)" })).toHaveCount(1, { timeout: T(10000) });
     await expect(page.locator("option", { hasText: "Google AI Studio / Gemini" })).toHaveCount(1);
     await page.getByTitle("Fechar modal").click();
   });

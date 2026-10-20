@@ -1,9 +1,16 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "../helpers.js";
+import { T } from "../helpers.js";
 
 const HDR = { authorization: "Bearer test-e2e", "content-type": "application/json" };
 
 async function semearAprovacao(page: import("@playwright/test").Page, ordem: string): Promise<string> {
+  // O servidor e2e é compartilhado entre specs: pendências de outros testes fariam "primeiro pendente da API"
+  // e "primeiro botão Aprovar da UI" apontarem para aprovações diferentes. Parte de uma fila vazia.
+  const antigas = (await (await api(page).get("/approvals", { headers: HDR })).json()) as Array<{ id: string; status: string }>;
+  for (const a of antigas.filter((x) => x.status === "pendente")) {
+    await api(page).post(`/approvals/${a.id}/reject`, { headers: HDR, data: {} });
+  }
   await api(page).put("/settings/security", {
     headers: HDR,
     data: { level: "standard", hitl_patterns: ["git push"] },
@@ -16,7 +23,7 @@ async function semearAprovacao(page: import("@playwright/test").Page, ordem: str
     const p = lista.find((x) => x.status === "pendente");
     id = p?.id || "";
     return id;
-  }, { timeout: 15000 }).not.toBe("");
+  }, { timeout: T(15000) }).not.toBe("");
   return id;
 }
 
@@ -47,7 +54,7 @@ test.describe("Web Aprovações HITL: aprovar e rejeitar resolvem", () => {
       const r = await api(page).get("/approvals", { headers: HDR });
       const lista = (await r.json()) as Array<{ id: string; status: string }>;
       return lista.find((x) => x.id === id)?.status;
-    }, { timeout: 15000 }).toBe("aprovado");
+    }, { timeout: T(15000) }).toBe("aprovado");
   });
 
   test("rejeitar sem motivo resolve (sem 500, regression do motivo obrigatório)", async ({ page }) => {
@@ -58,6 +65,6 @@ test.describe("Web Aprovações HITL: aprovar e rejeitar resolvem", () => {
 
     await page.reload();
     await esperarElementoTexto(page, "Governança da Empresa Autônoma");
-    await expect(page.getByText("aprovação(ões) humana(s) pendente(s)")).toHaveCount(0, { timeout: 15000 });
+    await expect(page.getByText("aprovação(ões) humana(s) pendente(s)")).toHaveCount(0, { timeout: T(15000) });
   });
 });

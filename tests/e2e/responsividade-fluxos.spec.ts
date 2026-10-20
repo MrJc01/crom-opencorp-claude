@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 test.describe("Responsividade do Studio de Fluxos", () => {
   test.beforeEach(async ({ page }) => {
@@ -24,9 +25,9 @@ test.describe("Responsividade do Studio de Fluxos", () => {
   async function abrirCanvas(page: import("@playwright/test").Page) {
     await page.getByPlaceholder("Buscar por nome, id ou descrição...").fill("flow-resp-test");
     const btnAbrir = page.getByTestId("abrir-editor-flow-resp-test");
-    await expect(btnAbrir).toBeVisible({ timeout: 15000 });
+    await expect(btnAbrir).toBeVisible({ timeout: T(15000) });
     await btnAbrir.click();
-    await expect(page.locator('.react-flow__node[data-id="inicio"]').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.react-flow__node[data-id="inicio"]').first()).toBeVisible({ timeout: T(15000) });
   }
 
   test("Desktop (1280x800) — toolbar, canvas e NDV", async ({ page }) => {

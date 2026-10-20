@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 const HDR = { authorization: "Bearer test-e2e", "content-type": "application/json" };
 
@@ -48,8 +49,8 @@ test.describe("Tempo real: execução ao vivo no web", () => {
     await page.goto("/historico");
     await esperarElementoTexto(page, "Identificador / Ordem");
     const linha = page.getByTestId(`historico-item-${execId}`);
-    await expect(linha).toHaveAttribute("data-tipo", "fluxo", { timeout: 15000 });
-    await expect(linha).toContainText(/executando/i, { timeout: 15000 });
+    await expect(linha).toHaveAttribute("data-tipo", "fluxo", { timeout: T(15000) });
+    await expect(linha).toContainText(/executando/i, { timeout: T(15000) });
 
     // Finaliza sozinho e o status vira concluído
     const fim = await esperarStatus(page, fid, execId, "concluido", 90000);
@@ -59,7 +60,7 @@ test.describe("Tempo real: execução ao vivo no web", () => {
     await page.goto(`/historico?run=${execId}`);
     await esperarElementoTexto(page, "Identificador / Ordem");
     await page.getByRole("button", { name: /^Resultado/ }).click();
-    await expect(page.getByText("Resultado", { exact: false }).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("Resultado", { exact: false }).first()).toBeVisible({ timeout: T(15000) });
   });
 
   test("cancelar fluxo no meio marca cancelado e aparece no filtro", async ({ page }) => {
@@ -77,7 +78,7 @@ test.describe("Tempo real: execução ao vivo no web", () => {
     await page.goto("/historico?tipo=fluxo");
     await esperarElementoTexto(page, "Identificador / Ordem");
     await page.locator("main select").first().selectOption("cancelado");
-    await expect(page.getByText(execId).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(execId).first()).toBeVisible({ timeout: T(15000) });
   });
 
   test("retomar execução não-falha responde 422 (sem falso sucesso)", async ({ page }) => {
@@ -102,7 +103,7 @@ test.describe("Tempo real: execução ao vivo no web", () => {
       headers: HDR,
       data: { titulo, descricao: "polling", coluna: "backlog", prioridade: "media" },
     });
-    await expect(page.getByText(titulo).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(titulo).first()).toBeVisible({ timeout: T(15000) });
   });
 
   // Selo da última execução na lista de fluxos não existe na UI React (ver pendências).
@@ -116,6 +117,6 @@ test.describe("Tempo real: execução ao vivo no web", () => {
     await page.goto("/fluxos");
     await esperarElementoTexto(page, "Fluxos");
     await page.locator('input[placeholder="Pesquisar fluxos..."]').fill(fid);
-    await expect(page.getByText("concluido").first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("concluido").first()).toBeVisible({ timeout: T(15000) });
   });
 });

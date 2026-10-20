@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "../helpers.js";
 import { ConsoleWatcher } from "./pom/base.js";
+import { T } from "../helpers.js";
 
 const HDR = { authorization: "Bearer test-e2e", "content-type": "application/json" };
 
@@ -16,7 +17,7 @@ test.describe("Web Tasks: busca, filtros, drawer e agendamento", () => {
     const watcher = new ConsoleWatcher(page);
     watcher.start();
     await page.locator('input[placeholder="Buscar tarefas..."]').fill("backlog e2e");
-    await expect(page.getByText("Task backlog e2e").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Task backlog e2e").first()).toBeVisible({ timeout: T(10000) });
     await page.locator('input[placeholder="Buscar tarefas..."]').fill("zzz-nada-999");
     await expect(page.getByText("Task backlog e2e")).toHaveCount(0);
     await page.locator('input[placeholder="Buscar tarefas..."]').fill("");
@@ -32,11 +33,11 @@ test.describe("Web Tasks: busca, filtros, drawer e agendamento", () => {
     await esperarElementoTexto(page, "Detalhes da Tarefa");
 
     await page.getByRole("button", { name: "Concluir" }).click();
-    await expect(page.getByText("Concluído").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Concluído").first()).toBeVisible({ timeout: T(10000) });
 
     page.once("dialog", (d) => d.accept());
     await page.getByRole("button", { name: "Excluir", exact: true }).last().click();
-    await expect(page.getByText(titulo)).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByText(titulo)).toHaveCount(0, { timeout: T(10000) });
   });
 
   test("modal criação com agendamento recorrente", async ({ page }) => {
@@ -47,7 +48,7 @@ test.describe("Web Tasks: busca, filtros, drawer e agendamento", () => {
     await page.getByRole("button", { name: "Repetir (Recorrente)" }).click();
     await page.locator("select:has(option[value='horario'])").selectOption("horario");
     await page.getByRole("button", { name: "Criar Tarefa" }).click();
-    await expect(page.getByText("Criar Nova Tarefa")).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByText("Criar Nova Tarefa")).toHaveCount(0, { timeout: T(10000) });
   });
 
   test("chat do drawer comenta sem executar", async ({ page }) => {
@@ -56,6 +57,6 @@ test.describe("Web Tasks: busca, filtros, drawer e agendamento", () => {
     await esperarElementoTexto(page, "Detalhes da Tarefa");
     await page.locator('input[placeholder="Instrução para o agente executar na tarefa..."]').fill(texto);
     await page.getByRole("button", { name: "Apenas comentar" }).click();
-    await expect(page.getByText(texto).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(texto).first()).toBeVisible({ timeout: T(10000) });
   });
 });

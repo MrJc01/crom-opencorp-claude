@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "../helpers.js";
 import { ConsoleWatcher } from "./pom/base.js";
+import { T } from "../helpers.js";
 
 const HDR = { authorization: "Bearer test-e2e", "content-type": "application/json" };
 
@@ -34,8 +35,8 @@ test.describe("Web Fluxos: lista, canvas, NDV e execução", () => {
     await esperarElementoTexto(page, "Criar Novo Fluxo DAG");
     await page.getByPlaceholder("ex: Produção de Conteúdo YouTube").fill(nome);
     await page.getByRole("button", { name: "Criar no Studio" }).click();
-    await expect(page.locator('button[title="Voltar para Lista de Fluxos"]')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(nome).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('button[title="Voltar para Lista de Fluxos"]')).toBeVisible({ timeout: T(10000) });
+    await expect(page.getByText(nome).first()).toBeVisible({ timeout: T(10000) });
   });
 
   test("canvas: zoom, NDV e voltar", async ({ page }) => {
@@ -47,19 +48,19 @@ test.describe("Web Fluxos: lista, canvas, NDV e execução", () => {
     await page.reload();
     await esperarElementoTexto(page, "Studio de Fluxos Declarativos (DAG)");
     await page.getByTestId(`abrir-editor-${fid}`).click();
-    await expect(page.locator('.react-flow__node[data-id="inicio"]').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.react-flow__node[data-id="inicio"]').first()).toBeVisible({ timeout: T(15000) });
 
     await page.getByRole("button", { name: "Zoom In" }).click();
     await page.getByRole("button", { name: "Fit View" }).click();
     await page.locator('.react-flow__node[data-id="fim"]').first().click();
-    await expect(page.getByTestId("ndv-panel")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId("ndv-panel")).toBeVisible({ timeout: T(10000) });
 
     await page.locator('button[title="Voltar para Lista de Fluxos"]').click();
     await esperarElementoTexto(page, "Studio de Fluxos Declarativos (DAG)");
 
     page.once("dialog", (d) => d.accept());
     await page.getByTestId(`fluxo-card-${fid}`).getByRole("button", { name: "Excluir fluxo" }).click();
-    await expect(page.getByTestId(`fluxo-card-${fid}`)).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByTestId(`fluxo-card-${fid}`)).toHaveCount(0, { timeout: T(10000) });
   });
 
   test("executar pelo Studio dispara e informa o exec_id", async ({ page }) => {
@@ -71,12 +72,12 @@ test.describe("Web Fluxos: lista, canvas, NDV e execução", () => {
     await page.reload();
     await esperarElementoTexto(page, "Studio de Fluxos Declarativos (DAG)");
     await page.getByTestId(`abrir-editor-${fid}`).click();
-    await expect(page.locator('.react-flow__node[data-id="inicio"]').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.react-flow__node[data-id="inicio"]').first()).toBeVisible({ timeout: T(15000) });
 
     await page.getByRole("button", { name: "Executar", exact: true }).click();
     await esperarElementoTexto(page, "Disparar Execução");
     await page.getByRole("button", { name: "Disparar Agora" }).click();
-    await expect(page.getByText(/exec_id exec-/).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/exec_id exec-/).first()).toBeVisible({ timeout: T(15000) });
   });
 
   test("toggles de Ativo e Auto-agendar na lista atualizam sem erro 'nos: expected array'", async ({ page }) => {
@@ -100,11 +101,11 @@ test.describe("Web Fluxos: lista, canvas, NDV e execução", () => {
 
     // Filtra pelo fluxo criado
     await page.getByPlaceholder("Buscar por nome, id ou descrição...").fill(fid);
-    await expect(page.getByText("Flow Toggle Test").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Flow Toggle Test").first()).toBeVisible({ timeout: T(10000) });
 
     // Clica no toggle Ativo (que envia PUT /flows/:id com os dados do card)
     const toggleAtivo = page.locator(`[data-testid="toggle-ativo-${fid}"]`);
-    await expect(toggleAtivo).toBeVisible({ timeout: 5000 });
+    await expect(toggleAtivo).toBeVisible({ timeout: T(5000) });
     await toggleAtivo.click();
 
     // Aguarda processamento

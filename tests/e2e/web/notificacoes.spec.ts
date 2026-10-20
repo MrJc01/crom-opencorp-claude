@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "../helpers.js";
 import { ConsoleWatcher } from "./pom/base.js";
+import { T } from "../helpers.js";
 
 const HDR = { authorization: "Bearer test-e2e", "content-type": "application/json" };
 
@@ -15,7 +16,7 @@ test.describe("Web Notificações: filtros, excluir e console limpo", () => {
     });
     await page.goto("/notificacoes");
     await esperarElementoTexto(page, "Central de Alertas & Notificações");
-    await expect(page.locator(".not-card")).toHaveCount(1, { timeout: 15000 });
+    await expect(page.locator(".not-card")).toHaveCount(1, { timeout: T(15000) });
   });
 
   test("filtro Não lidas e Todas via URL sem erro", async ({ page }) => {
@@ -32,6 +33,6 @@ test.describe("Web Notificações: filtros, excluir e console limpo", () => {
   test("excluir todas com confirm limpa a lista", async ({ page }) => {
     page.once("dialog", (d) => d.accept());
     await page.getByTitle("Limpar histórico").click();
-    await expect(page.getByText("Nenhuma notificação registrada no momento.").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Nenhuma notificação registrada no momento.").first()).toBeVisible({ timeout: T(10000) });
   });
 });

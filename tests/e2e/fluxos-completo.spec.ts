@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api } from "./helpers.js";
+import { T } from "./helpers.js";
 
 test.describe("E2E Completo — OpenCorp Fluxos & Studio n8n-style", () => {
   test.beforeEach(async ({ page }) => {
@@ -26,7 +27,7 @@ test.describe("E2E Completo — OpenCorp Fluxos & Studio n8n-style", () => {
 
     // Navega para /agenda e valida redirecionamento automático para /fluxos?filtro=cron
     await page.goto("/agenda");
-    await page.waitForURL("**/fluxos?filtro=cron*", { timeout: 10000 });
+    await page.waitForURL("**/fluxos?filtro=cron*", { timeout: T(10000) });
     expect(page.url()).toContain("/fluxos?filtro=cron");
     await expect(page.locator("text=Rotina Noturna Cron").first()).toBeVisible();
   });
@@ -85,13 +86,13 @@ test.describe("E2E Completo — OpenCorp Fluxos & Studio n8n-style", () => {
 
     // Verifica que o canvas abriu e o botão voltar está visível
     const btnVoltar = page.locator("#btn-voltar-fluxos");
-    await expect(btnVoltar).toBeVisible({ timeout: 10000 });
+    await expect(btnVoltar).toBeVisible({ timeout: T(10000) });
 
     // Clica no botão Voltar para Fluxos
     await btnVoltar.click();
 
     // Valida que retornou para a lista geral
-    await expect(page.locator('h1:has-text("Studio de Fluxos")')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h1:has-text("Studio de Fluxos")')).toBeVisible({ timeout: T(10000) });
     await expect(page).not.toHaveURL(/fluxo=/);
   });
 

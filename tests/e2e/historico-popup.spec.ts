@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 /**
  * Histórico do Secretário como modal (HistoricoModal): abre pelo header do chat,
@@ -15,11 +16,11 @@ test.describe("Histórico do Secretário como modal", () => {
 
   test("(a) abre pelo header, mostra conteúdo e fecha com Escape", async ({ page }) => {
     const btn = page.locator('button[title="Histórico de Sessões"]');
-    await expect(btn).toBeVisible({ timeout: 15000 });
+    await expect(btn).toBeVisible({ timeout: T(15000) });
     await btn.click();
 
     await esperarElementoTexto(page, "Histórico de Conversas");
-    await expect(page.locator('input[placeholder="Buscar conversas..."]')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('input[placeholder="Buscar conversas..."]')).toBeVisible({ timeout: T(10000) });
 
     await page.keyboard.press("Escape");
     await expect(page.getByText("Histórico de Conversas")).toHaveCount(0);

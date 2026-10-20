@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, api } from "./helpers.js";
+import { T } from "./helpers.js";
 
 test.describe("Histórico — Reenviar / Clone de Execução", () => {
   const wsId = "e2e-retry-corp";
@@ -73,17 +74,17 @@ test.describe("Histórico — Reenviar / Clone de Execução", () => {
 
     // Modal deve estar aberto
     const modal = page.getByRole("heading", { name: execIdOriginal });
-    await expect(modal).toBeVisible({ timeout: 15000 });
+    await expect(modal).toBeVisible({ timeout: T(15000) });
 
     // Botão Reenviar deve estar visível
     const btnReenviar = page.locator('button:has-text("Reenviar")');
-    await expect(btnReenviar).toBeVisible({ timeout: 10000 });
+    await expect(btnReenviar).toBeVisible({ timeout: T(10000) });
 
     // Clicar em Reenviar
     await btnReenviar.click();
 
     // Deve exibir toast de sucesso ou notificação de reenviado
     const toastSucesso = page.getByText(/Execução reenviada com sucesso/).first();
-    await expect(toastSucesso).toBeVisible({ timeout: 15000 });
+    await expect(toastSucesso).toBeVisible({ timeout: T(15000) });
   });
 });

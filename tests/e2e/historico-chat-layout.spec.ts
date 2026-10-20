@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, api } from "./helpers.js";
+import { T } from "./helpers.js";
 
 test.describe("Histórico — Modal com Layout do Secretário e Encerramento", () => {
   const wsId = "e2e-chat-layout-ws";
@@ -86,14 +87,14 @@ test.describe("Histórico — Modal com Layout do Secretário e Encerramento", (
     await page.goto(`/historico?run=${execIdSequential}&workspace=${wsId}`);
 
     // Modal aberto com o ID da execução
-    await expect(page.getByRole("heading", { name: execIdSequential })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: execIdSequential })).toBeVisible({ timeout: T(15000) });
 
     // Ordem original (turno do operador)
-    await expect(page.getByText("Ordem Operacional").first()).toBeVisible({ timeout: 10000 });
-    await expect(page.locator(`text=${ordemSequential}`).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Ordem Operacional").first()).toBeVisible({ timeout: T(10000) });
+    await expect(page.locator(`text=${ordemSequential}`).first()).toBeVisible({ timeout: T(10000) });
 
     // Ações do agente em sequência (bash → read → write), cada uma expansível
-    await expect(page.getByRole("button", { name: /bash\s*ls -la/ }).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("button", { name: /bash\s*ls -la/ }).first()).toBeVisible({ timeout: T(10000) });
     await expect(page.getByRole("button", { name: /read\s*.*package\.json/ }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: /write\s*.*build-report\.md/ }).first()).toBeVisible();
 
@@ -101,12 +102,12 @@ test.describe("Histórico — Modal com Layout do Secretário e Encerramento", (
     await page.getByRole("button", { name: /^Resultado/ }).click();
     await expect(
       page.locator("text=Conclusão: O sistema está operacional e todas as dependências foram validadas.").first()
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible({ timeout: T(10000) });
   });
 
   test("(b) Alternador entre Chat ao Vivo e Terminal Raw funciona perfeitamente", async ({ page }) => {
     await page.goto(`/historico?run=${execIdSequential}&workspace=${wsId}`);
-    await expect(page.getByRole("heading", { name: execIdSequential })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: execIdSequential })).toBeVisible({ timeout: T(15000) });
 
     // Alternar para Terminal Raw
     const btnTerminal = page.getByRole("button", { name: /^Terminal/ });
@@ -115,7 +116,7 @@ test.describe("Histórico — Modal com Layout do Secretário e Encerramento", (
 
     // Tag pre visível com o log bruto
     const preRaw = page.locator("pre");
-    await expect(preRaw).toBeVisible({ timeout: 5000 });
+    await expect(preRaw).toBeVisible({ timeout: T(5000) });
     await expect(preRaw).toContainText("executor-padrao");
 
     // Alternar de volta para Chat ao Vivo
@@ -124,7 +125,7 @@ test.describe("Histórico — Modal com Layout do Secretário e Encerramento", (
     await btnChat.click();
 
     // Chat sequencial volta a ficar visível
-    await expect(page.getByText("Ordem Operacional").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Ordem Operacional").first()).toBeVisible({ timeout: T(5000) });
   });
 
   test("(c) Encerramento de execução ('Encerrar') interrompe polling e persiste status cancelado", async ({ page }) => {
@@ -140,17 +141,17 @@ test.describe("Histórico — Modal com Layout do Secretário e Encerramento", (
     });
 
     await page.goto(`/historico?run=exec-test-cancelar-99&workspace=${wsId}`);
-    await expect(page.getByRole("heading", { name: "exec-test-cancelar-99" })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: "exec-test-cancelar-99" })).toBeVisible({ timeout: T(15000) });
 
     // Botão Encerrar ou fechar
     const btnEncerrar = page.locator('button:has-text("Encerrar")');
-    if (await btnEncerrar.isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (await btnEncerrar.isVisible({ timeout: T(3000) }).catch(() => false)) {
       await btnEncerrar.click();
       // Toast de encerramento
-      await expect(page.locator("text=encerrada com sucesso").first()).toBeVisible({ timeout: 10000 });
+      await expect(page.locator("text=encerrada com sucesso").first()).toBeVisible({ timeout: T(10000) });
       // Status muda para cancelado (dentro do modal, não o <option> do filtro)
       const modal = page.locator("div.fixed.inset-0").last();
-      await expect(modal.getByText("cancelado", { exact: true })).toBeVisible({ timeout: 10000 });
+      await expect(modal.getByText("cancelado", { exact: true })).toBeVisible({ timeout: T(10000) });
     }
 
     // Tecla Escape fecha o modal sem deixar órfãos

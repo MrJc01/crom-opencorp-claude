@@ -1,12 +1,13 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api } from "./helpers.js";
+import { T } from "./helpers.js";
 
 test.describe("Perguntas da IA com Opções Interativas e Configuração de Modelo no Chat", () => {
   test.beforeEach(async ({ page }) => {
     logado(page, "test-e2e");
     await seederEmpresaBasica(api(page), "test-e2e");
     await page.goto("/secretario");
-    await page.waitForSelector("#chat-input", { timeout: 20000 });
+    await page.waitForSelector("#chat-input", { timeout: T(20000) });
   });
 
   test.afterAll(async ({ request }) => {
@@ -17,7 +18,7 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
     await page.locator('[data-testid="btn-configurar-motor"]').first().click();
 
     const drawer = page.locator("[data-testid='drawer-lateral-config']");
-    await expect(drawer).toBeVisible({ timeout: 5000 });
+    await expect(drawer).toBeVisible({ timeout: T(5000) });
 
     // Select de agente supervisor carregado
     const selectAgente = drawer.locator("select").first();
@@ -26,7 +27,7 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
 
     // Salvar persiste e dá retorno visual
     await drawer.getByRole("button", { name: /Salvar no Workspace/ }).click();
-    await expect(drawer.getByText("Salvo!")).toBeVisible({ timeout: 10000 });
+    await expect(drawer.getByText("Salvo!")).toBeVisible({ timeout: T(10000) });
   });
 
   test("IA pergunta usando tool ask_question com opções → botões clicáveis são renderizados e o clique envia a resposta", async ({ page }) => {
@@ -45,7 +46,7 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
 
     // Aguarda o card de perguntas com opções interativas aparecer no layout
     const cardOpcoes = page.locator(".chat-pergunta-card").last();
-    await expect(cardOpcoes).toBeVisible({ timeout: 15000 });
+    await expect(cardOpcoes).toBeVisible({ timeout: T(15000) });
 
     // Verifica que o título da pergunta é renderizado
     await expect(cardOpcoes).toContainText("Qual ambiente você deseja implantar?");
@@ -63,7 +64,7 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
     await btnStaging.click();
 
     // Verifica que a escolha "Staging" foi enviada no chat como resposta do usuário
-    await expect(page.locator(".oc-user, [data-role='user']").last()).toContainText("Staging", { timeout: 10000 });
+    await expect(page.locator(".oc-user, [data-role='user']").last()).toContainText("Staging", { timeout: T(10000) });
   });
 
   test("IA pergunta em formato texto com opções numeradas → detecta e renderiza botões de escolha rápida", async ({ page }) => {
@@ -82,7 +83,7 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
 
     // Aguarda o card de perguntas com opções interativas aparecer no layout
     const cardOpcoes = page.locator(".chat-pergunta-card").last();
-    await expect(cardOpcoes).toBeVisible({ timeout: 15000 });
+    await expect(cardOpcoes).toBeVisible({ timeout: T(15000) });
 
     // Verifica que os 3 botões com as opções do texto foram criados
     const botoesOpcoes = cardOpcoes.locator("button[data-testid='chat-opcao-btn']");
@@ -95,10 +96,10 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
     await botoesOpcoes.first().click();
 
     // Verifica que a mensagem foi enviada ao chat com a opção escolhida
-    await expect(page.locator(".oc-user, [data-role='user']").last()).toContainText("Publicar agora no YouTube", { timeout: 10000 });
+    await expect(page.locator(".oc-user, [data-role='user']").last()).toContainText("Publicar agora no YouTube", { timeout: T(10000) });
 
     // Após resposta, o card de opções deve ser ocultado
-    await expect(cardOpcoes).not.toBeVisible({ timeout: 5000 });
+    await expect(cardOpcoes).not.toBeVisible({ timeout: T(5000) });
   });
 
   test("múltiplas perguntas: exibe navegação por abas/pills, opção customizada e oculta card após resposta", async ({ page }) => {
@@ -117,7 +118,7 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
 
     // Aguarda card aparecer
     const cardOpcoes = page.locator(".chat-pergunta-card").last();
-    await expect(cardOpcoes).toBeVisible({ timeout: 15000 });
+    await expect(cardOpcoes).toBeVisible({ timeout: T(15000) });
 
     // Verifica navegação de abas (Pergunta 1 de 2)
     await expect(cardOpcoes).toContainText("Pergunta 1 de 2");
@@ -146,12 +147,12 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
 
     // Aguarda a resposta do usuário aparecer no chat contendo as respostas
     const ultimoUserMsg = page.locator(".oc-user, [data-role='user']").last();
-    await expect(ultimoUserMsg).toBeVisible({ timeout: 10000 });
+    await expect(ultimoUserMsg).toBeVisible({ timeout: T(10000) });
     await expect(ultimoUserMsg).toContainText("Produção");
     await expect(ultimoUserMsg).toContainText("Gradual (Canary)");
 
     // Como já foi respondida, o card de opções deve sumir da tela!
-    await expect(cardOpcoes).not.toBeVisible({ timeout: 5000 });
+    await expect(cardOpcoes).not.toBeVisible({ timeout: T(5000) });
   });
 
   test("pergunta com resposta personalizada: abre campo de digitação, envia texto customizado e oculta card", async ({ page }) => {
@@ -168,7 +169,7 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
     await page.click("#btn-enviar");
 
     const cardOpcoes = page.locator(".chat-pergunta-card").last();
-    await expect(cardOpcoes).toBeVisible({ timeout: 15000 });
+    await expect(cardOpcoes).toBeVisible({ timeout: T(15000) });
 
     // Clica no botão "Outro: digitar resposta personalizada..."
     const btnCustom = cardOpcoes.locator("button:has-text('Outro: digitar resposta personalizada')");
@@ -186,10 +187,10 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
 
     // Verifica que o texto customizado foi enviado como mensagem do usuário
     const ultimoUser = page.locator(".oc-user, [data-role='user']").last();
-    await expect(ultimoUser).toContainText("Deploy no cluster Kubernetes local", { timeout: 10000 });
+    await expect(ultimoUser).toContainText("Deploy no cluster Kubernetes local", { timeout: T(10000) });
 
     // O card deve sumir após ser respondido
-    await expect(cardOpcoes).not.toBeVisible({ timeout: 5000 });
+    await expect(cardOpcoes).not.toBeVisible({ timeout: T(5000) });
   });
 
   // Removido na UI React (9ad8e1e); ver docs/PENDENCIAS-MULTIMOTORES.md, seção de lacunas do chat.
@@ -254,19 +255,19 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
       await input.fill(p);
       await page.click("#btn-enviar");
       // Aguarda o balão do usuário correspondente aparecer
-      await expect(page.locator(`.oc-user:has-text("${p}"), [data-role='user']:has-text("${p}")`)).toBeVisible({ timeout: 10000 });
+      await expect(page.locator(`.oc-user:has-text("${p}"), [data-role='user']:has-text("${p}")`)).toBeVisible({ timeout: T(10000) });
       // Aguarda resposta do assistente ser concluída
-      await expect(page.locator(".oc-assistant").last()).toBeVisible({ timeout: 10000 });
+      await expect(page.locator(".oc-assistant").last()).toBeVisible({ timeout: T(10000) });
       await page.waitForTimeout(200);
     }
 
     // Recarrega a página para testar o carregamento inicial da sessão
     await page.reload();
-    await page.waitForSelector("#chat-input", { timeout: 20000 });
+    await page.waitForSelector("#chat-input", { timeout: T(20000) });
 
     // 1. Inicialmente deve exibir apenas os últimos 2 turnos (gama recente e delta final)
-    await expect(page.locator(".oc-user:has-text('Turno delta final')")).toBeVisible({ timeout: 8000 });
-    await expect(page.locator(".oc-user:has-text('Turno gama recente')")).toBeVisible({ timeout: 8000 });
+    await expect(page.locator(".oc-user:has-text('Turno delta final')")).toBeVisible({ timeout: T(8000) });
+    await expect(page.locator(".oc-user:has-text('Turno gama recente')")).toBeVisible({ timeout: T(8000) });
 
     // O primeiro turno ainda NÃO deve estar visível no DOM
     await expect(page.locator(".oc-user:has-text('Turno alfa inicial')")).not.toBeVisible();
@@ -279,11 +280,11 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
     await btnCarregarAnteriores.click();
 
     // 4. Agora os turnos anteriores devem aparecer no chat
-    await expect(page.locator(".oc-user:has-text('Turno alfa inicial')")).toBeVisible({ timeout: 8000 });
-    await expect(page.locator(".oc-user:has-text('Turno beta intermediario')")).toBeVisible({ timeout: 8000 });
+    await expect(page.locator(".oc-user:has-text('Turno alfa inicial')")).toBeVisible({ timeout: T(8000) });
+    await expect(page.locator(".oc-user:has-text('Turno beta intermediario')")).toBeVisible({ timeout: T(8000) });
 
     // 5. Como chegou ao início, o indicador "Início do histórico da conversa" deve ser exibido
-    await expect(page.locator("text=Início do histórico da conversa")).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("text=Início do histórico da conversa")).toBeVisible({ timeout: T(5000) });
   });
 
   // Removido na UI React (9ad8e1e); ver docs/PENDENCIAS-MULTIMOTORES.md, seção de lacunas do chat.
@@ -303,7 +304,7 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
 
     // Aguarda o balão do usuário aparecer no chat
     const balaoUsuario = page.locator(`.oc-user:has-text("${textoPromptOriginal}"), [data-role='user']:has-text("${textoPromptOriginal}")`).last();
-    await expect(balaoUsuario).toBeVisible({ timeout: 10000 });
+    await expect(balaoUsuario).toBeVisible({ timeout: T(10000) });
 
     // O input deve estar limpo após o envio
     await expect(input).toHaveValue("");
@@ -311,11 +312,11 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
     // Passa o mouse sobre o balão para revelar os botões de ação e clica no botão de editar
     await balaoUsuario.hover();
     const btnEditar = balaoUsuario.locator("button[title='Editar prompt']");
-    await expect(btnEditar).toBeVisible({ timeout: 3000 });
+    await expect(btnEditar).toBeVisible({ timeout: T(3000) });
     await btnEditar.click();
 
     // O texto deve ser restaurado IMEDIATAMENTE no input!
-    await expect(input).toHaveValue(textoPromptOriginal, { timeout: 5000 });
+    await expect(input).toHaveValue(textoPromptOriginal, { timeout: T(5000) });
 
     // O input deve estar focado
     await expect(input).toBeFocused();
@@ -348,7 +349,7 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
     // O input deve ser limpo e o FollowupQueueDock deve aparecer!
     await expect(input).toHaveValue("");
     const dockFila = page.locator("[data-testid='followup-queue-dock']");
-    await expect(dockFila).toBeVisible({ timeout: 5000 });
+    await expect(dockFila).toBeVisible({ timeout: T(5000) });
     await expect(dockFila).toContainText("Fila de Espera");
     await expect(dockFila).toContainText("Meu segundo prompt na fila de espera");
 
@@ -364,7 +365,7 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
     // 4. Enfileira novamente via teclado (Enter)
     await input.press("Enter");
     await expect(input).toHaveValue("");
-    await expect(dockFila).toBeVisible({ timeout: 5000 });
+    await expect(dockFila).toBeVisible({ timeout: T(5000) });
 
     // 5. Adiciona um item adicional à fila para testar múltiplos itens e exclusão
     await input.fill("Item para ser excluido");
@@ -380,9 +381,9 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
 
     // 7. Validação do envio automático: quando o turno atual finaliza, a fila é consumida automaticamente
     // O dock deve sumir e o prompt da fila é disparado como mensagem no chat
-    await expect(dockFila).not.toBeVisible({ timeout: 25000 });
+    await expect(dockFila).not.toBeVisible({ timeout: T(25000) });
     const ultimoUser = page.locator(".oc-user, [data-role='user']").last();
-    await expect(ultimoUser).toContainText("Meu segundo prompt na fila de espera", { timeout: 15000 });
+    await expect(ultimoUser).toContainText("Meu segundo prompt na fila de espera", { timeout: T(15000) });
   });
 
   // Removido na UI React (9ad8e1e); ver docs/PENDENCIAS-MULTIMOTORES.md, seção de lacunas do chat.
@@ -403,11 +404,11 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
     // Rapidamente enfileira mensagem prioritária
     await input.fill("Mensagem prioritária adiantada agora");
     const btnFila = page.locator("[data-testid='btn-enfileirar']");
-    await expect(btnFila).toBeVisible({ timeout: 5000 });
+    await expect(btnFila).toBeVisible({ timeout: T(5000) });
     await btnFila.click();
 
     const dockFila = page.locator("[data-testid='followup-queue-dock']");
-    await expect(dockFila).toBeVisible({ timeout: 5000 });
+    await expect(dockFila).toBeVisible({ timeout: T(5000) });
 
     // Clica imediatamente em Adiantar
     const btnAdiantar = dockFila.locator("button:has-text('Adiantar')").first();
@@ -415,8 +416,8 @@ test.describe("Perguntas da IA com Opções Interativas e Configuração de Mode
     await btnAdiantar.click();
 
     // O dock deve fechar e a mensagem deve aparecer enviada
-    await expect(dockFila).not.toBeVisible({ timeout: 5000 });
+    await expect(dockFila).not.toBeVisible({ timeout: T(5000) });
     const ultimoUser = page.locator(".oc-user, [data-role='user']").last();
-    await expect(ultimoUser).toContainText("Mensagem prioritária adiantada agora", { timeout: 10000 });
+    await expect(ultimoUser).toContainText("Mensagem prioritária adiantada agora", { timeout: T(10000) });
   });
 });

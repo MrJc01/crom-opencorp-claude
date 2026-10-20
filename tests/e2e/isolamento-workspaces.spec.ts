@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { chmod, mkdir, mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { SessionManager } from "../../src/core/contexts/execution/session-manager.js";
 
@@ -165,9 +165,19 @@ test.describe.serial("F6-T02 — Prova de isolamento entre workspaces", () => {
       await rm(join(wsA, "escrita-a.txt"), { force: true }).catch(() => undefined);
 
       const fakePath = join(isoHome, ".opencorp", "bin", caso.fake);
-      await writeFile(fakePath, montarFakeRunner(wsA, wsB, isoHome), "utf8");
-      await chmod(fakePath, 0o755);
+      // O resolvedor procura todos os aliases do harness no PATH (ex.: cursor usa `agent`):
+      // o fake precisa sombrear cada um deles.
+      const nomesFake = [...new Set([caso.fake, ...caso.deteccao])];
+      for (const nome of nomesFake) {
+        const caminho = join(isoHome, ".opencorp", "bin", nome);
+        await writeFile(caminho, montarFakeRunner(wsA, wsB, isoHome), "utf8");
+        await chmod(caminho, 0o755);
+      }
 
+      // PATH vem antes da instalação gerenciada na resolução do binário: sem isto o harness real
+      // do PC venceria o fake.
+      const pathOriginal = process.env.PATH;
+      process.env.PATH = `${dirname(fakePath)}:${pathOriginal ?? ""}`;
       try {
         const sm = new SessionManager({ homeDir: isoHome });
         const resultado = await sm.rodar({
@@ -202,7 +212,10 @@ test.describe.serial("F6-T02 — Prova de isolamento entre workspaces", () => {
         // Sanity: a escrita em A efetivamente aconteceu no host.
         expect(existsSync(join(wsA, "escrita-a.txt"))).toBe(true);
       } finally {
-        await rm(fakePath, { force: true }).catch(() => undefined);
+        process.env.PATH = pathOriginal;
+        for (const nome of nomesFake) {
+          await rm(join(isoHome, ".opencorp", "bin", nome), { force: true }).catch(() => undefined);
+        }
       }
     });
   }

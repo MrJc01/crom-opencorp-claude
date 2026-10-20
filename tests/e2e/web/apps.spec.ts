@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "../helpers.js";
 import { ConsoleWatcher } from "./pom/base.js";
+import { T } from "../helpers.js";
 
 const HDR = { authorization: "Bearer test-e2e", "content-type": "application/json" };
 
@@ -21,7 +22,7 @@ test.describe("Web Apps: criar, abrir, modos e voltar", () => {
     await page.getByPlaceholder("Ex: painel-metricas ou lead-tracker").fill(id);
     await page.getByPlaceholder("Ex: Painel de Métricas do YouTube").fill(`Painel ${id}`);
     await page.getByRole("button", { name: "Criar Aplicação" }).click();
-    await expect(page.getByText(`apps/${id}/index.html`).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(`apps/${id}/index.html`).first()).toBeVisible({ timeout: T(15000) });
     watcher.stop();
     expect(watcher.limpos()).toEqual([]);
     await api(page).delete(`/apps/${id}`, { headers: HDR }).catch(() => undefined);
@@ -29,9 +30,9 @@ test.describe("Web Apps: criar, abrir, modos e voltar", () => {
 
   test("abrir app: modos Só App/Só Chat e voltar", async ({ page }) => {
     const card = page.getByTestId("app-card-painel-tarefas");
-    await expect(card).toBeVisible({ timeout: 15000 });
+    await expect(card).toBeVisible({ timeout: T(15000) });
     await card.getByRole("button", { name: "Abrir App" }).click();
-    await expect(page.getByRole("button", { name: "Só App" })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("button", { name: "Só App" })).toBeVisible({ timeout: T(10000) });
     await page.getByRole("button", { name: "Só Chat" }).click();
     await page.waitForTimeout(400);
     await page.getByRole("button", { name: "Só App" }).click();

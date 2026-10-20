@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 const HDR = { authorization: "Bearer test-e2e", "content-type": "application/json" };
 
@@ -67,10 +68,12 @@ test.describe("Orquestração Multi-Motor (e2e isolado)", () => {
     await page.locator('[data-testid="btn-configurar-motor"]').click();
 
     const drawer = page.locator('[data-testid="drawer-lateral-config"]');
-    await expect(drawer).toBeVisible({ timeout: 10000 });
+    await expect(drawer).toBeVisible({ timeout: T(10000) });
     const seletor = drawer.getByTestId("secretario-motor-conversa");
+    // O select fica desabilitado até a lista de motores conversacionais chegar do servidor
+    await expect(seletor).toBeEnabled({ timeout: T(30_000) });
     // Só motores com runtime conversacional são oferecidos
-    await expect(seletor.locator("option[value='codex']")).toHaveCount(1, { timeout: 10000 });
+    await expect(seletor.locator("option[value='codex']")).toHaveCount(1, { timeout: T(10000) });
     await expect(seletor.locator("option[value='claude-code']")).toHaveCount(0);
 
     await seletor.selectOption("codex");
@@ -78,13 +81,13 @@ test.describe("Orquestração Multi-Motor (e2e isolado)", () => {
       const r = await api(page).get("/secretario/status?workspace=e2e-corp", { headers: HDR });
       const j = await r.json();
       return `${j.motor?.engineId}:${j.motor?.origem}`;
-    }, { timeout: 10000 }).toBe("codex:workspace_override");
+    }, { timeout: T(10000) }).toBe("codex:workspace_override");
 
     await seletor.selectOption("opencode");
     await expect.poll(async () => {
       const r = await api(page).get("/secretario/status?workspace=e2e-corp", { headers: HDR });
       return (await r.json()).motor?.engineId;
-    }, { timeout: 10000 }).toBe("opencode");
+    }, { timeout: T(10000) }).toBe("opencode");
   });
 
   test("5. Fluxo fanout cria e inicia (202 com exec_id)", async ({ page }) => {

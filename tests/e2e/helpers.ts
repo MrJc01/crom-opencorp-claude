@@ -11,7 +11,56 @@ export function api(page: Page): APIRequestContext {
   return page.request;
 }
 
+/** Erro de transporte (servidor ocupado/reiniciando), nunca falha de asserção nem resposta HTTP 4xx/5xx. */
+function erroDeTransporte(e: unknown): boolean {
+  const m = String((e as Error)?.message ?? e);
+  return /ECONNRESET|ECONNREFUSED|EPIPE|ETIMEDOUT|socket hang up|Timeout .*exceeded|timed out/i.test(m)
+    && !/expect\(/.test(m);
+}
+
+/** Repete `fn` só para erros de transporte (com recuo), até `tentativas`. */
+export async function comRetryTransporte<R>(fn: () => Promise<R>, tentativas = 5): Promise<R> {
+  let ultimo: unknown;
+  for (let i = 0; i < tentativas; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (!erroDeTransporte(e)) throw e;
+      ultimo = e;
+      await new Promise((r) => setTimeout(r, 500 * (i + 1)));
+    }
+  }
+  throw ultimo;
+}
+
+/** Espera o servidor responder /health (e aceitar a API autenticada) antes de semear. */
+export async function esperarServidorPronto(api: APIRequestContext, token = "test-e2e"): Promise<void> {
+  await expectPollSimples(async () => {
+    const r = await api.get("/workspaces", { headers: { authorization: `Bearer ${token}` }, timeout: T(10_000) });
+    return r.ok();
+  }, T(60_000));
+}
+
+async function expectPollSimples(cond: () => Promise<boolean>, timeoutMs: number): Promise<void> {
+  const fim = Date.now() + timeoutMs;
+  let ultimo: unknown;
+  while (Date.now() < fim) {
+    try {
+      if (await cond()) return;
+    } catch (e) {
+      ultimo = e;
+    }
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  throw new Error(`Servidor não ficou pronto em ${timeoutMs} ms: ${String((ultimo as Error)?.message ?? ultimo)}`);
+}
+
 export async function seederEmpresaBasica(api: APIRequestContext, token: string, wsId = "e2e-corp"): Promise<void> {
+  await esperarServidorPronto(api);
+  await comRetryTransporte(() => seederEmpresaBasicaUmaVez(api, token, wsId));
+}
+
+async function seederEmpresaBasicaUmaVez(api: APIRequestContext, token: string, wsId: string): Promise<void> {
   // 1. Criar/obter workspace
   let wsResp = await api.post("/workspaces", {
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
@@ -100,7 +149,7 @@ export async function esperarNavegacao(page: Page, hash: string): Promise<void> 
   // Rotas legadas redirecionam para /w/<workspace>/<módulo>; a home é o índice /w/<workspace>.
   await page.waitForURL(
     (u) => (caminho === "/home" || caminho === "/" ? /^\/w\/[^/]+\/?$/.test(u.pathname) : u.pathname.endsWith(caminho)),
-    { timeout: 10000 },
+    { timeout: T(10000) },
   );
   // Aguarda a view ter conteúdo (não vazia) - espera renderização assíncrona
   await page.waitForFunction(
@@ -109,17 +158,22 @@ export async function esperarNavegacao(page: Page, hash: string): Promise<void> 
       return view && view.innerHTML.trim().length > 0;
     },
     hash,
-    { timeout: 15000 }
+    { timeout: T(15000) }
   );
-  // Pequeno delay extra para renders async
-  await page.waitForTimeout(300);
 }
 
-export async function esperarElementoTexto(page: Page, texto: string, timeout = 10000): Promise<void> {
+export async function esperarElementoTexto(page: Page, texto: string, timeout = T(10000)): Promise<void> {
   await page.getByText(texto, { exact: false }).first().waitFor({ state: "visible", timeout });
 }
 
 export async function preencherEEnviar(page: Page, seletor: string, texto: string): Promise<void> {
   await page.fill(seletor, texto);
   await page.press(seletor, "Enter");
+}
+/** Fator de tempo (E2E_TIMEOUT_FACTOR, padrão 3): máquina com carga alta de renderização de vídeo. */
+export const FATOR_TEMPO = Math.max(1, Number(process.env.E2E_TIMEOUT_FACTOR ?? 3) || 3);
+
+/** Escala um timeout explícito (ms) pelo fator de tempo. */
+export function T(ms: number): number {
+  return ms * FATOR_TEMPO;
 }

@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api } from "./helpers.js";
 import { execa } from "execa";
+import { T } from "./helpers.js";
 
 test.describe("Apps e Segredos (E2E)", () => {
   test.beforeEach(async ({ page }) => {
@@ -32,7 +33,7 @@ test.describe("Apps e Segredos (E2E)", () => {
 
     // App semeado 'Monitor do Pulso Diário'
     const appCard = page.getByTestId("app-card-monitor-pulso");
-    await expect(appCard).toBeVisible({ timeout: 15000 });
+    await expect(appCard).toBeVisible({ timeout: T(15000) });
     await expect(appCard).toContainText("Monitor do Pulso Diário");
 
     // Botões de ação

@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "../helpers.js";
 import { ConsoleWatcher } from "./pom/base.js";
 import { SessionManager } from "../../../src/core/contexts/execution/session-manager.js";
+import { T, esperarServidorPronto, comRetryTransporte } from "../helpers.js";
 
 const HDR = { authorization: "Bearer test-e2e", "content-type": "application/json" };
 
@@ -15,8 +16,9 @@ const AGENTE = "agente-hist-agrupado";
 const FAKE_BIN = join(E2E_HOME, ".opencorp", "bin", "opencode");
 
 async function garantirBase(client: ReturnType<typeof api>): Promise<void> {
-  await client.post("/workspaces", { headers: HDR, data: { id: WS } }).catch(() => undefined);
-  await client
+  await esperarServidorPronto(client);
+  await comRetryTransporte(() => client.post("/workspaces", { headers: HDR, data: { id: WS } }));
+  await comRetryTransporte(() => client
     .post(`/agents?workspace=${WS}`, {
       headers: HDR,
       data: {
@@ -30,8 +32,7 @@ async function garantirBase(client: ReturnType<typeof api>): Promise<void> {
         budget: { daily_usd: 10, max_turns: 10 },
         prompt: "Você é um agente de teste e2e.",
       },
-    })
-    .catch(() => undefined);
+    }));
 }
 
 async function instalarFakeRunner(): Promise<void> {
@@ -119,7 +120,7 @@ test.describe("Web Histórico: filtros, modal e ações", () => {
     const watcher = new ConsoleWatcher(page);
     watcher.start();
     const linha = page.locator("tr[data-tipo='task']").first();
-    await expect(linha).toBeVisible({ timeout: 15000 });
+    await expect(linha).toBeVisible({ timeout: T(15000) });
     await linha.click();
     await page.waitForTimeout(800);
     await page.keyboard.press("Escape");
@@ -141,7 +142,7 @@ test.describe("Web Histórico: filtros, modal e ações", () => {
     // O modal lê o registro direto (/registries/execucoes/:id); a lista
     // (/historico) só exibe sessões reais (tag "sessao") — abre via ?run=
     await page.goto(`/historico?run=${encodeURIComponent(execId)}`);
-    await expect(page.getByRole("heading", { name: execId })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: execId })).toBeVisible({ timeout: T(15000) });
 
     for (const aba of ["Telemetria", "Terminal", "Diff / Git"]) {
       await page.getByRole("button", { name: new RegExp(aba) }).click();
@@ -214,9 +215,9 @@ test.describe("Web Histórico: agrupamento de fluxo (F2-T02)", () => {
     await esperarElementoTexto(page, "Identificador / Ordem");
     // UI: a linha do fluxo abre o painel na aba "Grafo DAG" com um item por nó.
     const linhaFluxo = page.getByTestId(`historico-item-${execId}`);
-    await expect(linhaFluxo).toHaveAttribute("data-tipo", "fluxo", { timeout: 15000 });
+    await expect(linhaFluxo).toHaveAttribute("data-tipo", "fluxo", { timeout: T(15000) });
     await linhaFluxo.click();
-    await expect(page.getByText("no-a1").first()).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("no-b2").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("no-a1").first()).toBeVisible({ timeout: T(10000) });
+    await expect(page.getByText("no-b2").first()).toBeVisible({ timeout: T(10000) });
   });
 });

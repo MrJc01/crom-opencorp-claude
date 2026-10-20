@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 test.describe("Config / Settings", () => {
   test.beforeEach(async ({ page }) => {
@@ -21,7 +22,7 @@ test.describe("Config / Settings", () => {
 
     const linha = page.getByTestId("setting-budget.daily_usd");
     const input = linha.locator('input[type="number"]');
-    await expect(input).toBeVisible({ timeout: 10000 });
+    await expect(input).toBeVisible({ timeout: T(10000) });
     await input.fill("9.25");
     // botão de salvar (Check) aparece ao modificar
     await linha.getByRole("button").click();
@@ -40,7 +41,7 @@ test.describe("Config / Settings", () => {
 
     const linha = page.getByTestId("setting-budget.pause_on_exceed");
     const toggle = linha.getByRole("switch");
-    await expect(toggle).toBeVisible({ timeout: 10000 });
+    await expect(toggle).toBeVisible({ timeout: T(10000) });
 
     const antesResp = await page.request.get("/settings?escopo=global", { headers: { authorization: "Bearer test-e2e" } });
     const antesJson = await antesResp.json();
@@ -95,7 +96,7 @@ test.describe("Config / Settings", () => {
 
     await page.goto("/config?tab=chaves");
     await esperarElementoTexto(page, "Chaves de API dos Motores de IA (BYOK)");
-    await expect(page.getByText("openrouter").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("openrouter").first()).toBeVisible({ timeout: T(10000) });
     await expect(page.getByText("sk-or-v…Xyz9").first()).toBeVisible();
   });
 });

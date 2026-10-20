@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "../helpers.js";
 import { ConsoleWatcher } from "./pom/base.js";
+import { T } from "../helpers.js";
 
 const HDR = { authorization: "Bearer test-e2e", "content-type": "application/json" };
 
@@ -40,7 +41,7 @@ test.describe("Web Config: abas, escopo, orçamento e chaves", () => {
       const r = await api(page).get("/settings", { headers: HDR });
       const l = (await r.json()) as Array<{ chave: string; valor: any }>;
       return Number(l.find((s) => s.chave === "budget.daily_usd")?.valor);
-    }, { timeout: 10000 }).toBe(7.5);
+    }, { timeout: T(10000) }).toBe(7.5);
     await linha.locator('input[type="number"]').fill("5");
     await api(page).put("/settings", {
       headers: HDR,
@@ -53,9 +54,9 @@ test.describe("Web Config: abas, escopo, orçamento e chaves", () => {
     await esperarElementoTexto(page, "Chaves de API dos Motores de IA (BYOK)");
     await page.getByPlaceholder("sk-or-v1-... ou chave da API").fill("sk-or-v1-e2e-web-1234567890");
     await page.getByRole("button", { name: "Salvar Chave" }).click();
-    await expect(page.getByText("openrouter").first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("openrouter").first()).toBeVisible({ timeout: T(15000) });
     page.once("dialog", (d) => d.accept());
     await page.getByTestId("chave-openrouter").getByRole("button", { name: "Remover chave de openrouter" }).click();
-    await expect(page.getByTestId("chave-openrouter")).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByTestId("chave-openrouter")).toHaveCount(0, { timeout: T(10000) });
   });
 });

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 const NOME = "TESTE_X_E2E";
 const VALOR = "segredo-e2e-" + Date.now();
@@ -20,7 +21,7 @@ test.describe("Secrets / Credenciais", () => {
     await page.getByPlaceholder("Ex: app:custom:variavel-privada ou STRIPE_API_KEY").fill(NOME);
     await page.getByPlaceholder("Cole o segredo, token ou JSON aqui...").fill(VALOR);
     await page.getByRole("button", { name: "Salvar no Cofre" }).click();
-    await expect(page.getByText(NOME).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(NOME).first()).toBeVisible({ timeout: T(10000) });
   }
 
   test("adicionar segredo → nome listado mascarado, valor NUNCA aparece", async ({ page }) => {
@@ -38,7 +39,7 @@ test.describe("Secrets / Credenciais", () => {
     // limpa (confirm nativo)
     page.once("dialog", (d) => d.accept());
     await page.locator('button[title="Excluir segredo permanentemente"]').first().click();
-    await expect(page.getByText(NOME)).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByText(NOME)).toHaveCount(0, { timeout: T(10000) });
   });
 
   test("remover segredo pede confirmação: dispensar mantém, aceitar remove", async ({ page }) => {
@@ -47,11 +48,11 @@ test.describe("Secrets / Credenciais", () => {
     // dispensar mantém
     page.once("dialog", (d) => d.dismiss());
     await page.locator('button[title="Excluir segredo permanentemente"]').first().click();
-    await expect(page.getByText(NOME).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(NOME).first()).toBeVisible({ timeout: T(10000) });
 
     // aceitar remove
     page.once("dialog", (d) => d.accept());
     await page.locator('button[title="Excluir segredo permanentemente"]').first().click();
-    await expect(page.getByText(NOME)).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByText(NOME)).toHaveCount(0, { timeout: T(10000) });
   });
 });

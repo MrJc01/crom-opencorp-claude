@@ -1,0 +1,6 @@
+#!/bin/sh
+# `openheinerss` falso para o E2E (JSON-RPC por stdio), via OPENHEINERSS_BIN no webServer do Playwright.
+DIR=$(cd "$(dirname "$0")" && pwd)
+ROOT=$(cd "$DIR/../../../.." && pwd)
+export FAKE_OPENHEINERSS_PID_BASE=$$   # ids de sessão únicos por processo
+exec node --import "$ROOT/node_modules/tsx/dist/loader.mjs" "$DIR/../fake-openheinerss-cli.ts" "$@"

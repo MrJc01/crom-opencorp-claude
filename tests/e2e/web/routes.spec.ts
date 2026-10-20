@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api } from "../helpers.js";
 import { ConsoleWatcher } from "./pom/base.js";
+import { T } from "../helpers.js";
 
 const ROTAS: Array<{ path: string; prova: { tipo: "texto" | "placeholder" | "titulo"; valor: string | RegExp } }> = [
   { path: "/", prova: { tipo: "texto", valor: "Governança da Empresa Autônoma" } },
@@ -34,12 +35,12 @@ test.describe("Rotas: todas carregam sem erro e sem tela vazia", () => {
 
       await page.goto(rota.path);
       if (rota.prova.tipo === "texto") {
-        await expect(page.getByText(rota.prova.valor as string).first()).toBeVisible({ timeout: 15000 });
+        await expect(page.getByText(rota.prova.valor as string).first()).toBeVisible({ timeout: T(15000) });
       } else if (rota.prova.tipo === "placeholder") {
-        await expect(page.locator(`input[placeholder="${rota.prova.valor}"]`)).toBeVisible({ timeout: 15000 });
+        await expect(page.locator(`input[placeholder="${rota.prova.valor}"]`)).toBeVisible({ timeout: T(15000) });
       } else {
         // Escopo ao main: o dock lateral do Secretário (fora do main) tem botões com mesmos titles
-        await expect(page.locator("main").locator(`button[title="${rota.prova.valor}"]`)).toBeVisible({ timeout: 15000 });
+        await expect(page.locator("main").locator(`button[title="${rota.prova.valor}"]`)).toBeVisible({ timeout: T(15000) });
       }
       // main tem conteúdo (não é casca vazia)
       const corpo = await page.locator("main").first().textContent();

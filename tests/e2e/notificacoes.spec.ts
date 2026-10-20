@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { logado, esperarNavegacao } from "./helpers.js";
+import { T } from "./helpers.js";
 
 /** Etapa 7 (P-24) — notificações: página, badge no navbar, marcar lida e filtro.
  *  Determinístico: 100% via API do painel (sem fake opencode), seed limpo por teste. */
@@ -33,7 +34,7 @@ test.describe("Notificações", () => {
     await page.waitForURL(/\/notificacoes/);
     await esperarNavegacao(page, "notificacoes");
 
-    await expect(page.locator(".not-card")).toHaveCount(2, { timeout: 10000 });
+    await expect(page.locator(".not-card")).toHaveCount(2, { timeout: T(10000) });
     const badge = page.locator("#nav-badge-notificacoes");
     await expect(badge).toBeVisible();
     await expect(badge).toHaveText("2");
@@ -43,13 +44,13 @@ test.describe("Notificações", () => {
     const [idA] = await seedNotificacoes(page, [{ titulo: "Para marcar" }, { titulo: "Fica não lida" }]);
     await page.goto("/#/notificacoes");
     await esperarNavegacao(page, "notificacoes");
-    await expect(page.locator(".not-card")).toHaveCount(2, { timeout: 10000 });
+    await expect(page.locator(".not-card")).toHaveCount(2, { timeout: T(10000) });
 
     const cardA = page.locator(`.not-card[data-not-id="${idA}"]`);
     await expect(cardA).toHaveClass(/nao-lida/);
     await cardA.getByRole("button", { name: "Marcar como lida" }).click();
 
-    await expect(page.locator("#nav-badge-notificacoes")).toHaveText("1", { timeout: 10000 });
+    await expect(page.locator("#nav-badge-notificacoes")).toHaveText("1", { timeout: T(10000) });
     await expect(page.locator(`.not-card[data-not-id="${idA}"]`)).toHaveAttribute("data-lida", "true");
     await expect(page.locator(`.not-card[data-not-id="${idA}"]`)).not.toHaveClass(/nao-lida/);
   });
@@ -58,10 +59,10 @@ test.describe("Notificações", () => {
     await seedNotificacoes(page, [{ titulo: "Uma" }, { titulo: "Duas" }]);
     await page.goto("/#/notificacoes");
     await esperarNavegacao(page, "notificacoes");
-    await expect(page.locator("#nav-badge-notificacoes")).toHaveText("2", { timeout: 10000 });
+    await expect(page.locator("#nav-badge-notificacoes")).toHaveText("2", { timeout: T(10000) });
 
     await page.click("button:has-text('Marcar todas como lidas')");
-    await expect(page.locator("#nav-badge-notificacoes")).toBeHidden({ timeout: 10000 });
+    await expect(page.locator("#nav-badge-notificacoes")).toBeHidden({ timeout: T(10000) });
     await expect(page.locator(".not-card.nao-lida")).toHaveCount(0);
   });
 
@@ -71,7 +72,7 @@ test.describe("Notificações", () => {
 
     await page.goto("/#/notificacoes");
     await esperarNavegacao(page, "notificacoes");
-    await expect(page.locator(".not-card")).toHaveCount(2, { timeout: 10000 });
+    await expect(page.locator(".not-card")).toHaveCount(2, { timeout: T(10000) });
 
     await page.click("#not-filtro-nao-lidas");
     await expect(page.locator(".not-card")).toHaveCount(1);

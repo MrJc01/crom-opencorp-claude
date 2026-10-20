@@ -49,10 +49,21 @@ async function instalarFakeRunner(): Promise<void> {
     "utf8",
   );
   await chmod(FAKE_BIN, 0o755);
+  // Precedência D3 do resolvedor: PATH vem antes da instalação gerenciada, então o
+  // `opencode` real do PC do dono venceria o fake. Põe o diretório do fake na frente do PATH.
+  // `aider` real (se instalado no PC) pediria login e travaria: sombreia com um que falha.
+  await writeFile(join(dirname(FAKE_BIN), "aider"), '#!/bin/sh\necho "aider ausente (fake e2e)" >&2\nexit 127\n', "utf8");
+  await chmod(join(dirname(FAKE_BIN), "aider"), 0o755);
+  if (PATH_ORIGINAL === undefined) PATH_ORIGINAL = process.env.PATH ?? "";
+  process.env.PATH = `${dirname(FAKE_BIN)}:${PATH_ORIGINAL}`;
 }
 
+let PATH_ORIGINAL: string | undefined;
+
 async function removerFakeRunner(): Promise<void> {
+  if (PATH_ORIGINAL !== undefined) process.env.PATH = PATH_ORIGINAL;
   await rm(FAKE_BIN, { force: true }).catch(() => undefined);
+  await rm(join(dirname(FAKE_BIN), "aider"), { force: true }).catch(() => undefined);
 }
 
 // O driver sandbox (bwrap) monta --tmpfs em /tmp e esconde workspaces sob

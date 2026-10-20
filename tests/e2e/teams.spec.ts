@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 // Teams vivem em /agentes (Grupos de Agentes) e a migração legada segue via API.
 test.describe("Teams / Grupos de Agentes", () => {
@@ -12,14 +13,14 @@ test.describe("Teams / Grupos de Agentes", () => {
   test("agentes lista o grupo semeado e2e-pipe", async ({ page }) => {
     const respTeams = page.waitForResponse(
       (r) => r.url().includes("/teams") && r.request().method() === "GET",
-      { timeout: 20000 },
+      { timeout: T(20000) },
     );
     await page.goto("/agentes");
     await esperarElementoTexto(page, "Catálogo de Agentes & Equipes Multi-Agente");
     const res = await respTeams;
     expect(res.status()).toBe(200);
     await page.getByRole("button", { name: /^Equipes \d+/ }).click();
-    await expect(page.getByText("ID: e2e-pipe").first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("ID: e2e-pipe").first()).toBeVisible({ timeout: T(15000) });
   });
 
   test("POST /flows/migrate-teams converte team legado em fluxo", async ({ page }) => {

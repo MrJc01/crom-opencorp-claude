@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api } from "../helpers.js";
+import { T } from "../helpers.js";
 
 /**
  * E2E — F3-T01: gramática @ vs / vs ! (menções e comandos)
@@ -68,13 +69,13 @@ test.describe("Web Menções e Comandos (@ / !)", () => {
 
   test("(d) @prompt:chave injeta texto editável no input", async ({ page }) => {
     await page.goto("/secretario");
-    await page.waitForSelector("#chat-input", { timeout: 20000 });
+    await page.waitForSelector("#chat-input", { timeout: T(20000) });
     const input = page.locator("#chat-input");
     await input.fill("@prompt:minha-chave");
 
     // Seleciona o item da seção Prompt no autocomplete.
     const item = page.getByText("@prompt:minha-chave", { exact: false }).first();
-    await item.waitFor({ state: "visible", timeout: 10000 }).catch(() => undefined);
+    await item.waitFor({ state: "visible", timeout: T(10000) }).catch(() => undefined);
     await item.click();
 
     await expect(input).toHaveValue(/@prompt:minha-chave/);

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 const HDR = { authorization: "Bearer test-e2e", "content-type": "application/json" };
 
@@ -20,17 +21,17 @@ test.describe("Apps — Mini-Apps do workspace", () => {
     await page.getByPlaceholder("Ex: Painel de Métricas do YouTube").fill(`Painel ${id}`);
     await page.getByRole("button", { name: "Criar Aplicação" }).click();
 
-    await expect(page.getByText(`apps/${id}/index.html`).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(`apps/${id}/index.html`).first()).toBeVisible({ timeout: T(15000) });
 
     await api(page).delete(`/apps/${id}`, { headers: HDR }).catch(() => undefined);
   });
 
   test("app semeado abre no modo app (iframe/preview)", async ({ page }) => {
     const card = page.getByTestId("app-card-painel-tarefas");
-    await expect(card).toBeVisible({ timeout: 15000 });
+    await expect(card).toBeVisible({ timeout: T(15000) });
     await card.getByRole("button", { name: "Abrir App" }).click();
     await page.waitForTimeout(1000);
-    await expect(page.getByText("Painel de Tarefas").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Painel de Tarefas").first()).toBeVisible({ timeout: T(10000) });
   });
 
   test("via API: GET /secrets lista nome/tipo_app mas NUNCA o valor", async ({ page }) => {

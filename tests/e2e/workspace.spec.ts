@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 /**
  * Workspace estilo VS Code: explorador, editor com salvar e terminais.
@@ -29,15 +30,15 @@ test.describe("View Workspace", () => {
   async function abrirProjeto(page: import("@playwright/test").Page): Promise<void> {
     await irParaWorkspace(page);
     await page.getByText(".opencorp", { exact: true }).first().click();
-    await expect(page.getByText("projeto.json", { exact: true }).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("projeto.json", { exact: true }).first()).toBeVisible({ timeout: T(10000) });
   }
 
   test("(a) árvore lista os arquivos semeados do workspace", async ({ page }) => {
     await irParaWorkspace(page);
     const dir = page.getByText(".opencorp", { exact: true }).first();
-    await expect(dir).toBeVisible({ timeout: 10000 });
+    await expect(dir).toBeVisible({ timeout: T(10000) });
     await dir.click();
-    await expect(page.getByText("projeto.json", { exact: true }).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("projeto.json", { exact: true }).first()).toBeVisible({ timeout: T(10000) });
     await expect(page.getByText("agents", { exact: true }).first()).toBeVisible();
   });
 
@@ -45,9 +46,9 @@ test.describe("View Workspace", () => {
     await abrirProjeto(page);
     await page.getByText("projeto.json", { exact: true }).first().click();
 
-    await expect(page.getByText(".opencorp/projeto.json").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(".opencorp/projeto.json").first()).toBeVisible({ timeout: T(10000) });
     const editor = page.locator("textarea").first();
-    await expect(editor).toHaveValue(/E2E Files/, { timeout: 10000 });
+    await expect(editor).toHaveValue(/E2E Files/, { timeout: T(10000) });
     await expect(page.getByTitle("Salvar alterações (Ctrl+S)")).toBeDisabled();
   });
 
@@ -55,14 +56,14 @@ test.describe("View Workspace", () => {
     await abrirProjeto(page);
     await page.getByText("projeto.json", { exact: true }).first().click();
     const editor = page.locator("textarea").first();
-    await expect(editor).toHaveValue(/E2E/, { timeout: 10000 });
+    await expect(editor).toHaveValue(/E2E/, { timeout: T(10000) });
 
     await editor.fill('{\n  "empresa": "E2E Editada",\n  "nicho": "teste"\n}\n');
-    await expect(page.getByTitle("Alterações não salvas").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTitle("Alterações não salvas").first()).toBeVisible({ timeout: T(10000) });
     await expect(page.getByTitle("Salvar alterações (Ctrl+S)")).toBeEnabled();
 
     await page.getByTitle("Salvar alterações (Ctrl+S)").click();
-    await expect(page.getByTitle("Alterações não salvas")).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByTitle("Alterações não salvas")).toHaveCount(0, { timeout: T(10000) });
 
     const resp = await page.request.get(`/files?workspace=${WS}&path=${encodeURIComponent(ARQ)}`, {
       headers: { authorization: "Bearer test-e2e" },
@@ -74,24 +75,24 @@ test.describe("View Workspace", () => {
 
   test("(d) terminal: 'task list' (whitelist) ok e comando fora mostra erro", async ({ page }) => {
     await irParaWorkspace(page);
-    await expect(page.getByText("Terminal 1").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Terminal 1").first()).toBeVisible({ timeout: T(10000) });
 
     const input = page.locator('input[placeholder="Digite um comando (ex: tasks list, doctor, flow list)..."]');
     await input.fill("task list");
     await input.press("Enter");
-    await expect(page.getByText("ws$ task list").first()).toBeVisible({ timeout: 20000 });
-    await expect(page.getByText("[ok]").first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText("ws$ task list").first()).toBeVisible({ timeout: T(20000) });
+    await expect(page.getByText("[ok]").first()).toBeVisible({ timeout: T(20000) });
 
     await input.fill("rm -rf /");
     await input.press("Enter");
-    await expect(page.getByText(/fora da whitelist/).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/fora da whitelist/).first()).toBeVisible({ timeout: T(10000) });
   });
 
   test("(e) right-click no arquivo → menu com Renomear, Copiar Caminho e Excluir", async ({ page }) => {
     await abrirProjeto(page);
     await page.getByText("projeto.json", { exact: true }).first().click({ button: "right" });
 
-    await expect(page.getByText("Renomear").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Renomear").first()).toBeVisible({ timeout: T(10000) });
     await expect(page.getByText("Copiar Caminho").first()).toBeVisible();
     await expect(page.getByText("Excluir").first()).toBeVisible();
     await page.keyboard.press("Escape");

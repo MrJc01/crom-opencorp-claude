@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "../helpers.js";
 import { ConsoleWatcher } from "./pom/base.js";
 import { Shell } from "./pom/shell.js";
+import { T } from "../helpers.js";
 
 test.describe("Web Home: tabs, modal task, comando, aprovações", () => {
   test.beforeEach(async ({ page }) => {
@@ -19,11 +20,11 @@ test.describe("Web Home: tabs, modal task, comando, aprovações", () => {
     await esperarElementoTexto(page, "Quadro Kanban");
     await page.getByRole("button", { name: "Nova Tarefa" }).click();
     const campo = page.getByPlaceholder(/Auditoria/).first();
-    await expect(campo).toBeVisible({ timeout: 10000 });
+    await expect(campo).toBeVisible({ timeout: T(10000) });
     await campo.fill(titulo);
     await page.getByRole("button", { name: /Criar Tarefa/ }).click();
     await page.getByPlaceholder("Buscar tarefas...").fill(titulo);
-    await expect(page.getByText(titulo).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(titulo).first()).toBeVisible({ timeout: T(10000) });
   });
 
   test("shell: trocar workspace pelo topbar atualiza tudo", async ({ page }) => {
@@ -35,7 +36,7 @@ test.describe("Web Home: tabs, modal task, comando, aprovações", () => {
 
   test("indicador do canal de eventos conecta (stream)", async ({ page }) => {
     const shell = new Shell(page);
-    await expect(shell.badgeStream).toBeVisible({ timeout: 15000 });
-    await expect(shell.badgeStream).toContainText("stream", { timeout: 15000 });
+    await expect(shell.badgeStream).toBeVisible({ timeout: T(15000) });
+    await expect(shell.badgeStream).toContainText("stream", { timeout: T(15000) });
   });
 });

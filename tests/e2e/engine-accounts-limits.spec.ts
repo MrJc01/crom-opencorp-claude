@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 const HDR = { authorization: "Bearer test-e2e", "content-type": "application/json" };
 
@@ -92,7 +93,7 @@ test.describe("Motores — Contas e Limites", () => {
   test("4. Tab Limites lista os motores com ações", async ({ page }) => {
     await page.goto("/config?tab=limites");
     const tab = page.locator("[data-testid='tab-limites-motores']");
-    await expect(tab).toBeVisible({ timeout: 15000 });
+    await expect(tab).toBeVisible({ timeout: T(15000) });
     await esperarElementoTexto(page, "Limites Operacionais & Quotas dos Motores");
     await expect(tab.getByRole("button", { name: /Salvar Todos/i })).toBeVisible();
     await expect(tab.getByText("OpenCode Engine", { exact: true }).first()).toBeVisible();

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 test.describe("Histórico — Visualizador de Telemetria Granular (E2E)", () => {
   const wsId = "e2e-telemetria-ws";
@@ -41,7 +42,7 @@ test.describe("Histórico — Visualizador de Telemetria Granular (E2E)", () => 
     await esperarElementoTexto(page, "Identificador / Ordem");
 
     const botaoTelemetria = page.getByRole("button", { name: /Telemetria/ });
-    await expect(botaoTelemetria).toBeVisible({ timeout: 15000 });
+    await expect(botaoTelemetria).toBeVisible({ timeout: T(15000) });
 
     await botaoTelemetria.click();
     await esperarElementoTexto(page, "Nenhum span registrado nesta execução.");

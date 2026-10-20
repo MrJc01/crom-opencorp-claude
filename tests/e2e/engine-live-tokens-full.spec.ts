@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 const HDR = { authorization: "Bearer test-e2e", "content-type": "application/json" };
 const MOTORES = ["opencode", "crom-agente", "copilot", "antigravity", "claude-code", "cursor", "codex", "aider"];
@@ -61,7 +62,7 @@ test.describe("Motores — Tokens e Quotas ao Vivo", () => {
   test("4. Aba limites exibe os motores e a ação de salvar", async ({ page }) => {
     await page.goto("/config?tab=limites");
     const container = page.locator("[data-testid='tab-limites-motores']");
-    await expect(container).toBeVisible({ timeout: 15000 });
+    await expect(container).toBeVisible({ timeout: T(15000) });
     await expect(container.getByRole("button", { name: /Salvar Todos/i })).toBeVisible();
     await expect(container.getByText("OpenAI Codex CLI", { exact: true }).first()).toBeVisible();
   });
@@ -70,7 +71,7 @@ test.describe("Motores — Tokens e Quotas ao Vivo", () => {
   // de /api/motores/tokens segue coberto pelos testes 1–3.
   test("5. Aba motores exibe o painel do motor com diagnóstico", async ({ page }) => {
     await page.goto("/config?tab=motores");
-    await expect(page.getByRole("heading", { name: "Motores de Inferência & Provedores BYOK" })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: "Motores de Inferência & Provedores BYOK" })).toBeVisible({ timeout: T(15000) });
     await expect(page.getByRole("button", { name: "Diagnóstico rápido" }).first()).toBeVisible();
   });
 });

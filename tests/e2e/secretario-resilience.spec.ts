@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 test.describe("Secretário — Resiliência e Auto-Recuperação E2E", () => {
   test.beforeEach(async ({ page }) => {
@@ -13,7 +14,7 @@ test.describe("Secretário — Resiliência e Auto-Recuperação E2E", () => {
 
   test("chat inicial pronto: input habilitado e sem indicador falso de processamento", async ({ page }) => {
     await page.goto("/secretario");
-    await page.waitForSelector("#chat-input", { timeout: 20000 });
+    await page.waitForSelector("#chat-input", { timeout: T(20000) });
 
     const input = page.locator("#chat-input");
     await expect(input).toBeVisible();
@@ -26,17 +27,17 @@ test.describe("Secretário — Resiliência e Auto-Recuperação E2E", () => {
 
   test("envio e recebimento ponta a ponta sem bloqueio da UI", async ({ page }) => {
     await page.goto("/secretario");
-    await page.waitForSelector("#chat-input", { timeout: 20000 });
+    await page.waitForSelector("#chat-input", { timeout: T(20000) });
 
     const input = page.locator("#chat-input");
     await input.fill("teste resiliencia e2e");
     await page.click("#btn-enviar");
 
     // Deve receber resposta do assistente
-    await expect(page.locator(".oc-assistant").first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator(".oc-assistant").first()).toBeVisible({ timeout: T(15000) });
 
     // O campo de input deve voltar a ficar habilitado após a resposta
-    await expect(input).toBeEnabled({ timeout: 10000 });
+    await expect(input).toBeEnabled({ timeout: T(10000) });
 
     // Não deve ficar travado com spinner infinito
     const spinner = page.getByText("Processando resposta com modelo livre...");
@@ -45,7 +46,7 @@ test.describe("Secretário — Resiliência e Auto-Recuperação E2E", () => {
 
   test("abort manual desativa estado de loading e libera a interface", async ({ page, request }) => {
     await page.goto("/secretario");
-    await page.waitForSelector("#chat-input", { timeout: 20000 });
+    await page.waitForSelector("#chat-input", { timeout: T(20000) });
 
     // Envia uma mensagem
     const input = page.locator("#chat-input");
@@ -72,6 +73,6 @@ test.describe("Secretário — Resiliência e Auto-Recuperação E2E", () => {
     }
 
     // A interface deve permanecer responsiva com input habilitado
-    await expect(input).toBeEnabled({ timeout: 10000 });
+    await expect(input).toBeEnabled({ timeout: T(10000) });
   });
 });

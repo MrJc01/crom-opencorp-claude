@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "./helpers.js";
+import { T } from "./helpers.js";
 
 /**
  * E2E — Comandos Git Slash no Secretário (/git status, /git diff, /git restore, /git log)
@@ -49,7 +50,7 @@ test.describe("Secretário — Git Slash Commands E2E", () => {
 
     // Navegar ao Secretário
     await page.goto("/secretario");
-    await page.waitForSelector("#chat-input", { timeout: 20000 });
+    await page.waitForSelector("#chat-input", { timeout: T(20000) });
   });
 
   test.afterAll(async ({ request }) => {
@@ -66,10 +67,10 @@ test.describe("Secretário — Git Slash Commands E2E", () => {
 
     // Aguarda a resposta do Secretário contendo informação de Git Status
     const resposta = page.locator(".oc-assistant").last();
-    await expect(resposta).toBeVisible({ timeout: 15000 });
+    await expect(resposta).toBeVisible({ timeout: T(15000) });
 
     // Verifica que a mensagem contém indicadores de Git Status
-    await expect(resposta).toContainText("Git Status", { timeout: 10000 });
+    await expect(resposta).toContainText("Git Status", { timeout: T(10000) });
   });
 
   test("(b) /git diff <arquivo> → exibe diff com linhas adicionadas/removidas", async ({ page }) => {
@@ -82,8 +83,8 @@ test.describe("Secretário — Git Slash Commands E2E", () => {
 
     // Aguarda resposta do assistant com informação de diff
     const resposta = page.locator(".oc-assistant").last();
-    await expect(resposta).toBeVisible({ timeout: 15000 });
-    await expect(resposta).toContainText("Git Diff", { timeout: 10000 });
+    await expect(resposta).toBeVisible({ timeout: T(15000) });
+    await expect(resposta).toContainText("Git Diff", { timeout: T(10000) });
   });
 
   test("(c) /git log → lista commits do workspace", async ({ page }) => {
@@ -96,8 +97,8 @@ test.describe("Secretário — Git Slash Commands E2E", () => {
 
     // Aguarda resposta com histórico de commits
     const resposta = page.locator(".oc-assistant").last();
-    await expect(resposta).toBeVisible({ timeout: 15000 });
-    await expect(resposta).toContainText("Git Log", { timeout: 10000 });
+    await expect(resposta).toBeVisible({ timeout: T(15000) });
+    await expect(resposta).toContainText("Git Log", { timeout: T(10000) });
   });
 
   test("(d) /git help → lista comandos disponíveis", async ({ page }) => {
@@ -110,10 +111,10 @@ test.describe("Secretário — Git Slash Commands E2E", () => {
 
     // Aguarda resposta do assistant
     const resposta = page.locator(".oc-assistant").last();
-    await expect(resposta).toBeVisible({ timeout: 15000 });
+    await expect(resposta).toBeVisible({ timeout: T(15000) });
 
     // Verifica que a ajuda lista os comandos disponíveis
-    await expect(resposta).toContainText("/git status", { timeout: 10000 });
+    await expect(resposta).toContainText("/git status", { timeout: T(10000) });
     await expect(resposta).toContainText("/git diff");
     await expect(resposta).toContainText("/git restore");
   });
@@ -133,9 +134,9 @@ test.describe("Secretário — Git Slash Commands E2E", () => {
     await page.click("#btn-enviar");
 
     const resposta = page.locator(".oc-assistant").last();
-    await expect(resposta).toBeVisible({ timeout: 15000 });
+    await expect(resposta).toBeVisible({ timeout: T(15000) });
     // Quando o working tree está limpo, a mensagem contém "limpo"
-    await expect(resposta).toContainText("limpo", { timeout: 10000 });
+    await expect(resposta).toContainText("limpo", { timeout: T(10000) });
   });
 
   test("(f) /git restore <arquivo> → descarta alterações com mensagem de sucesso", async ({ page }) => {
@@ -154,8 +155,8 @@ test.describe("Secretário — Git Slash Commands E2E", () => {
 
     // Aguarda resposta do assistant
     const resposta = page.locator(".oc-assistant").last();
-    await expect(resposta).toBeVisible({ timeout: 15000 });
-    await expect(resposta).toContainText("descartadas com sucesso", { timeout: 10000 });
+    await expect(resposta).toBeVisible({ timeout: T(15000) });
+    await expect(resposta).toContainText("descartadas com sucesso", { timeout: T(10000) });
   });
 
   test("(g) /restore atalho → funciona identicamente ao /git restore", async ({ page }) => {
@@ -174,8 +175,8 @@ test.describe("Secretário — Git Slash Commands E2E", () => {
 
     // Aguarda resposta do assistant
     const resposta = page.locator(".oc-assistant").last();
-    await expect(resposta).toBeVisible({ timeout: 15000 });
-    await expect(resposta).toContainText("descartadas com sucesso", { timeout: 10000 });
+    await expect(resposta).toBeVisible({ timeout: T(15000) });
+    await expect(resposta).toContainText("descartadas com sucesso", { timeout: T(10000) });
   });
 
   test("(h) autocomplete de /git mostra sugestões de comandos", async ({ page }) => {
@@ -193,7 +194,7 @@ test.describe("Secretário — Git Slash Commands E2E", () => {
     // Se nenhuma sugestão aparecer pelo seletor genérico, verificamos pelo texto
     const temSugestao = await sugestoes.count().catch(() => 0);
     if (temSugestao > 0) {
-      await expect(sugestoes.first()).toBeVisible({ timeout: 5000 });
+      await expect(sugestoes.first()).toBeVisible({ timeout: T(5000) });
     } else {
       // Fallback: verifica se digitar /git e tab completa ou se há dropdown
       const popover = page.getByText("/git status");
@@ -213,9 +214,9 @@ test.describe("Secretário — Git Slash Commands E2E", () => {
 
     // Aguarda resposta indicando uso incorreto
     const resposta = page.locator(".oc-assistant").last();
-    await expect(resposta).toBeVisible({ timeout: 15000 });
+    await expect(resposta).toBeVisible({ timeout: T(15000) });
     // A mensagem deve indicar que é preciso informar o caminho do arquivo
-    await expect(resposta).toContainText("arquivo", { timeout: 10000 });
+    await expect(resposta).toContainText("arquivo", { timeout: T(10000) });
   });
 
   test("(j) fluxo completo: status → diff → restore → status limpo", async ({ page }) => {
@@ -232,7 +233,7 @@ test.describe("Secretário — Git Slash Commands E2E", () => {
     await input.fill("/git status");
     await page.click("#btn-enviar");
     const resp1 = page.locator(".oc-assistant").last();
-    await expect(resp1).toContainText("Git Status", { timeout: 15000 });
+    await expect(resp1).toContainText("Git Status", { timeout: T(15000) });
 
     // Aguarda o input ficar disponível novamente
     await page.waitForTimeout(500);
@@ -241,7 +242,7 @@ test.describe("Secretário — Git Slash Commands E2E", () => {
     await input.fill("/git diff teste-git.txt");
     await page.click("#btn-enviar");
     const resp2 = page.locator(".oc-assistant").last();
-    await expect(resp2).toContainText("Git Diff", { timeout: 15000 });
+    await expect(resp2).toContainText("Git Diff", { timeout: T(15000) });
 
     // Aguarda o input ficar disponível novamente
     await page.waitForTimeout(500);
@@ -250,7 +251,7 @@ test.describe("Secretário — Git Slash Commands E2E", () => {
     await input.fill("/git restore teste-git.txt");
     await page.click("#btn-enviar");
     const resp3 = page.locator(".oc-assistant").last();
-    await expect(resp3).toContainText("descartadas com sucesso", { timeout: 15000 });
+    await expect(resp3).toContainText("descartadas com sucesso", { timeout: T(15000) });
 
     // Aguarda o input ficar disponível novamente
     await page.waitForTimeout(500);
@@ -259,7 +260,7 @@ test.describe("Secretário — Git Slash Commands E2E", () => {
     await input.fill("/git status");
     await page.click("#btn-enviar");
     const resp4 = page.locator(".oc-assistant").last();
-    await expect(resp4).toContainText("limpo", { timeout: 15000 });
+    await expect(resp4).toContainText("limpo", { timeout: T(15000) });
   });
 
   test("(k) API /workspaces/git/status retorna status correto", async ({ page }) => {

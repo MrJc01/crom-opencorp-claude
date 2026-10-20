@@ -11,6 +11,7 @@
  * 7. Secretário: streaming com fallback de modelos
  */
 import { test, expect } from "@playwright/test";
+import { T } from "./helpers.js";
 
 const BASE = "http://127.0.0.1:4399";
 const TOKEN = "test-e2e";
@@ -333,7 +334,7 @@ test.describe("LLM — Teste de Conectividade", () => {
     const res = await request.post(`${BASE}/llm/test`, {
       headers: { ...AUTH_HEADER, "content-type": "application/json" },
       data: { model: "openrouter/google/gemini-3.8-flash" },
-      timeout: 20_000,
+      timeout: T(20_000),
     });
     // Pode falhar se não houver chave — o importante é que o endpoint responda
     const body = await res.json();
@@ -379,7 +380,7 @@ test.describe("UI — Config Motores & Provedores", () => {
 
     // Procurar aba de Motores
     const abaMotores = page.getByText("Motores", { exact: false }).first();
-    await expect(abaMotores).toBeVisible({ timeout: 10_000 });
+    await expect(abaMotores).toBeVisible({ timeout: T(10_000) });
   });
 
   test("abre Config e vê aba Chaves de API", async ({ page }) => {
@@ -388,7 +389,7 @@ test.describe("UI — Config Motores & Provedores", () => {
     await page.waitForTimeout(1000);
 
     const abaChaves = page.getByText("Chaves", { exact: false }).first();
-    await expect(abaChaves).toBeVisible({ timeout: 10_000 });
+    await expect(abaChaves).toBeVisible({ timeout: T(10_000) });
   });
 });
 
@@ -410,7 +411,7 @@ test.describe("UI — Secretário Chat", () => {
 
     // A view do secretário deve estar visível (em standby ou com chat)
     const secretarioView = page.locator("#view-secretario, [data-view='secretario'], main");
-    await expect(secretarioView.first()).toBeVisible({ timeout: 10_000 });
+    await expect(secretarioView.first()).toBeVisible({ timeout: T(10_000) });
   });
 });
 

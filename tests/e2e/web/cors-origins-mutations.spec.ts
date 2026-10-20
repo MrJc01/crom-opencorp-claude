@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { logado, seederEmpresaBasica, api, esperarElementoTexto } from "../helpers.js";
 import { ConsoleWatcher } from "./pom/base.js";
+import { T } from "../helpers.js";
 
 const TOKEN = "test-e2e";
 const WS_ID = "e2e-cors-corp";
@@ -174,7 +175,7 @@ test.describe("Auditoria E2E de CORS e Mutações Web (Prevenção de 403 Forbid
     await page.getByRole("button", { name: "Criar Tarefa" }).click();
 
     // Aguarda o card aparecer no Kanban
-    await expect(page.getByText(titulo).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(titulo).first()).toBeVisible({ timeout: T(10000) });
 
     watcher.stop();
     const erros403 = watcher.limpos([]).filter((msg) => msg.includes("403"));
@@ -190,7 +191,7 @@ test.describe("Auditoria E2E de CORS e Mutações Web (Prevenção de 403 Forbid
 
     // Salva configurações usando o botão da aba Geral se houver
     const btnSalvar = page.getByRole("button", { name: /Salvar Alterações/i }).first();
-    if (await btnSalvar.isVisible({ timeout: 5000 }).catch(() => false)) {
+    if (await btnSalvar.isVisible({ timeout: T(5000) }).catch(() => false)) {
       await btnSalvar.click();
       await page.waitForTimeout(500);
     }
