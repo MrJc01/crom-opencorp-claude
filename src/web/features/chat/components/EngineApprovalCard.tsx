@@ -1,6 +1,6 @@
 import React, { useState, type FC } from "react";
 import { ShieldAlert, Check, X, Loader2 } from "lucide-react";
-import { obterAuthHeaders } from "../runtime/secretary-runtime-adapter.js";
+import { obterAuthHeaders } from "../runtime/auth-headers.js";
 
 export interface EngineApprovalArgs {
   id: string;
@@ -8,9 +8,11 @@ export interface EngineApprovalArgs {
   descricao?: string;
   workspace?: string;
   motor?: string;
+  /** Status gravado no servidor (histórico). Ausente em aprovações recém-recebidas pelo stream. */
+  status?: "pendente" | "aprovado" | "rejeitado" | "expirada";
 }
 
-type Estado = "pendente" | "enviando" | "aprovado" | "rejeitado" | "erro";
+type Estado = "pendente" | "enviando" | "aprovado" | "rejeitado" | "expirada" | "erro";
 
 /** Rótulo curto para o método de aprovação informado pelo motor. */
 export function rotuloAcaoAprovacao(acao?: string): string {
@@ -25,9 +27,18 @@ export function rotuloAcaoAprovacao(acao?: string): string {
  * Cartão de aprovação para solicitações HITL emitidas pelo motor
  * conversacional (evento SSE `aprovacao`). A decisão volta ao motor por
  * `POST /secretario/hitl/:id/(aprovar|rejeitar)`, escopada ao workspace.
+ *
+ * Único caminho de UI para aprovações do motor. `HitlApprovalToolUI`/`HitlOptionsView` são
+ * outra coisa: perguntas de múltipla escolha respondidas como nova mensagem do usuário.
  */
-export const EngineApprovalCard: FC<{ args: EngineApprovalArgs }> = ({ args }) => {
-  const [estado, setEstado] = useState<Estado>("pendente");
+export const EngineApprovalCard: FC<{
+  args: EngineApprovalArgs;
+  /** Grava a decisão no store do chat (a fonte da verdade); sem ele o card guarda só estado local. */
+  onDecidido?: (id: string, status: "aprovado" | "rejeitado") => void;
+}> = ({ args, onDecidido }) => {
+  const [local, setEstado] = useState<Estado>("pendente");
+  // Status vindo do store/histórico (decidido ou expirado) vale sobre o estado transitório local.
+  const estado: Estado = args.status && args.status !== "pendente" ? args.status : local;
   const [erro, setErro] = useState<string>("");
 
   const decidir = async (decisao: "aprovar" | "rejeitar") => {
@@ -48,14 +59,18 @@ export const EngineApprovalCard: FC<{ args: EngineApprovalArgs }> = ({ args }) =
         const corpo = await res.json().catch(() => ({}));
         throw new Error(corpo?.erro || corpo?.detail || `HTTP ${res.status}`);
       }
-      setEstado(decisao === "aprovar" ? "aprovado" : "rejeitado");
+      const status = decisao === "aprovar" ? "aprovado" : "rejeitado";
+      setEstado(status);
+      onDecidido?.(args.id, status);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
       setEstado("erro");
     }
   };
 
-  const decidido = estado === "aprovado" || estado === "rejeitado";
+  const decidido = estado === "aprovado" || estado === "rejeitado" || estado === "expirada";
+  const textoDecisao =
+    estado === "aprovado" ? "Aprovado." : estado === "rejeitado" ? "Rejeitado." : "Expirada: a conversa seguiu sem resposta.";
 
   return (
     <div
@@ -77,7 +92,7 @@ export const EngineApprovalCard: FC<{ args: EngineApprovalArgs }> = ({ args }) =
       )}
       {decidido ? (
         <p className="text-zinc-300" role="status">
-          {estado === "aprovado" ? "Aprovado." : "Rejeitado."}
+          {textoDecisao}
         </p>
       ) : (
         <div className="flex flex-wrap gap-2">

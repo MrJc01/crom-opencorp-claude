@@ -48,6 +48,7 @@ export interface PackItemConteudo {
   description?: string;
   skills?: string[];
   trigger?: string;
+  template?: Record<string, any>;
 }
 
 export interface PackItem {
@@ -94,85 +95,40 @@ export interface FlowTemplateItem {
   tags: string[];
 }
 
-const TEMPLATES_AGENTES_CANONICOS: AgentTemplateItem[] = [
-  {
-    id: "secretario-exec",
-    role: "Secretário Executivo Residente",
-    category: "supervisor",
-    model: "openrouter/google/gemini-2.5-pro",
-    skills: ["workspace-auditor", "model-governance", "flow-orchestrator"],
-    tools: ["read", "write", "bash", "registry", "doctor"],
-    permissions: "level-3",
-    descricao: "Guardião residente do workspace, coordenação de fluxos, diagnóstico de incidentes e orquestração autônoma.",
-  },
-  {
-    id: "pautador-youtube",
-    role: "Pautador de Notícias e Tendências",
-    category: "pesquisador",
-    model: "openrouter/nvidia/nemotron-3.5-lightning:free",
-    skills: ["web-search"],
-    tools: ["read", "write", "bash"],
-    permissions: "level-2",
-    descricao: "Garimpa notícias quentes na web, filtra fontes de credibilidade e gera pautas estruturadas para produção.",
-  },
-  {
-    id: "roteirista-video",
-    role: "Roteirista de Vídeos Curtos",
-    category: "redator",
-    model: "openrouter/nvidia/nemotron-3.5-lightning:free",
-    skills: ["web-search"],
-    tools: ["read", "write", "bash"],
-    permissions: "level-2",
-    descricao: "Cria roteiros persuasivos para shorts/reels com ganchos de alta retenção, quebras de padrão e call to action.",
-  },
-  {
-    id: "auditor-sre",
-    role: "Auditor de Infraestrutura & SRE",
-    category: "operario",
-    model: "openrouter/nvidia/nemotron-3.5-lightning:free",
-    skills: ["workspace-auditor", "git-ops"],
-    tools: ["read", "write", "bash"],
-    permissions: "level-3",
-    descricao: "Monitora integridade do daemon, faz auto-remediação de processos órfãos e grava checkpoints Git semânticos.",
-  },
-  {
-    id: "analista-qualidade",
-    role: "Analista de Qualidade e Compliance",
-    category: "revisor",
-    model: "openrouter/nvidia/nemotron-3.5-lightning:free",
-    skills: ["model-governance"],
-    tools: ["read", "write"],
-    permissions: "level-1",
-    descricao: "Revisa saídas das esteiras, valida conformidade ética, precisão factual e políticas corporativas.",
-  },
-];
-
-const TEMPLATES_FLUXOS_CANONICOS: FlowTemplateItem[] = [
-  {
-    id: "yt-esteira-shorts",
-    nome: "Esteira Autônoma de YouTube Shorts",
-    descricao: "Garimpa notícias matinais, gera roteiro narrado via Piper TTS e renderiza vídeo vertical com FFMPEG.",
-    trigger: "cron (08:00 diário)",
-    nos: 4,
-    tags: ["Mídia", "Vídeo", "FFMPEG", "TTS"],
-  },
-  {
-    id: "sre-watchdog-autocura",
-    nome: "Watchdog SRE & Autocura de Incidentes",
-    descricao: "Verificação periódica dos endpoints de saúde, purge de logs rotativos e autocura via OpenCorp Doctor.",
-    trigger: "cron (*/10 min)",
-    nos: 3,
-    tags: ["DevOps", "SRE", "Doctor", "Resiliência"],
-  },
-  {
-    id: "auditoria-governanca-modelos",
-    nome: "Auditoria Semanal de Orçamento e Modelos",
-    descricao: "Audita custos por token, valida cumprimento dos limites xB e gera relatório semanal para a secretária.",
-    trigger: "cron (Segunda 09:00)",
-    nos: 3,
-    tags: ["Governança", "FinOps", "Tokens"],
-  },
-];
+/** Deriva os modelos de agentes e fluxos a partir dos manifestos dos packs (sem catálogo fixo na UI). */
+function derivarTemplates(packs: PackItem[]): { agentes: AgentTemplateItem[]; fluxos: FlowTemplateItem[] } {
+  const agentes = new Map<string, AgentTemplateItem>();
+  const fluxos = new Map<string, FlowTemplateItem>();
+  for (const pack of packs) {
+    for (const ag of pack.conteudo?.agentes ?? []) {
+      const t = (ag.template ?? {}) as Partial<AgentTemplateItem>;
+      if (agentes.has(ag.id)) continue;
+      agentes.set(ag.id, {
+        id: ag.id,
+        role: t.role || ag.role || ag.id,
+        category: t.category || "operario",
+        model: t.model || "",
+        skills: t.skills || ag.skills || [],
+        tools: t.tools || [],
+        permissions: t.permissions || "level-2",
+        descricao: t.descricao || `Agente do pack ${pack.nome}.`,
+      });
+    }
+    for (const fl of pack.conteudo?.fluxos ?? []) {
+      const t = (fl.template ?? {}) as Partial<FlowTemplateItem>;
+      if (fluxos.has(fl.id)) continue;
+      fluxos.set(fl.id, {
+        id: fl.id,
+        nome: t.nome || fl.nome || fl.id,
+        descricao: t.descricao || `Fluxo do pack ${pack.nome}.`,
+        trigger: t.trigger || fl.trigger || "manual",
+        nos: t.nos ?? 0,
+        tags: t.tags || [pack.categoria],
+      });
+    }
+  }
+  return { agentes: Array.from(agentes.values()), fluxos: Array.from(fluxos.values()) };
+}
 
 export const AtivosView: FC = () => {
   const { client, workspaceId: ctxWorkspaceId, tratarErro } = useOpenCorp();
@@ -189,6 +145,7 @@ export const AtivosView: FC = () => {
 
   // Dados
   const [packs, setPacks] = useState<PackItem[]>([]);
+  const templates = useMemo(() => derivarTemplates(packs), [packs]);
   const [skills, setSkills] = useState<SkillItem[]>([]);
   const [agentesWorkspace, setAgentesWorkspace] = useState<AgentResumo[]>([]);
 
@@ -231,7 +188,15 @@ export const AtivosView: FC = () => {
           corpo: s.corpo,
         }));
 
-        setPacks(packsReais);
+        // Detalhe de cada pack alimenta as abas de modelos de agentes e fluxos.
+        const packsDetalhados = await Promise.all(
+          packsReais.map((p) =>
+            fetch(`/packs/${encodeURIComponent(p.id)}${qs}`, { headers })
+              .then((r) => (r.ok ? (r.json() as Promise<PackItem>) : p))
+              .catch(() => p),
+          ),
+        );
+        setPacks(packsDetalhados);
         setSkills(skillsReais);
         setAgentesWorkspace(listaAgentes || []);
       } catch (err) {
@@ -459,23 +424,23 @@ export const AtivosView: FC = () => {
 
   // Filtro de Templates de Agentes
   const agentTemplatesFiltrados = useMemo(() => {
-    return TEMPLATES_AGENTES_CANONICOS.filter(
+    return templates.agentes.filter(
       (t) =>
         t.role.toLowerCase().includes(busca.toLowerCase()) ||
         t.id.toLowerCase().includes(busca.toLowerCase()) ||
         t.descricao.toLowerCase().includes(busca.toLowerCase()),
     );
-  }, [busca]);
+  }, [busca, templates]);
 
   // Filtro de Templates de Fluxos
   const flowTemplatesFiltrados = useMemo(() => {
-    return TEMPLATES_FLUXOS_CANONICOS.filter(
+    return templates.fluxos.filter(
       (f) =>
         f.nome.toLowerCase().includes(busca.toLowerCase()) ||
         f.descricao.toLowerCase().includes(busca.toLowerCase()) ||
         f.tags.some((t) => t.toLowerCase().includes(busca.toLowerCase())),
     );
-  }, [busca]);
+  }, [busca, templates]);
 
   return (
     <div className="flex flex-col h-full w-full p-6 md:p-8 space-y-6 overflow-y-auto">
@@ -562,7 +527,7 @@ export const AtivosView: FC = () => {
           <Bot size={15} />
           <span>Templates de Agentes</span>
           <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-zinc-800/80 text-zinc-300">
-            {TEMPLATES_AGENTES_CANONICOS.length}
+            {templates.agentes.length}
           </span>
         </button>
 
@@ -578,7 +543,7 @@ export const AtivosView: FC = () => {
           <Workflow size={15} />
           <span>Templates de Fluxos</span>
           <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-zinc-800/80 text-zinc-300">
-            {TEMPLATES_FLUXOS_CANONICOS.length}
+            {templates.fluxos.length}
           </span>
         </button>
       </div>

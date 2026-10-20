@@ -124,6 +124,32 @@ export async function parseProblemDetails(resp: Response): Promise<ProblemDetail
   }
 }
 
+/** Bloco SSE já separado em nome do evento e corpo (`data:` concatenado). */
+export interface BlocoSse {
+  evento: string;
+  dados: string;
+}
+
+/** Lê um bloco SSE (texto entre linhas em branco). Devolve null se não houver `data:`. */
+export function parsearBlocoSse(bloco: string): BlocoSse | null {
+  let evento = "";
+  const dataLinhas: string[] = [];
+  for (const linha of bloco.split("\n")) {
+    const trimmed = linha.trim();
+    if (trimmed.startsWith("event:")) evento = trimmed.slice(6).trim();
+    else if (trimmed.startsWith("data:")) dataLinhas.push(trimmed.slice(5).trim());
+  }
+  if (dataLinhas.length === 0) return null;
+  return { evento, dados: dataLinhas.join("\n") };
+}
+
+/** Separa blocos SSE completos de um buffer parcial; `resto` é o pedaço ainda incompleto. */
+export function separarBlocosSse(buffer: string): { blocos: string[]; resto: string } {
+  const partes = buffer.replace(/\r\n/g, "\n").split("\n\n");
+  const resto = partes.pop() ?? "";
+  return { blocos: partes.filter((b) => b.trim()), resto };
+}
+
 /**
  * Executa o streaming SSE com consumo assíncrono e despacho reativo de eventos.
  */
@@ -156,21 +182,10 @@ export async function executarSecretarioStream(options: ExecutarStreamOptions): 
   let pensamentoAcumulado = "";
 
   const processarBlocoSse = (bloco: string) => {
-    const linhas = bloco.split("\n");
-    let currentEvent = "";
-    const dataLinhas: string[] = [];
-
-    for (const linha of linhas) {
-      const trimmed = linha.trim();
-      if (trimmed.startsWith("event:")) {
-        currentEvent = trimmed.slice(6).trim();
-      } else if (trimmed.startsWith("data:")) {
-        dataLinhas.push(trimmed.slice(5).trim());
-      }
-    }
-
-    if (dataLinhas.length === 0) return;
-    const jsonStr = dataLinhas.join("\n");
+    const parsed = parsearBlocoSse(bloco);
+    if (!parsed) return;
+    const currentEvent = parsed.evento;
+    const jsonStr = parsed.dados;
     if (jsonStr === "[DONE]") return;
 
     try {

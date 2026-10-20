@@ -5,7 +5,7 @@ import {
   carregarAbasWorkspace,
   deduplicarAbas,
   salvarAbasWorkspace,
-} from "../../../src/web/features/chat/views/SecretarioView.js";
+} from "../../../src/web/features/chat/hooks/useAbasSecretario.js";
 import { converterMensagensBackend } from "../../../src/web/features/chat/runtime/secretary-runtime-adapter.js";
 
 if (typeof globalThis.localStorage === "undefined") {

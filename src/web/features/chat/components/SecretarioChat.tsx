@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, type FC } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AssistantRuntimeProvider,
+  useAuiState,
   ThreadPrimitive,
   MessagePrimitive,
   type ThreadMessageLike,
@@ -31,9 +32,9 @@ import {
 } from "lucide-react";
 import {
   useOpenCorpSecretarioRuntime,
-  converterMensagensBackend,
-  obterAuthHeaders,
+  marcarAprovacaoNoRuntime,
 } from "../runtime/secretary-runtime-adapter.js";
+import { buscarHistorico, sessaoTemHistorico } from "../runtime/history-client.js";
 import { useOpenCorp } from "../../../providers/OpenCorpProvider.js";
 import { SUGESTOES_RAPIDAS } from "../../../lib/chat/constants.js";
 import type { SecretaryRuntimeOptions } from "../types.js";
@@ -238,6 +239,124 @@ export const ToolCallView: FC<{
   );
 };
 
+/**
+ * Contexto dos tool UIs e das partes do assistente. Os componentes abaixo ficam FORA do
+ * render porque `components={{...}}` com arrows inline cria um tipo novo a cada render e o
+ * React remonta os cards, perdendo o estado local (ex.: respostas do PerguntaCard).
+ */
+interface ChatToolsCtx {
+  runtime?: AssistantRuntime;
+  workspaceId: string;
+}
+const ChatToolsContext = React.createContext<ChatToolsCtx>({ workspaceId: "default" });
+
+function useEnviarComoUsuario(): (texto: string) => void {
+  const { runtime } = React.useContext(ChatToolsContext);
+  return (texto) => {
+    void runtime?.thread.append({ role: "user", content: [{ type: "text", text: texto }] });
+  };
+}
+
+function textoOpcoes(args: any): string {
+  return (
+    args?.pergunta ||
+    (args?.opcoes ? args.opcoes.map((o: string, idx: number) => `${idx + 1}. ${o}`).join("\n") : "")
+  );
+}
+
+const TextoAssistente: FC<{ text?: string }> = ({ text }) => {
+  const { workspaceId } = React.useContext(ChatToolsContext);
+  if (text && text.startsWith("```terminal\n")) {
+    const limpo = text.replace(/^```terminal\n/, "").replace(/\n```$/, "");
+    return (
+      <div className="bg-zinc-950 text-emerald-400 font-mono p-3 rounded-lg border border-zinc-800 text-xs overflow-x-auto whitespace-pre leading-relaxed shadow-inner">
+        {limpo}
+      </div>
+    );
+  }
+  return (
+    <MarkdownTextPrimitive
+      className="oc-markdown text-sm text-zinc-100"
+      remarkPlugins={[remarkGfm]}
+      components={{ CodeHeader: (props) => <CodeHeaderWithHandoff {...props} workspaceId={workspaceId} /> }}
+    />
+  );
+};
+
+const RaciocinioAssistente: FC<{ text?: string }> = ({ text }) => <ReasoningView text={text} />;
+
+const ToolGitStatus: FC<any> = ({ args, result }) => {
+  const { workspaceId } = React.useContext(ChatToolsContext);
+  const arquivos =
+    args?.arquivos || (result && typeof result === "object" && "arquivos" in result ? result.arquivos : []);
+  return <GitStatusCard arquivos={arquivos} workspaceId={workspaceId} />;
+};
+
+const ToolAprovacaoMotor: FC<any> = ({ args }) => {
+  const { runtime } = React.useContext(ChatToolsContext);
+  return (
+    <EngineApprovalCard
+      args={args}
+      onDecidido={(id, status) => runtime && marcarAprovacaoNoRuntime(runtime, id, status)}
+    />
+  );
+};
+
+const ToolOpcoes: FC<any> = ({ args }) => {
+  const enviar = useEnviarComoUsuario();
+  return <HitlOptionsView texto={textoOpcoes(args)} onSelecionarOpcao={enviar} />;
+};
+
+const ToolPergunta: FC<any> = ({ args }) => {
+  const enviar = useEnviarComoUsuario();
+  const messageId = useAuiState((st) => st.message.id);
+  // Respondida = existe mensagem do usuário depois desta (reativo a novas mensagens).
+  const respondida = useAuiState((st) => {
+    const msgs = st.thread.messages;
+    const i = msgs.findIndex((x) => x.id === messageId);
+    return i >= 0 && msgs.slice(i + 1).some((x) => x.role === "user");
+  });
+  return <PerguntaCard args={args} respondida={respondida} onResponder={enviar} />;
+};
+
+const ToolTerminal: FC<any> = ({ args, result }) => {
+  const cmd = args?.comando || "";
+  const out = String(result ?? args?.saida ?? "");
+  return (
+    <div className="bg-zinc-950 text-emerald-400 font-mono p-3 rounded-lg border border-zinc-800 text-xs overflow-x-auto whitespace-pre leading-relaxed shadow-inner my-2">
+      {cmd ? `$ !${cmd}\n` : ""}
+      {out}
+    </div>
+  );
+};
+
+const ToolFallback: FC<any> = ({ toolName, result, isError, args, status }) => (
+  <ToolCallView
+    toolName={toolName}
+    result={result ?? args?.resumo}
+    isError={isError}
+    status={args?.statusOperacional ?? status?.type}
+  />
+);
+
+/** Mapa estável (identidade fixa entre renders) das partes da mensagem do assistente. */
+export const COMPONENTES_PARTES_ASSISTENTE = {
+  Text: TextoAssistente,
+  Reasoning: RaciocinioAssistente,
+  tools: {
+    by_name: {
+      git_status: ToolGitStatus,
+      aprovacao_motor: ToolAprovacaoMotor,
+      hitl_approval: ToolOpcoes,
+      pergunta_opcoes: ToolOpcoes,
+      ask_question: ToolPergunta,
+      question: ToolPergunta,
+      terminal_exec: ToolTerminal,
+    },
+    Fallback: ToolFallback,
+  },
+} as const;
+
 export interface SecretarioChatProps {
   runtime?: AssistantRuntime;
   options?: SecretaryRuntimeOptions;
@@ -321,9 +440,11 @@ const SecretarioChatInterno: FC<{
   });
 
   const runtime = runtimeProp ?? runtimeInterno;
+  const ctxTools = useMemo(() => ({ runtime, workspaceId }), [runtime, workspaceId]);
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
+      <ChatToolsContext.Provider value={ctxTools}>
       <div
         className={`flex flex-col h-full w-full bg-zinc-950 text-zinc-100 font-sans select-text overflow-hidden ${className}`}
       >
@@ -490,131 +611,7 @@ const SecretarioChatInterno: FC<{
                         )}
 
                         {!respostaVazia && (
-                          <MessagePrimitive.Parts
-                            components={{
-                            Text: ({ text }: { text?: string }) => {
-                              if (text && text.startsWith("```terminal\n")) {
-                                const limpo = text
-                                  .replace(/^```terminal\n/, "")
-                                  .replace(/\n```$/, "");
-                                return (
-                                  <div className="bg-zinc-950 text-emerald-400 font-mono p-3 rounded-lg border border-zinc-800 text-xs overflow-x-auto whitespace-pre leading-relaxed shadow-inner">
-                                    {limpo}
-                                  </div>
-                                );
-                              }
-                              return (
-                                <MarkdownTextPrimitive
-                                  className="oc-markdown text-sm text-zinc-100"
-                                  remarkPlugins={[remarkGfm]}
-                                  components={{
-                                    CodeHeader: (props) => (
-                                      <CodeHeaderWithHandoff
-                                        {...props}
-                                        workspaceId={workspaceId}
-                                      />
-                                    ),
-                                  }}
-                                />
-                              );
-                            },
-                            Reasoning: ({ text }: { text?: string }) => (
-                              <ReasoningView text={text} />
-                            ),
-                            tools: {
-                              by_name: {
-                                git_status: ({ args, result }: any) => {
-                                  const arquivos =
-                                    args?.arquivos ||
-                                    (result && typeof result === "object" && "arquivos" in result
-                                      ? result.arquivos
-                                      : []);
-                                  return (
-                                    <GitStatusCard
-                                      arquivos={arquivos}
-                                      workspaceId={workspaceId}
-                                    />
-                                  );
-                                },
-                                aprovacao_motor: ({ args }: any) => (
-                                  <EngineApprovalCard args={args} />
-                                ),
-                                hitl_approval: ({ args }: any) => (
-                                  <HitlOptionsView
-                                    texto={
-                                      args?.pergunta ||
-                                      (args?.opcoes
-                                        ? args.opcoes
-                                            .map((o: string, idx: number) => `${idx + 1}. ${o}`)
-                                            .join("\n")
-                                        : "")
-                                    }
-                                    onSelecionarOpcao={(opcao) => {
-                                      void runtime.thread.append({
-                                        role: "user",
-                                        content: [{ type: "text", text: opcao }],
-                                      });
-                                    }}
-                                  />
-                                ),
-                                pergunta_opcoes: ({ args }: any) => (
-                                  <HitlOptionsView
-                                    texto={
-                                      args?.pergunta ||
-                                      (args?.opcoes
-                                        ? args.opcoes
-                                            .map((o: string, idx: number) => `${idx + 1}. ${o}`)
-                                            .join("\n")
-                                        : "")
-                                    }
-                                    onSelecionarOpcao={(opcao) => {
-                                      void runtime.thread.append({
-                                        role: "user",
-                                        content: [{ type: "text", text: opcao }],
-                                      });
-                                    }}
-                                  />
-                                ),
-                                ask_question: ({ args }: any) => (
-                                  <PerguntaCard
-                                    args={args}
-                                    respondida={respondida}
-                                    onResponder={(texto) => {
-                                      void runtime.thread.append({ role: "user", content: [{ type: "text", text: texto }] });
-                                    }}
-                                  />
-                                ),
-                                question: ({ args }: any) => (
-                                  <PerguntaCard
-                                    args={args}
-                                    respondida={respondida}
-                                    onResponder={(texto) => {
-                                      void runtime.thread.append({ role: "user", content: [{ type: "text", text: texto }] });
-                                    }}
-                                  />
-                                ),
-                                terminal_exec: ({ args, result }: any) => {
-                                  const cmd = args?.comando || "";
-                                  const out = String(result ?? args?.saida ?? "");
-                                  return (
-                                    <div className="bg-zinc-950 text-emerald-400 font-mono p-3 rounded-lg border border-zinc-800 text-xs overflow-x-auto whitespace-pre leading-relaxed shadow-inner my-2">
-                                      {cmd ? `$ !${cmd}\n` : ""}
-                                      {out}
-                                    </div>
-                                  );
-                                },
-                              },
-                              Fallback: ({ toolName, result, isError, args, status }: any) => (
-                                <ToolCallView
-                                  toolName={toolName}
-                                  result={result ?? args?.resumo}
-                                  isError={isError}
-                                  status={args?.statusOperacional ?? status?.type}
-                                />
-                              ),
-                            },
-                            }}
-                          />
+                          <MessagePrimitive.Parts components={COMPONENTES_PARTES_ASSISTENTE} />
                         )}
 
                         {!emExecucao && (!temTextoVisivel || respostaVazia) && (
@@ -688,6 +685,7 @@ const SecretarioChatInterno: FC<{
           </ThreadPrimitive.Viewport>
         </ThreadPrimitive.Root>
       </div>
+      </ChatToolsContext.Provider>
     </AssistantRuntimeProvider>
   );
 };
@@ -743,43 +741,18 @@ export const SecretarioChat: FC<SecretarioChatProps> = ({
     }
 
     const sid = idSessaoAtiva?.trim();
-    if (!sid || sid.startsWith("sessao-") || sid.startsWith("draft-")) {
+    if (!sessaoTemHistorico(sid)) {
       setMensagensIniciais([]);
       setCarregandoHistorico(false);
       return;
     }
 
     let cancelado = false;
-    const origin =
-      typeof window !== "undefined"
-        ? window.location.origin
-        : "http://127.0.0.1:4100";
-
-    fetch(`${origin}/secretario/sessoes/${encodeURIComponent(sid)}/mensagens`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...obterAuthHeaders(),
-        ...(wsId ? { "x-opencorp-workspace": wsId } : {}),
-      },
-    })
-      .then(async (res) => {
-        if (cancelado) return;
-        if (!res.ok) {
-          setMensagensIniciais([]);
-          setCarregandoHistorico(false);
-          return;
-        }
-        const data = await res.json();
-        const conv = converterMensagensBackend(data, sid);
-        setMensagensIniciais(conv);
-        setCarregandoHistorico(false);
-      })
-      .catch(() => {
-        if (!cancelado) {
-          setMensagensIniciais([]);
-          setCarregandoHistorico(false);
-        }
-      });
+    void buscarHistorico(sid, wsId).then((conv) => {
+      if (cancelado) return;
+      setMensagensIniciais(conv ?? []);
+      setCarregandoHistorico(false);
+    });
 
     return () => {
       cancelado = true;

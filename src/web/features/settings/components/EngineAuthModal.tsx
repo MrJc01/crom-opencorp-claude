@@ -181,9 +181,11 @@ export const EngineAuthModal: FC<EngineAuthModalProps> = ({
     }
   }, []);
 
-  const isWebSupported = Boolean(
-    motorId && ["codex", "cursor", "copilot", "claude-code", "antigravity"].includes(motorId)
-  );
+  const isWebSupported = Boolean(instrucoesBackend?.login?.web);
+  // Motor sem variável de credencial no manifest só autentica pelo CLI.
+  const soCli = Boolean(instrucoesBackend && !instrucoesBackend.envVar);
+  const importaGithub = Boolean(instrucoesBackend?.login?.importar);
+  const pedeCodigoNoLogin = Boolean(instrucoesBackend?.login?.codigo);
 
   // Reset e inicialização ao abrir
   useEffect(() => {
@@ -196,7 +198,7 @@ export const EngineAuthModal: FC<EngineAuthModalProps> = ({
       setMostrarToken(false);
 
       // Define aba inicial: web se suportado, senão chave
-      if (motorId === "mimo") {
+      if (soCli) {
         setAbaModal("cli");
       } else if (isWebSupported) {
         setAbaModal("web");
@@ -229,7 +231,7 @@ export const EngineAuthModal: FC<EngineAuthModalProps> = ({
     }
 
     return () => limparPolling();
-  }, [aberto, motorId, motorNome, isWebSupported, client, limparPolling]);
+  }, [aberto, motorId, motorNome, isWebSupported, soCli, client, limparPolling]);
 
   // Atualizar baseUrl e nome quando provedor muda
   const handleMudarProvedor = (novoProvId: string) => {
@@ -247,18 +249,6 @@ export const EngineAuthModal: FC<EngineAuthModalProps> = ({
 
   // Obter instruções estáticas ou dinâmicas
   const obterInstrucoes = () => {
-    if (motorId === "mimo") {
-      return {
-        title: "Xiaomi MiMo Code",
-        cliCommand: "mimo auth login",
-        envVar: "Provedor configurado no próprio MiMo",
-        url: "https://mimo.xiaomi.com/coder",
-        urlText: "MiMo Code",
-        desc: "O tier gratuito sem login do MiMo foi encerrado pela Xiaomi. Instale o binário pelo método oficial, execute 'mimo auth login' no terminal (ou configure um provedor terceiro no MiMo) e teste a prontidão.",
-        webPrompt: "Execute 'mimo auth login' no terminal para autenticar o MiMo Code.",
-      };
-    }
-
     // Instruções fixas por motor são a base; o backend só sobrescreve o que informar.
     const fixas = instrucoesFixas();
     if (instrucoesBackend) {
@@ -275,82 +265,18 @@ export const EngineAuthModal: FC<EngineAuthModalProps> = ({
     return fixas;
   };
 
+  // Fallback genérico: o texto específico de cada motor vem do manifest (instrucoesBackend).
   const instrucoesFixas = () => {
-    switch (motorId) {
-      case "copilot":
-        return {
-          title: "GitHub Copilot CLI",
-          cliCommand: "copilot login --device-code",
-          envVar: "COPILOT_GITHUB_TOKEN",
-          url: "https://github.com/settings/tokens",
-          urlText: "GitHub Tokens",
-          desc: "O GitHub Copilot pode ser autorizado em 1 clique importando sua conta do GitHub CLI ou pelo navegador via código de dispositivo.",
-          webPrompt: "Autorize o GitHub Copilot para permitir que os agentes utilizem modelos GPT-4o e Claude 3.5 Sonnet.",
-        };
-      case "claude-code":
-        return {
-          title: "Claude Code (Anthropic)",
-          cliCommand: "claude auth login",
-          envVar: "ANTHROPIC_API_KEY",
-          url: "https://console.anthropic.com/settings/keys",
-          urlText: "Anthropic Console",
-          desc: "Execute o login via navegador com sua conta Anthropic Claude Pro/Team ou forneça sua chave de API direta.",
-          webPrompt: "Acesse o console da Anthropic para autorizar o Claude Code ou gerar um token de acesso Pro/Team.",
-        };
-      case "cursor":
-        return {
-          title: "Cursor Agent CLI",
-          cliCommand: "agent login",
-          envVar: "CURSOR_API_KEY",
-          url: "https://cursor.com/settings",
-          urlText: "Cursor Settings",
-          desc: "O Cursor Agent gera um link direto de autenticação web profunda para vincular sua conta Pro / Business.",
-          webPrompt: "Clique para gerar a URL de autorização profunda e vincular sua assinatura Cursor ao OpenCorp.",
-        };
-      case "codex":
-        return {
-          title: "OpenAI Codex CLI",
-          cliCommand: "codex login --device-auth",
-          envVar: "OPENAI_API_KEY",
-          url: "https://platform.openai.com/api-keys",
-          urlText: "OpenAI Platform",
-          desc: "O Codex CLI utiliza autorização de dispositivo (OAuth Device Code). O OpenCorp obtém o link e o código automaticamente.",
-          webPrompt: "Inicie o login para receber a URL oficial da OpenAI e o código de dispositivo para vincular sua conta.",
-        };
-      case "antigravity":
-        return {
-          title: "Google Antigravity (AGY)",
-          cliCommand: "agy login",
-          envVar: "GEMINI_API_KEY",
-          url: "https://aistudio.google.com/app/apikey",
-          urlText: "Google AI Studio",
-          desc: "O Antigravity funciona gratuitamente com chaves do Google AI Studio ($0 para Gemini Flash) ou via login desenvolvedor agy.",
-          webPrompt: "Obtenha acesso instantâneo com chaves do Google AI Studio ou vincule credenciais do agy.",
-        };
-      case "crom-agente":
-        return {
-          title: "Crom-Agente Engine (Go)",
-          cliCommand: "export OPENROUTER_API_KEY=sk-or-...",
-          envVar: "OPENROUTER_API_KEY",
-          url: "https://openrouter.ai/settings/keys",
-          urlText: "OpenRouter Keys",
-          desc: "O Crom-Agente opera local-first com ciclo ReAct e consome o provedor OpenRouter BYOK configurado no OpenCorp.",
-          webPrompt: "Utilize o provedor OpenRouter conectado no OpenCorp para executar agentes autônomos.",
-        };
-      default: {
-        const provAtual = PROVEDORES_DISPONIVEIS.find((p) => p.id === provedor) || PROVEDORES_DISPONIVEIS[0]!;
-        return {
-          title: motorNome || motorId || "Motor de IA",
-          // Só o OpenCode tem login próprio; os demais usam a chave do provedor.
-          cliCommand: !motorId || motorId === "opencode" ? "opencode auth login" : `export ${provAtual.envVar}=...`,
-          envVar: provAtual.envVar,
-          url: provAtual.url,
-          urlText: provAtual.urlText,
-          desc: provAtual.desc,
-          webPrompt: `Conecte sua conta ${provAtual.nome} para utilização pelo runtime de execução nos workspaces.`,
-        };
-      }
-    }
+    const provAtual = PROVEDORES_DISPONIVEIS.find((p) => p.id === provedor) || PROVEDORES_DISPONIVEIS[0]!;
+    return {
+      title: motorNome || motorId || "Motor de IA",
+      cliCommand: `export ${provAtual.envVar}=...`,
+      envVar: provAtual.envVar,
+      url: provAtual.url,
+      urlText: provAtual.urlText,
+      desc: provAtual.desc,
+      webPrompt: `Conecte sua conta ${provAtual.nome} para utilização pelo runtime de execução nos workspaces.`,
+    };
   };
 
   const instrucoes = obterInstrucoes();
@@ -508,7 +434,7 @@ export const EngineAuthModal: FC<EngineAuthModalProps> = ({
     }
   };
 
-  const submeterCodigoClaude = async () => {
+  const submeterCodigoLogin = async () => {
     if (!webSession || !motorId || !codigoResposta.trim()) return;
     setEnviandoCodigo(true);
     try {
@@ -568,7 +494,7 @@ export const EngineAuthModal: FC<EngineAuthModalProps> = ({
       } else {
         const causa = res?.health?.statusText || res?.erro || "Requer autenticação";
         showToast(
-          motorId === "mimo" ? `MiMo ainda não está pronto: ${causa}` : `Motor requer autenticação: ${causa}`,
+          `Motor requer autenticação: ${causa}`,
           "aviso",
         );
       }
@@ -659,7 +585,7 @@ export const EngineAuthModal: FC<EngineAuthModalProps> = ({
             </button>
           )}
 
-          {motorId !== "mimo" && (
+          {!soCli && (
             <button
               type="button"
               onClick={() => setAbaModal("chave")}
@@ -700,7 +626,7 @@ export const EngineAuthModal: FC<EngineAuthModalProps> = ({
               </div>
 
               {/* ATALHO 1-CLIQUE GITHUB CLI PARA COPILOT */}
-              {motorId === "copilot" && (
+              {importaGithub && (
                 <div className="p-3.5 rounded-xl border border-emerald-800/50 bg-emerald-950/20 space-y-2.5">
                   <div className="flex items-start gap-2.5">
                     <Sparkles size={16} className="text-emerald-400 shrink-0 mt-0.5" />
@@ -818,11 +744,11 @@ export const EngineAuthModal: FC<EngineAuthModalProps> = ({
                         </span>
                       </div>
 
-                      {/* CLAUDE CODE RESPONSE CODE */}
-                      {motorId === "claude-code" && (
+                      {/* CÓDIGO DE RESPOSTA DO LOGIN (se o motor pedir) */}
+                      {pedeCodigoNoLogin && (
                         <div className="space-y-1.5 bg-zinc-900 p-3 rounded-lg border border-purple-800/40 mt-2">
                           <span className="text-[11px] font-semibold text-purple-300 block">
-                            Passo 2: Cole o código gerado após autorizar no Claude.ai
+                            Passo 2: Cole o código gerado após autorizar no navegador
                           </span>
                           <div className="flex items-center gap-2">
                             <input
@@ -835,7 +761,7 @@ export const EngineAuthModal: FC<EngineAuthModalProps> = ({
                             <button
                               type="button"
                               disabled={enviandoCodigo || !codigoResposta.trim()}
-                              onClick={submeterCodigoClaude}
+                              onClick={submeterCodigoLogin}
                               className="bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                             >
                               {enviandoCodigo ? "Enviando..." : "Confirmar"}
@@ -1071,12 +997,10 @@ export const EngineAuthModal: FC<EngineAuthModalProps> = ({
                   <span className="font-bold block">
                     {testResult?.healthy
                       ? "Motor Autenticado e Pronto para Execução"
-                      : motorId === "mimo" ? "Instalação Necessária" : "Autenticação Necessária"}
+                      : "Autenticação Necessária"}
                   </span>
                   <span className="text-[11px] opacity-90 block">
-                    {testResult?.statusText || (motorId === "mimo"
-                      ? "Execute o script oficial de instalação e teste a prontidão novamente."
-                      : "Execute o comando de autenticação no terminal ou conecte uma conta direta.")}
+                    {testResult?.statusText || "Execute o comando de autenticação no terminal ou conecte uma conta direta."}
                   </span>
                 </div>
               </div>

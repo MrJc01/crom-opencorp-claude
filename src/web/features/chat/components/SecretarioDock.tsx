@@ -1,18 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useState, type FC } from "react";
+import React, { useMemo, useState, type FC } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Bot, Maximize2, X, Sparkles } from "lucide-react";
 import { useOpenCorp } from "../../../providers/OpenCorpProvider.js";
 import { workspacePath } from "../../../lib/routes.js";
 import { SecretarioChat } from "./SecretarioChat.js";
-import { OpenCodeTabsHeader, type ChatTab } from "./OpenCodeTabsHeader.js";
+import { OpenCodeTabsHeader } from "./OpenCodeTabsHeader.js";
 import { HistoricoModal } from "./HistoricoModal.js";
 import { SecretarioSettingsDrawer } from "./SecretarioSettingsDrawer.js";
-import {
-  atualizarAbaAtiva,
-  carregarAbasWorkspace,
-  gerarTabKey,
-  salvarAbasWorkspace,
-} from "../views/SecretarioView.js";
+import { lerSessaoAtiva, useAbasSecretario } from "../hooks/useAbasSecretario.js";
 
 export interface SecretarioDockProps {
   aberto: boolean;
@@ -25,56 +20,29 @@ export const SecretarioDock: FC<SecretarioDockProps> = ({ aberto, aoFechar }) =>
   const { workspaceId } = useOpenCorp();
   const wsId = workspaceId || "default";
 
-  const [abas, setAbas] = useState<ChatTab[]>(() => {
-    const salvas = carregarAbasWorkspace(wsId);
-    if (salvas.length > 0) return salvas;
-    const iniciais = [{ id: `sessao-${Date.now()}`, tabKey: gerarTabKey(), titulo: "Nova conversa", criadoEm: Date.now() }];
-    salvarAbasWorkspace(wsId, iniciais);
-    return iniciais;
-  });
-  const [sessaoAtivaId, setSessaoAtivaId] = useState<string>(() =>
-    (typeof window !== "undefined" && localStorage.getItem(`oc-secretario-sessao-ativa:${wsId}`)) || abas[0]!.id,
+  // Sessão ativa local ao workspace; ao trocar de workspace o valor antigo é ignorado.
+  const [ativaLocal, setAtivaLocal] = useState<{ ws: string; id: string | null }>(
+    () => ({ ws: wsId, id: lerSessaoAtiva(wsId) }),
   );
+  const adaptador = useMemo(
+    () => ({
+      ativaId: ativaLocal.ws === wsId ? ativaLocal.id : null,
+      definirAtiva: (id: string) => setAtivaLocal({ ws: wsId, id }),
+    }),
+    [ativaLocal, wsId],
+  );
+  const {
+    abas,
+    sessaoAtivaId,
+    selecionar: selecionarAba,
+    nova: novaAba,
+    fechar: fecharAba,
+    atualizarTitulo,
+    aoSessaoCriada,
+  } = useAbasSecretario(wsId, adaptador);
   const [historicoAberto, setHistoricoAberto] = useState(false);
   const [configLateralAberta, setConfigLateralAberta] = useState(false);
   const [modeloAtivo, setModeloAtivo] = useState("opencode/nemotron-3.5-lightning-free");
-
-  useEffect(() => {
-    let proximas = carregarAbasWorkspace(wsId);
-    if (proximas.length === 0) {
-      proximas = [{ id: `sessao-${Date.now()}`, tabKey: gerarTabKey(), titulo: "Nova conversa", criadoEm: Date.now() }];
-      salvarAbasWorkspace(wsId, proximas);
-    }
-    setAbas(proximas);
-    setSessaoAtivaId(localStorage.getItem(`oc-secretario-sessao-ativa:${wsId}`) || proximas[0]!.id);
-  }, [wsId]);
-
-  const selecionarAba = useCallback((id: string) => {
-    setSessaoAtivaId(id);
-    localStorage.setItem(`oc-secretario-sessao-ativa:${wsId}`, id);
-  }, [wsId]);
-
-  const novaAba = useCallback(() => {
-    const nova = { id: `sessao-${Date.now()}`, tabKey: gerarTabKey(), titulo: "Nova conversa", criadoEm: Date.now() };
-    setAbas((atuais) => {
-      const proximas = [...atuais, nova];
-      salvarAbasWorkspace(wsId, proximas);
-      return proximas;
-    });
-    selecionarAba(nova.id);
-  }, [selecionarAba, wsId]);
-
-  const fecharAba = useCallback((id: string) => {
-    setAbas((atuais) => {
-      let restantes = atuais.filter((aba) => aba.id !== id);
-      if (restantes.length === 0) {
-        restantes = [{ id: `sessao-${Date.now()}`, tabKey: gerarTabKey(), titulo: "Nova conversa", criadoEm: Date.now() }];
-      }
-      if (sessaoAtivaId === id) selecionarAba(restantes[0]!.id);
-      salvarAbasWorkspace(wsId, restantes);
-      return restantes;
-    });
-  }, [selecionarAba, sessaoAtivaId, wsId]);
 
   const contextoInicial = useMemo(() => {
     if (!location.pathname.endsWith("/fluxos")) return [];
@@ -157,23 +125,12 @@ export const SecretarioDock: FC<SecretarioDockProps> = ({ aberto, aoFechar }) =>
       {/* Conteúdo: Chat do Secretário com sessão ativa */}
       <div className="flex-1 min-h-0 overflow-hidden relative">
         <SecretarioChat
-          key={sessaoAtivaId}
+          key={sessaoAtivaId ?? "default"}
           emDock
-          sessaoId={sessaoAtivaId}
+          sessaoId={sessaoAtivaId ?? undefined}
           contextoInicial={contextoInicial}
-          aoAtualizarTitulo={(sid, titulo) => setAbas((atuais) => {
-            const proximas = atualizarAbaAtiva(atuais, sid, { titulo });
-            salvarAbasWorkspace(wsId, proximas);
-            return proximas;
-          })}
-          aoSessaoCriada={(sid) => {
-            setAbas((atuais) => {
-              const proximas = atualizarAbaAtiva(atuais, sessaoAtivaId, { id: sid });
-              salvarAbasWorkspace(wsId, proximas);
-              return proximas;
-            });
-            selecionarAba(sid);
-          }}
+          aoAtualizarTitulo={atualizarTitulo}
+          aoSessaoCriada={aoSessaoCriada}
         />
       </div>
       <HistoricoModal

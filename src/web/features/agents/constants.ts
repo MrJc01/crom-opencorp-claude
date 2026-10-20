@@ -7,15 +7,3 @@ export const MODELOS_DISPONIVEIS = [
   { id: "openrouter/qwen/qwen3.8-27b:free", label: "OpenRouter Qwen 3.8 27B — Free" },
   { id: "openrouter/google/gemma-4-31b-it:free", label: "OpenRouter Gemma 4 31B — Free" },
 ];
-
-export const MOTORES_FALLBACK = [
-  { id: "opencode", name: "OpenCode Runtime" },
-  { id: "codex", name: "OpenAI Codex CLI" },
-  { id: "claude-code", name: "Claude Code CLI" },
-  { id: "antigravity", name: "Google Antigravity" },
-  { id: "copilot", name: "GitHub Copilot CLI" },
-  { id: "cursor", name: "Cursor CLI" },
-  { id: "aider", name: "Aider CLI" },
-  { id: "crom-agente", name: "Crom Agente" },
-  { id: "mimo", name: "Xiaomi MiMo Code" },
-];

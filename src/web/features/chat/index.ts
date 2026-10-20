@@ -20,7 +20,6 @@ export {
 export {
   useOpenCorpSecretarioRuntime,
   buildAssistantParts,
-  criarSecretarioModelAdapter,
 } from "./runtime/secretary-runtime-adapter.js";
 
 export type {

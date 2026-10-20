@@ -2,7 +2,8 @@ import React, { useState, useEffect, type FC } from "react";
 import { type AgentResumo, type SkillResumo } from "@opencorp/sdk";
 import { useOpenCorp } from "../../../providers/OpenCorpProvider.js";
 import { showToast } from "../../../shared/ui/Toast.js";
-import { MODELOS_DISPONIVEIS, MOTORES_FALLBACK } from "../constants.js";
+import { MODELOS_DISPONIVEIS } from "../constants.js";
+import { useMotoresCatalogo } from "../../../lib/engines/catalogo-motores.js";
 import { ModelPicker } from "../../../shared/ui/ModelPicker.js";
 import {
   X,
@@ -33,6 +34,7 @@ export const AgentInspectDrawer: FC<AgentInspectDrawerProps> = ({
   aoExcluir,
 }) => {
   const { client, tratarErro } = useOpenCorp();
+  const motoresCatalogo = useMotoresCatalogo();
 
   const [role, setRole] = useState("");
   const [modelSelect, setModelSelect] = useState("");
@@ -208,7 +210,10 @@ export const AgentInspectDrawer: FC<AgentInspectDrawerProps> = ({
               onChange={(e) => setHarness(e.target.value)}
               className="w-full px-2.5 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-zinc-200 focus:outline-none focus:border-emerald-500 cursor-pointer font-mono"
             >
-              {MOTORES_FALLBACK.map((mot) => (
+              {harness && !motoresCatalogo.some((mot) => mot.id === harness) && (
+                <option value={harness}>{harness}</option>
+              )}
+              {motoresCatalogo.map((mot) => (
                 <option key={mot.id} value={mot.id}>
                   {mot.name}
                 </option>
