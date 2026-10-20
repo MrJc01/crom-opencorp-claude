@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, type FC } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef, type FC } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Users,
@@ -33,6 +33,9 @@ export const ReunioesView: FC = () => {
   const [mensagens, setMensagens] = useState<MensagemGrupo[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  // Lido na CHEGADA da resposta do polling (o estado `enviando` do closure fica velho): uma consulta que começou antes do
+  // envio não pode sobrescrever a lista e apagar a mensagem otimista enquanto o conselho ainda responde.
+  const enviandoRef = useRef(false);
   const [agenteDigitando, setAgenteDigitando] = useState<string | null>(null);
   const [concluindoAta, setConcluindoAta] = useState(false);
 
@@ -127,13 +130,13 @@ export const ReunioesView: FC = () => {
     if (st === "encerrada" || st === "concluida") return;
 
     const timer = setInterval(() => {
-      if (!enviando) {
+      if (!enviando && !enviandoRef.current) {
         client.http
           .get<SalaReuniao>(`/meetings/${encodeURIComponent(salaAtiva.id)}`, {
             headers: { "x-opencorp-workspace": wsEfetivo },
           })
           .then((est) => {
-            if (!est) return;
+            if (!est || enviandoRef.current) return;
             if (
               Array.isArray(est.mensagens) &&
               est.mensagens.length !== mensagens.length
@@ -159,8 +162,9 @@ export const ReunioesView: FC = () => {
     modo: "sequencial" | "direcionado",
     agenteAlvo?: string
   ) => {
-    if (!salaAtiva || enviando) return;
+    if (!salaAtiva || enviando || enviandoRef.current) return;
 
+    enviandoRef.current = true;
     setEnviando(true);
     setAgenteDigitando(modo === "direcionado" ? agenteAlvo || "agente" : "conselho");
 
@@ -192,6 +196,7 @@ export const ReunioesView: FC = () => {
       tratarErro(err, "Falha ao enviar mensagem na reunião");
       setMensagens((prev) => prev.filter((m) => m !== msgLocal));
     } finally {
+      enviandoRef.current = false;
       setEnviando(false);
       setAgenteDigitando(null);
     }
