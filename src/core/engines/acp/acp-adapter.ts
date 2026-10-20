@@ -30,7 +30,7 @@ import type {
 } from "../ports.js";
 import type { EngineDriver } from "../types.js";
 import type { EngineCapabilityManifest } from "../manifests.js";
-import { checkEngineAuthStatus, probeCliLogin } from "../credentials-bridge.js";
+import { checkEngineAuthStatusAsync, probeCliLoginAsync } from "../credentials-bridge.js";
 import { normalizeEngineError } from "../error-normalizer.js";
 import { binaryOrPreflight } from "../installer/binary-resolver.js";
 import { resolveEngineSpawnEnv } from "../../credentials/credentials-store.js";
@@ -146,8 +146,8 @@ export class AcpAdapter implements EngineAdapter {
     };
     this.authenticator = {
       engineId: this.engineId,
-      status: options.authStatusProbe ?? (async (home) => checkEngineAuthStatus(this.engineId, home)),
-      isLoggedIn: async (home) => probeCliLogin(this.engineId, home)?.loggedIn,
+      status: options.authStatusProbe ?? ((home) => checkEngineAuthStatusAsync(this.engineId, home)),
+      isLoggedIn: async (home) => (await probeCliLoginAsync(this.engineId, home))?.loggedIn,
       fetchTokens: (home, creds) => driver.fetchLiveTokens(home, creds),
     };
     this.runner = { engineId: this.engineId, run: (input, signal) => this.runOneShot(input, signal) };

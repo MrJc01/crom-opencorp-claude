@@ -1,4 +1,4 @@
-import { checkEngineAuthStatus, probeCliLogin } from "./credentials-bridge.js";
+import { checkEngineAuthStatusAsync, probeCliLoginAsync } from "./credentials-bridge.js";
 import { spawn } from "node:child_process";
 import type { AgentEvent } from "./events.js";
 import { normalizeEngineError } from "./error-normalizer.js";
@@ -75,8 +75,8 @@ export class LegacyDriverAdapter implements EngineAdapter {
       engineId: this.engineId,
       // Autenticação ≠ saúde do binário: usa chaves/contas do OpenCorp e o
       // comando oficial de status do CLI, sem ler arquivos internos.
-      status: async (homeDir: string): Promise<EngineAuthStatus> => checkEngineAuthStatus(this.engineId, homeDir),
-      isLoggedIn: async (homeDir: string) => probeCliLogin(this.engineId, homeDir)?.loggedIn,
+      status: (homeDir: string): Promise<EngineAuthStatus> => checkEngineAuthStatusAsync(this.engineId, homeDir),
+      isLoggedIn: async (homeDir: string) => (await probeCliLoginAsync(this.engineId, homeDir))?.loggedIn,
       fetchTokens: async (
         homeDir: string,
         creds?: { tokenOuChave?: string; authType?: string }

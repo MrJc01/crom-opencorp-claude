@@ -88,9 +88,9 @@ function dormir(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function ateQue(cond: () => boolean, ms = 5000): Promise<void> {
+async function ateQue(cond: () => boolean | Promise<boolean>, ms = 5000): Promise<void> {
   const t0 = Date.now();
-  while (!cond()) {
+  while (!(await Promise.resolve(cond()).catch(() => false))) {
     if (Date.now() - t0 > ms) throw new Error("condição não atingida em tempo");
     await dormir(10);
   }
@@ -256,7 +256,9 @@ describe("Watchdog via rodar (execa mockado — child fake)", () => {
       watchdogGracaMs: 5,
     });
     const id = await primeiroExecId(ws.path);
-    await dormir(60);
+    // O run grava meta.json (pid + status "executando") depois de spawnar o filho; escrever
+    // hitl_pendente antes disso seria sobrescrito (corrida read-modify-write sob carga).
+    await ateQue(async () => (await lerMetaJson(ws.path, id)).extras?.pid === 424242);
     await escreverStatus(ws.path, id, "hitl_pendente");
     await dormir(400);
     expect(sinais).toEqual([]);

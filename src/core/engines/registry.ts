@@ -4,6 +4,8 @@ import { COPILOT_ACP, MIMO_ACP } from "./acp/vendors.js";
 import { OpencodeDriver } from "./drivers/opencode-driver.js";
 import { CromAgenteDriver } from "./drivers/crom-agente-driver.js";
 import { ClaudeCodeDriver } from "./drivers/claude-code-driver.js";
+import { ClaudeSdkDriver } from "./drivers/claude-sdk-driver.js";
+import { OpenheinerssDriver } from "./drivers/openheinerss-driver.js";
 import { AntigravityDriver } from "./drivers/antigravity-driver.js";
 import { CursorDriver } from "./drivers/cursor-driver.js";
 import { CopilotDriver } from "./drivers/copilot-driver.js";
@@ -14,7 +16,10 @@ import { EngineNotFoundError } from "./errors.js";
 import { LegacyDriverAdapter } from "./adapter-compat.js";
 import { OpenCodeAdapter } from "./adapters/opencode-adapter.js";
 import { CodexAdapter } from "./adapters/codex-adapter.js";
+import { ClaudeSdkAdapter } from "./adapters/claude-sdk-adapter.js";
+import { OpenheinerssAdapter } from "./adapters/openheinerss-adapter.js";
 import type { EngineAdapter } from "./ports.js";
+import { registerEngineCredentialPolicy } from "../credentials/credentials-store.js";
 import {
   validateEngineCapabilityManifest,
   InvalidEngineManifestError,
@@ -48,6 +53,10 @@ export class EngineRegistry {
     this.register(new OpencodeDriver());
     this.register(new CromAgenteDriver());
     this.register(new ClaudeCodeDriver());
+    // Motor claude-sdk: driver só para aparecer na lista; a execução é do ClaudeSdkAdapter (abaixo).
+    this.register(new ClaudeSdkDriver());
+    // Open Harness: driver só para aparecer na lista; a execução é do OpenheinerssAdapter (abaixo).
+    this.register(new OpenheinerssDriver());
     this.register(new AntigravityDriver());
     this.register(new CursorDriver());
     this.register(new CopilotDriver());
@@ -58,9 +67,13 @@ export class EngineRegistry {
     // Registra adaptadores canônicos com AgentRunner e ConversationRuntime
     this.registerAdapter(new OpenCodeAdapter());
     this.registerAdapter(new CodexAdapter());
+    // Claude Agent SDK (id "claude-sdk"): motor paralelo ao "claude-code"; não é o padrão.
+    this.registerAdapter(new ClaudeSdkAdapter());
     // Copilot e MiMo via ACP (D5): mesma infraestrutura, diferença só na configuração.
     this.registerAdapter(new AcpAdapter({ vendor: COPILOT_ACP, driver: this.get("copilot")! }));
     this.registerAdapter(new AcpAdapter({ vendor: MIMO_ACP, driver: this.get("mimo")! }));
+    // Open Harness (openheinerss): motor opcional por JSON-RPC/STDIO; binário ausente = motor indisponível, não erro global.
+    this.registerAdapter(new OpenheinerssAdapter());
   }
 
   public static getInstance(): EngineRegistry {
@@ -81,6 +94,12 @@ export class EngineRegistry {
     }
     validateEngineCapabilityManifest(adapter.manifest);
     this.adapters.set(adapter.engineId, adapter);
+    if (adapter.manifest.credentialEnvVars?.length) {
+      registerEngineCredentialPolicy(adapter.engineId, {
+        envVars: adapter.manifest.credentialEnvVars,
+        defaultProvider: adapter.manifest.credentialDefaultProvider,
+      });
+    }
   }
 
   public get(id: string): EngineDriver | undefined {

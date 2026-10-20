@@ -1,4 +1,5 @@
 import type { AgentEvent } from "./events.js";
+import type { MensagemHistorico } from "./event-log.js";
 import type { EngineCapabilityManifest } from "./manifests.js";
 import type { EngineInstallStatus, EngineTokenUsage } from "./types.js";
 import type { EngineAuthStatus } from "./credentials-bridge.js";
@@ -42,6 +43,18 @@ export interface EngineAuthenticator {
   ): Promise<EngineTokenUsage>;
 }
 
+/**
+ * Política de ferramentas/permissões pedida pelo núcleo. Cada adaptador traduz para o mecanismo do seu
+ * motor (permissionMode do SDK, --permission-mode, ACP request_permission...) e ignora o que não suporta,
+ * conforme `manifest.features.tools/hitl`.
+ */
+export interface ToolPolicy {
+  /** `ask` = pedir aprovação (HITL); `auto-edits` = aceitar edições; `deny` = negar tudo; `allow-all` = sem perguntar. */
+  mode?: "ask" | "auto-edits" | "deny" | "allow-all";
+  allowedTools?: string[];
+  disallowedTools?: string[];
+}
+
 export interface AgentRunInput {
   runId?: string;
   workspaceId: string;
@@ -55,6 +68,14 @@ export interface AgentRunInput {
   timeoutMs?: number;
   /** Conta explícita; falha antes do spawn se não autorizada para o workspace. */
   accountId?: string;
+  /** Política de ferramentas/permissões; ausente = padrão do motor. */
+  toolPolicy?: ToolPolicy;
+  /** Sessão nativa a retomar (valor de um `session.updated` anterior). Exige `features.continuation`. */
+  resumeSessionId?: string;
+  /** Texto acrescentado ao prompt de sistema (corpo do agente, skills, contexto do workspace). */
+  systemPromptAppend?: string;
+  /** Teto de turnos do agente, quando o motor suporta. */
+  maxTurns?: number;
 }
 
 export interface AgentRunner {
@@ -105,6 +126,11 @@ export interface ConversationRuntime {
     decision: "approve" | "reject",
     scope: { workspaceId: string }
   ): Promise<boolean>;
+  /**
+   * Histórico de conversas anteriores ao log de eventos do servidor (`event-log.ts`). Opcional: sem ele, a
+   * conversa só tem histórico se foi gravada no log.
+   */
+  history?(ref: ConversationRef): Promise<MensagemHistorico[]>;
   close(ref: ConversationRef): Promise<void>;
 }
 
@@ -128,6 +154,21 @@ export interface ModelCatalogSource {
   probe?(model: { provider: string; id: string }): Promise<ModelProbeResult>;
 }
 
+/**
+ * Como encaixar um motor JSON-RPC por STDIO/WebSocket (ex.: openheinerss, em Go) — esqueleto, sem implementação:
+ *
+ * 1. `manifest`: `transport: "stdio_jsonrpc"`; declare `features` só com o que o servidor anuncia no handshake
+ *    (`initialize`); preencha `limits`, `modelPrefixes` e `instructionFiles` do manifest (ver manifests.ts).
+ * 2. `installer`/`authenticator`: verificam o binário e a sessão por comando oficial de status do motor.
+ * 3. `runner.run(input)`: abre (ou reutiliza, via ProcessRegistry) o processo, envia `session/new`+`prompt`
+ *    com `toolPolicy`/`systemPromptAppend`/`resumeSessionId` e traduz as notificações em AgentEvent:
+ *    delta → `message.delta`; tool_call → `tool.requested`/`tool.completed`; pedido de permissão →
+ *    `approval.requested` (resposta via `conversationRuntime.respondApproval`); arquivo gerado →
+ *    `artifact.produced`; id de sessão → `session.updated`; fim → `run.completed`/`run.failed`.
+ * 4. `cancel`: notificação `session/cancel` (ou fechar o socket). Veja `acp/` para um adaptador pronto desse formato.
+ * 5. Registre com `engineRegistry.registerAdapter(...)`; o núcleo só consulta manifest e eventos, nunca o id.
+ *    Teste com o mesmo contrato de `tests/engine-conformance.test.ts` e o fake de `tests/engine-fake-adapter.test.ts`.
+ */
 export interface EngineAdapter {
   readonly engineId: string;
   readonly name: string;

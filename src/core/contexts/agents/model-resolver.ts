@@ -53,6 +53,16 @@ export function normalizarModelo(modelo: string): string {
   return m;
 }
 
+/** Prefixos de modelo roteados por assinatura/cota do próprio motor (custo marginal zero). */
+export const PREFIXOS_MODELO_SEM_CUSTO: readonly string[] = ["opencode-go/", "codex/", "antigravity/", "claude-code/"];
+
+/** Famílias de modelo conhecidas com capacidade comprovada em tool-calling (metadados, não regra de motor). */
+export const FAMILIAS_MODELO_CONHECIDAS: readonly string[] = [
+  "nemotron", "gemini", "claude", "deepseek", "glm-", "qwen", "gemma",
+  "mimo", "minimax", "ling-", "muse-", "big-pickle", "space-bunny",
+  "north-mini-code", "inkling", "nex-n",
+];
+
 /**
  * Identifica se um modelo é de uso gratuito ou cota zero.
  */
@@ -60,13 +70,27 @@ export function ehModeloGratuito(modelo: string): boolean {
   const m = (modelo ?? "").trim().toLowerCase();
   if (!m) return false;
   if (m.endsWith(":free")) return true;
-  if (m.startsWith("opencode-go/")) return true;
-  if (m.startsWith("codex/")) return true;
-  if (m.startsWith("antigravity/")) return true;
-  if (m.startsWith("claude-code/")) return true;
+  if (PREFIXOS_MODELO_SEM_CUSTO.some((p) => m.startsWith(p))) return true;
   if (m.includes("free")) return true;
   return false;
 }
+
+/** Estimativa de parâmetros (B) por trecho do nome, na ordem de precedência. Dados, não regra de motor. */
+export const PARAMETROS_ESTIMADOS_B: ReadonlyArray<readonly [string, number]> = [
+  ["nemotron-3-ultra", 550],
+  ["nemotron-3.5-lightning", 120],
+  ["gemini-2.5-pro", 150],
+  ["gemini", 70],
+  ["glm-5.3", 30],
+  ["minimax-m3", 230],
+  ["claude-3", 200],
+  ["deepseek-r1", 671],
+];
+
+/** Trechos de nome de modelos flagship (tier S) independentemente do tamanho declarado. */
+export const TRECHOS_MODELO_TIER_S: readonly string[] = [
+  "gemini-2.5", "gemini-3.8", "claude-3", "nemotron-3-ultra", "deepseek-r1",
+];
 
 /**
  * Extrai a contagem estimada de parâmetros em bilhões (xB).
@@ -78,14 +102,7 @@ export function extrairParametrosB(modelo: string): number | null {
   if (match && match[1]) {
     return parseFloat(match[1]);
   }
-  if (m.includes("nemotron-3-ultra")) return 550;
-  if (m.includes("nemotron-3.5-lightning")) return 120;
-  if (m.includes("gemini-2.5-pro")) return 150;
-  if (m.includes("gemini")) return 70;
-  if (m.includes("glm-5.3")) return 30;
-  if (m.includes("minimax-m3")) return 230;
-  if (m.includes("claude-3")) return 200;
-  if (m.includes("deepseek-r1")) return 671;
+  for (const [trecho, b] of PARAMETROS_ESTIMADOS_B) if (m.includes(trecho)) return b;
   return null;
 }
 
@@ -126,11 +143,7 @@ export function classificarQualidadeModelo(modelo: string): QualidadeModelo {
     };
   }
 
-  const familiaConhecida = [
-    "nemotron", "gemini", "claude", "deepseek", "glm-", "qwen", "gemma",
-    "mimo", "minimax", "ling-", "muse-", "big-pickle", "space-bunny",
-    "north-mini-code", "inkling", "nex-n",
-  ].some((familia) => m.includes(familia));
+  const familiaConhecida = FAMILIAS_MODELO_CONHECIDAS.some((familia) => m.includes(familia));
   if (parametrosB === null && !familiaConhecida) {
     return {
       modelo,
@@ -145,11 +158,7 @@ export function classificarQualidadeModelo(modelo: string): QualidadeModelo {
 
   // Tier S: Flagships e Raciocínio Profundo (>70B)
   if (
-    m.includes("gemini-2.5") ||
-    m.includes("gemini-3.8") ||
-    m.includes("claude-3") ||
-    m.includes("nemotron-3-ultra") ||
-    m.includes("deepseek-r1") ||
+    TRECHOS_MODELO_TIER_S.some((t) => m.includes(t)) ||
     (parametrosB !== null && parametrosB >= 70)
   ) {
     return {

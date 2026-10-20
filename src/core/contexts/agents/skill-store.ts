@@ -2,7 +2,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } fr
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawnAsync } from "../../../utils/spawn-async.js";
 import { parseYamlSimples } from "../../../schemas/agent.js";
 import { AgentError } from "../../shared/errors.js";
 import { projectRoot } from "../../../utils/paths.js";
@@ -283,7 +283,7 @@ export class SkillStore {
   private async instalarViaGit(wsPath: string, url: string): Promise<Skill> {
     const tmp = await mkdtemp(join(tmpdir(), "opencorp-skill-git-"));
     try {
-      const res = spawnSync("git", ["clone", "--depth", "1", url, tmp], { stdio: "ignore" });
+      const res = await spawnAsync("git", ["clone", "--depth", "1", url, tmp]);
       if (res.error || (res.status ?? 0) !== 0) {
         throw new AgentError(
           `não foi possível clonar o repositório de skill "${url}": ${res.error?.message ?? `git saiu com ${res.status}`}`,
@@ -302,7 +302,7 @@ export class SkillStore {
     }
     const tmp = await mkdtemp(join(tmpdir(), "opencorp-skill-tar-"));
     try {
-      const res = spawnSync("tar", ["xf", arquivo, "-C", tmp], { stdio: "ignore" });
+      const res = await spawnAsync("tar", ["xf", arquivo, "-C", tmp]);
       if (res.error || (res.status ?? 0) !== 0) {
         throw new AgentError(
           `não foi possível extrair o pacote de skill "${arquivo}": ${res.error?.message ?? `tar saiu com ${res.status}`}`,

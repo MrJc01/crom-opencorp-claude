@@ -1,9 +1,9 @@
-import { spawn, type ChildProcess, execSync } from "node:child_process";
+import { spawn, execFile, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { engineRegistry } from "./registry.js";
-import { checkEngineAuthStatus } from "./credentials-bridge.js";
+import { checkEngineAuthStatusAsync } from "./credentials-bridge.js";
 import { EngineAccountStore } from "./engine-account-store.js";
 
 export interface WebLoginSession {
@@ -30,6 +30,15 @@ interface ActiveProcess {
 
 const activeSessions = new Map<string, ActiveProcess>();
 
+/** execFile com timeout sem bloquear o event loop; devolve stdout+stderr mesmo com saída ≠ 0. */
+function executar(bin: string, args: string[], timeoutMs: number): Promise<{ ok: boolean; saida: string }> {
+  return new Promise((resolve) => {
+    execFile(bin, args, { encoding: "utf8", timeout: timeoutMs, windowsHide: true }, (erro, stdout, stderr) => {
+      resolve({ ok: !erro, saida: `${stdout ?? ""}${stderr ?? ""}` });
+    });
+  });
+}
+
 function stripAnsi(text: string): string {
   return text.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "").replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
 }
@@ -37,18 +46,17 @@ function stripAnsi(text: string): string {
 /**
  * Localiza o binário mais adequado para o motor especificado
  */
-function findEngineBinary(motorId: string, homeDir: string): string | null {
+async function findEngineBinary(motorId: string, homeDir: string): Promise<string | null> {
   const localBin = join(homeDir, ".opencorp", "bin", motorId === "cursor" ? "agent" : motorId);
   if (existsSync(localBin)) return localBin;
 
   const userLocal = join(homeDir, ".local", "bin", motorId === "cursor" ? "agent" : motorId);
   if (existsSync(userLocal)) return userLocal;
 
-  try {
-    const binName = motorId === "cursor" ? "agent" : motorId;
-    const out = execSync(`which ${binName}`, { encoding: "utf8", timeout: 1500 }).trim();
-    if (out && existsSync(out)) return out;
-  } catch {}
+  const binName = motorId === "cursor" ? "agent" : motorId;
+  const achado = await executar("which", [binName], 1500);
+  const out = achado.ok ? achado.saida.trim() : "";
+  if (out && existsSync(out)) return out;
 
   return null;
 }
@@ -120,7 +128,7 @@ export class WebLoginOrchestrator {
    */
   private static async iniciarCodexLogin(active: ActiveProcess, homeDir: string): Promise<WebLoginSession> {
     const session = active.session;
-    const bin = findEngineBinary("codex", homeDir);
+    const bin = await findEngineBinary("codex", homeDir);
 
     if (!bin) {
       session.status = "aguardando_usuario";
@@ -181,11 +189,12 @@ export class WebLoginOrchestrator {
           // Registra conta no store
           void this.persistirConta(session.motorId, "OpenAI Codex (Device)", homeDir);
         } else if (session.status !== "concluido") {
-          const auth = checkEngineAuthStatus("codex", homeDir);
-          if (auth.authenticated) {
-            session.status = "concluido";
-            session.instrucoes = "OpenAI Codex autenticado com sucesso!";
-          }
+          void checkEngineAuthStatusAsync("codex", homeDir).then((auth) => {
+            if (auth.authenticated && session.status !== "concluido") {
+              session.status = "concluido";
+              session.instrucoes = "OpenAI Codex autenticado com sucesso!";
+            }
+          });
         }
       });
 
@@ -211,7 +220,7 @@ export class WebLoginOrchestrator {
    */
   private static async iniciarCursorLogin(active: ActiveProcess, homeDir: string): Promise<WebLoginSession> {
     const session = active.session;
-    const bin = findEngineBinary("cursor", homeDir);
+    const bin = await findEngineBinary("cursor", homeDir);
 
     if (!bin) {
       session.status = "aguardando_usuario";
@@ -258,11 +267,12 @@ export class WebLoginOrchestrator {
           session.instrucoes = "Conta Cursor autenticada com sucesso!";
           void this.persistirConta(session.motorId, "Cursor Account (OAuth)", homeDir);
         } else {
-          const auth = checkEngineAuthStatus("cursor", homeDir);
-          if (auth.authenticated) {
-            session.status = "concluido";
-            session.instrucoes = "Conta Cursor autenticada com sucesso!";
-          }
+          void checkEngineAuthStatusAsync("cursor", homeDir).then((auth) => {
+            if (auth.authenticated) {
+              session.status = "concluido";
+              session.instrucoes = "Conta Cursor autenticada com sucesso!";
+            }
+          });
         }
       });
 
@@ -290,7 +300,7 @@ export class WebLoginOrchestrator {
 
     // 1. Checa se o usuário já tem login no GitHub CLI (`gh auth token`)
     try {
-      const ghOut = execSync("gh auth status 2>&1 || true", { encoding: "utf8", timeout: 2000 });
+      const ghOut = (await executar("gh", ["auth", "status"], 2000)).saida;
       const contaMatch = /Logged in to github\.com account ([^\s\)]+)/.exec(ghOut);
       if (contaMatch) {
         session.autoInheritAvailable = true;
@@ -312,7 +322,7 @@ export class WebLoginOrchestrator {
    */
   private static async iniciarClaudeLogin(active: ActiveProcess, homeDir: string): Promise<WebLoginSession> {
     const session = active.session;
-    const bin = findEngineBinary("claude", homeDir);
+    const bin = await findEngineBinary("claude", homeDir);
 
     if (!bin) {
       session.status = "aguardando_usuario";
@@ -322,7 +332,7 @@ export class WebLoginOrchestrator {
     }
 
     try {
-      const statusOut = execSync(`${bin} auth status 2>&1 || true`, { encoding: "utf8", timeout: 2000 });
+      const statusOut = (await executar(bin, ["auth", "status"], 2000)).saida;
       if (statusOut.includes('"loggedIn":true')) {
         session.status = "concluido";
         session.instrucoes = "Claude Code já está autenticado!";
@@ -362,11 +372,12 @@ export class WebLoginOrchestrator {
           session.instrucoes = "Claude Code autenticado com sucesso!";
           void this.persistirConta("claude-code", "Claude Code (OAuth)", homeDir);
         } else {
-          const auth = checkEngineAuthStatus("claude-code", homeDir);
-          if (auth.authenticated) {
-            session.status = "concluido";
-            session.instrucoes = "Claude Code autenticado com sucesso!";
-          }
+          void checkEngineAuthStatusAsync("claude-code", homeDir).then((auth) => {
+            if (auth.authenticated) {
+              session.status = "concluido";
+              session.instrucoes = "Claude Code autenticado com sucesso!";
+            }
+          });
         }
       });
 
@@ -418,7 +429,7 @@ export class WebLoginOrchestrator {
     }
 
     // Checa se o motor já atingiu status autenticado no sistema
-    const auth = checkEngineAuthStatus(session.motorId, homeDir);
+    const auth = await checkEngineAuthStatusAsync(session.motorId, homeDir);
     if (auth.authenticated) {
       session.status = "concluido";
       session.instrucoes = `Autenticado com sucesso! (${auth.method})`;
@@ -452,7 +463,9 @@ export class WebLoginOrchestrator {
   public static async conectarAutomatico(motorId: string, homeDir: string): Promise<{ ok: boolean; message: string }> {
     if (motorId === "copilot") {
       try {
-        const token = execSync("gh auth token", { encoding: "utf8", timeout: 2500 }).trim();
+        const tk = await executar("gh", ["auth", "token"], 2500);
+        if (!tk.ok) throw new Error("gh auth token falhou");
+        const token = tk.saida.trim();
         if (token && token.startsWith("gh")) {
           const store = new EngineAccountStore({ homeDir });
           await store.adicionarConta("copilot", {

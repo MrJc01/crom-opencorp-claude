@@ -49,7 +49,7 @@ type HarnessFactory = (home: string, registry: ProcessRegistry, dead: Set<number
 
 const KNOWN_EVENTS = new Set([
   "run.started", "message.delta", "tool.requested", "tool.completed", "approval.requested",
-  "usage.updated", "run.completed", "run.failed",
+  "usage.updated", "run.completed", "run.failed", "approval.resolved", "artifact.produced", "session.updated",
 ]);
 
 async function collect(iterable: AsyncIterable<AgentEvent>): Promise<AgentEvent[]> {

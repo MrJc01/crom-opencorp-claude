@@ -163,6 +163,10 @@ export function registerServeCommand(program: Command): void {
           workspace: opts.workspace,
         });
         server.listen(portaNum, opts.host ?? "127.0.0.1");
+        // Se o event loop travar (CPU ou chamada síncrona), grava a pilha em logs/watchdog-*.json e sai ≠ 0
+        // para o supervisor reiniciar. Desligar: OPENCORP_WATCHDOG=0.
+        const { vigiarServidor } = await import("../../server/event-loop-watchdog.js");
+        vigiarServidor(server, { home });
         const porta = await portaPromessa.catch(() => portaNum);
         console.log(`API em http://127.0.0.1:${porta}`);
         if (token === "") console.log("acesso ABERTO (sem token)");

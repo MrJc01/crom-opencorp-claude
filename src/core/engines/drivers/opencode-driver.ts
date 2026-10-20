@@ -12,13 +12,14 @@ import {
   type EngineExecutionOptions,
   type EngineTokenUsage,
 } from "../types.js";
-import { checkEngineAuthStatus, resolveEngineCredentials } from "../credentials-bridge.js";
+import { checkEngineAuthStatusAsync, resolveEngineCredentials } from "../credentials-bridge.js";
 
 export class OpencodeDriver implements EngineDriver {
   id = "opencode";
   name = "OpenCode Engine";
   description = "Motor autônomo baseado em terminal, compatível com OpenRouter, Anthropic, Gemini e BYOK";
   category = "hybrid" as const;
+  nativeSessionPassthrough = true;
   maintainer = "OpenCode";
   supportedModelsHint = [
     "openrouter/google/gemini-3.8-flash",
@@ -98,7 +99,7 @@ export class OpencodeDriver implements EngineDriver {
     }
 
     const t0 = Date.now();
-    const auth = checkEngineAuthStatus(this.id, homeDir);
+    const auth = await checkEngineAuthStatusAsync(this.id, homeDir);
 
     try {
       const { stdout } = await execFileAsync(status.path, ["--version"], { timeout: 3000 });

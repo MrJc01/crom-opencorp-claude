@@ -26,6 +26,20 @@ export interface EngineCapabilityManifest {
   transport: EngineTransport;
   features: Record<FeatureKey, FeatureCapability>;
   supportsConversation?: boolean;
+  /** Limites padrão de execução (ms); o núcleo usa isto em vez de conhecer o id do motor. */
+  limits?: { tetoMs?: number; inatividadeMs?: number };
+  /** Prefixos de modelo que o motor executa (ex.: ["claude-"]); ausente = qualquer modelo. */
+  modelPrefixes?: string[];
+  /** Arquivos de instrução do workspace que o motor lê sozinho (ex.: ["CLAUDE.md"], ["AGENTS.md"]). */
+  instructionFiles?: string[];
+  /** Variáveis de ambiente de credencial que o motor aceita. */
+  credentialEnvVars?: string[];
+  /** Provedor implícito das contas do motor, para mapear conta → variável de ambiente. */
+  credentialDefaultProvider?: string;
+  /** Valores aceitos em `AgentRunInput.toolPolicy.mode`; ausente = o motor ignora a política. */
+  toolPolicyModes?: Array<"ask" | "auto-edits" | "deny" | "allow-all">;
+  /** Tipos de evento opcionais que o motor emite (`artifact.produced`, `session.updated`...). */
+  emits?: string[];
   details?: Record<string, unknown>;
 }
 
@@ -36,6 +50,17 @@ export function isCapabilityAvailable(
   const cap = manifest?.features?.[feature];
   if (!cap) return false;
   return cap.level === "integrated" || cap.level === "verified";
+}
+
+/** Teto/inatividade padrão declarados pelo manifest; `undefined` = usar o padrão global. */
+export function manifestLimits(manifest: EngineCapabilityManifest): { tetoMs?: number; inatividadeMs?: number } {
+  return manifest.limits ?? {};
+}
+
+/** O motor executa este modelo? Sem `modelPrefixes` aceita qualquer um. */
+export function manifestAcceptsModel(manifest: EngineCapabilityManifest, modelId: string): boolean {
+  const p = manifest.modelPrefixes;
+  return !p || p.length === 0 || p.some((x) => modelId.startsWith(x));
 }
 
 export function manifestSupportsConversation(manifest: EngineCapabilityManifest): boolean {

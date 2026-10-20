@@ -10,6 +10,7 @@
  *   - disponibilidade catalogada separada do probe aprovado;
  *   - governança (tier, recomendação, bloqueio para agentes autônomos).
  */
+import { engineRegistry } from "../engines/registry.js";
 import { classificarQualidadeModelo, ehModeloGratuito, extrairParametrosB } from "../contexts/agents/model-resolver.js";
 
 export type CatalogSourceKind = "live" | "engine-hint" | "curated" | "settings";
@@ -78,6 +79,7 @@ export const ENGINE_MODEL_PREFIXES: Readonly<Record<string, string>> = Object.fr
   "opencode-go": "opencode",
   "claude-code": "claude-code",
   claude: "claude-code",
+  "claude-sdk": "claude-sdk",
   antigravity: "antigravity",
   "crom-agente": "crom-agente",
   crom: "crom-agente",
@@ -88,7 +90,7 @@ export const ENGINE_MODEL_PREFIXES: Readonly<Record<string, string>> = Object.fr
 });
 
 /** Prefixos que são só roteamento de motor e saem do ID antes da execução. */
-const STRIPPED_ENGINE_PREFIXES = new Set(["claude-code", "claude", "antigravity", "crom-agente", "crom", "cursor", "copilot", "codex", "aider"]);
+const STRIPPED_ENGINE_PREFIXES = new Set(["claude-code", "claude", "claude-sdk", "antigravity", "crom-agente", "crom", "cursor", "copilot", "codex", "aider"]);
 
 /** Motor explicitamente nomeado no prefixo do modelo (ex.: `codex/…`), ou `undefined`. */
 export function explicitEngineOfModel(modelId: string): string | undefined {
@@ -179,6 +181,15 @@ export async function collectCatalog(sources: CatalogSource[], probes: Array<Cat
   return { models: aggregateCatalog(entries, probes), errors };
 }
 
+/** Prefixos de modelo que o motor declara executar (`EngineDriver.modelPrefixes`); `undefined` = qualquer modelo. */
+function modelPrefixesDoMotor(engineId: string): string[] | undefined {
+  try {
+    return engineRegistry.resolveDriver(engineId).modelPrefixes;
+  } catch {
+    return undefined;
+  }
+}
+
 export type CompatibilityVerdict =
   | { compatible: true; basis: "catalog" | "unknown-model" }
   | { compatible: false; reason: string };
@@ -191,6 +202,14 @@ export type CompatibilityVerdict =
  */
 export function checkModelEngineCompatibility(engineId: string, modelId: string, catalog: CatalogModel[] = []): CompatibilityVerdict {
   const explicit = explicitEngineOfModel(modelId);
+  // Motor que declara `modelPrefixes` (EngineDriver) só executa esses modelos: sem prefixo de motor, outro provedor não serve.
+  const prefixos = modelPrefixesDoMotor(engineId);
+  if (prefixos && explicit !== engineId) {
+    const semMotor = modelId.replace(new RegExp(`^${engineId}/`), "");
+    if (!prefixos.some((p) => semMotor.startsWith(p))) {
+      return { compatible: false, reason: `o motor "${engineId}" só executa modelos ${prefixos.map((p) => `${p}*`).join(", ")}, não "${modelId}"` };
+    }
+  }
   if (explicit && explicit !== engineId) {
     return { compatible: false, reason: `o modelo "${modelId}" pertence ao motor "${explicit}", não a "${engineId}"` };
   }

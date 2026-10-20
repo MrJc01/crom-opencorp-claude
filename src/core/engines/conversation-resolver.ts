@@ -13,7 +13,7 @@ import {
   PreflightBinaryMissingError,
   EngineCapabilityUnavailableError,
 } from "./errors.js";
-import { checkEngineAuthStatus, type EngineAuthStatus } from "./credentials-bridge.js";
+import { checkEngineAuthStatusAsync, type EngineAuthStatus } from "./credentials-bridge.js";
 
 export type EngineConfigOrigin = "workspace_override" | "global_default" | "legacy_default";
 
@@ -195,7 +195,7 @@ export class ConversationRuntimeResolver {
       if (adapter.authenticator && typeof adapter.authenticator.status === "function") {
         authStatus = await adapter.authenticator.status(home);
       } else {
-        authStatus = checkEngineAuthStatus(engineId, home);
+        authStatus = await checkEngineAuthStatusAsync(engineId, home);
       }
       if (!authStatus.authenticated) {
         issues.push(

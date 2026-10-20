@@ -237,6 +237,16 @@ export class SandboxDriver implements ExecutionDriver {
       }
     }
 
+    // Caminhos extras, somente leitura, que o motor informa (ex.: SDK e binário do motor).
+    const extrasRo = typeof opts.env.OPENCORP_SANDBOX_RO_BIND === "string" ? opts.env.OPENCORP_SANDBOX_RO_BIND : "";
+    for (const extra of extrasRo.split(":")) {
+      if (extra && isAbsolute(extra) && existsSync(extra)) bwrapArgs.push("--ro-bind", extra, extra);
+    }
+    // Caminhos extras com escrita que o motor informa (ex.: pasta de login do motor). Só entram se existirem.
+    const extrasRw = typeof opts.env.OPENCORP_SANDBOX_RW_BIND === "string" ? opts.env.OPENCORP_SANDBOX_RW_BIND : "";
+    for (const extra of extrasRw.split(":")) {
+      if (extra && isAbsolute(extra) && existsSync(extra)) bwrapArgs.push("--bind", extra, extra);
+    }
     // Segredos globais (wp.cjs e scripts legados leem ~/.opencorp/secrets.json
     // direto do disco). Monta SOMENTE esse arquivo, read-only — sem ele,
     // todo agente que publica/edita quebra em silêncio no sandbox.

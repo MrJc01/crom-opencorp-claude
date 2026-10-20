@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { FlowStore, type SessaoFlow } from "../src/core/contexts/orchestration/flow-store.js";
@@ -235,5 +235,44 @@ describe("Bateria Completa de Execução de Fluxos — Todas as Formas de Uso", 
     expect(res.status).toBe("concluido");
     const nosPorId = Object.fromEntries(res.nos.map((n) => [n.id, n.status]));
     expect(nosPorId["decidir"]).toBe("ok");
+  });
+
+  it("Forma 7: Script que falha logando só no stdout — o motivo aparece no erro do fluxo", async () => {
+    const fluxo = {
+      id: "fluxo-script-falha",
+      nome: "Script com erro no stdout",
+      nos: [
+        { id: "start", tipo: "manual", config: {} },
+        { id: "quebra", tipo: "script", config: { comando: "echo 'arquivo pautas.json nao encontrado'; exit 3" } },
+      ],
+      arestas: [{ de: "start", para: "quebra" }],
+    };
+    await store.salvar(wsDir, fluxo as any);
+
+    await expect(store.executar(wsDir, "fluxo-script-falha")).rejects.toThrow(/últimas linhas do stdout:\narquivo pautas\.json nao encontrado/);
+  });
+
+  it("Forma 8: Trava — o mesmo flow não roda duas vezes ao mesmo tempo; trava de processo morto é ignorada", async () => {
+    const fluxo = {
+      id: "fluxo-longo",
+      nome: "Fluxo demorado",
+      nos: [
+        { id: "start", tipo: "manual", config: {} },
+        { id: "pausa", tipo: "delay", config: { segundos: 1 } },
+      ],
+      arestas: [{ de: "start", para: "pausa" }],
+    };
+    await store.salvar(wsDir, fluxo as any);
+
+    const primeira = store.executar(wsDir, "fluxo-longo");
+    await new Promise((r) => setTimeout(r, 100));
+    await expect(store.executar(wsDir, "fluxo-longo")).rejects.toThrow(/já está em execução/);
+    expect((await primeira).status).toBe("concluido");
+    expect(existsSync(join(wsDir, ".opencorp", "locks", "executando-fluxo-longo.json"))).toBe(false);
+
+    // trava esquecida por um processo que morreu (pid inexistente) não bloqueia
+    mkdirSync(join(wsDir, ".opencorp", "locks"), { recursive: true });
+    writeFileSync(join(wsDir, ".opencorp", "locks", "executando-fluxo-longo.json"), JSON.stringify({ pid: 2 ** 22 + 12345, inicio: "x" }));
+    expect((await store.executar(wsDir, "fluxo-longo")).status).toBe("concluido");
   });
 });

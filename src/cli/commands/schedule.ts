@@ -113,10 +113,11 @@ export function registerScheduleCommands(program: Command): void {
         }
         if (opts.foreground) {
           const s = new Scheduler({ homeDir: home });
+          // Grava o pidfile antes de qualquer etapa assíncrona: o supervisor lê esse arquivo a cada tick.
+          await writeFile(pidfile, JSON.stringify({ pid: process.pid, iniciado: new Date().toISOString() }), "utf8");
           s.iniciar(opts.intervaloSeg, true);
           const agendamentos = await s.listarAgendamentos();
           console.log(`[scheduler] foreground (pid ${process.pid}) — ${agendamentos.length} fluxo(s) agendado(s), tick ${opts.intervaloSeg}s`);
-          await writeFile(pidfile, JSON.stringify({ pid: process.pid, iniciado: new Date().toISOString() }), "utf8");
           process.on("SIGINT", () => {
             console.log("\n[scheduler] encerrando...");
             s.parar();

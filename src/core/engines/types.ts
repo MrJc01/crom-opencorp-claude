@@ -56,6 +56,27 @@ export interface EngineDriver {
   supportedModelsHint: string[];
 
   /**
+   * Limites padrão de execução (ms) quando o chamador não define. O núcleo consulta isto em vez de
+   * conhecer o id do motor. Ausente = padrão global (teto 10 min, inatividade 60 s).
+   */
+  timeoutDefaults?: { tetoMs?: number; inatividadeMs?: number };
+
+  /**
+   * O driver aceita `opts.session` (continuar/duplicar sessão nativa do motor ao rodar). Ausente = o núcleo
+   * reconstrói o contexto no prompt em vez de repassar a sessão.
+   */
+  nativeSessionPassthrough?: boolean;
+
+  /** Modelos de rotação por falha/cota quando o agente não define `rotation` (acrescentados ao fim da lista). */
+  fallbackModels?: string[];
+
+  /**
+   * Prefixos de modelo que o motor executa (ex.: ["claude-"]). Ausente = aceita qualquer modelo.
+   * O núcleo usa isto para recusar combinações motor/modelo incompatíveis sem citar o motor.
+   */
+  modelPrefixes?: string[];
+
+  /**
    * Verifica o status de instalação:
    * 1º prioridade: ~/.opencorp/bin/<id> (instalado e gerenciado pelo OpenCorp)
    * 2º prioridade: PATH global do sistema operacional (se permitido/detectado)

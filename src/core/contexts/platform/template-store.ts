@@ -2,7 +2,7 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync,
 import { mkdtemp } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { spawnSync } from "node:child_process";
+import { spawnAsync } from "../../../utils/spawn-async.js";
 import { TemplateError } from "../../shared/errors.js";
 import { writeFileAtomic } from "../../../utils/fs-safe.js";
 import { validarIdAgente } from "../../../schemas/agent.js";
@@ -153,9 +153,9 @@ export class TemplateStore {
         const membros = ["template.json", "agents", "registries", "config.json", "security_policy.json"].filter(
           (m) => existsSync(join(pkg, m)),
         );
-        const tar = spawnSync("tar", ["-czf", saida, "-C", pkg, ...membros], { stdio: "pipe" });
+        const tar = await spawnAsync("tar", ["-czf", saida, "-C", pkg, ...membros]);
         if (tar.status !== 0) {
-          throw new TemplateError(`falha ao empacotar .corp: ${tar.stderr?.toString() || "tar indisponível"}`);
+          throw new TemplateError(`falha ao empacotar .corp: ${tar.stderr || "tar indisponível"}`);
         }
         destino = saida;
       } else if (saida) {
@@ -180,10 +180,10 @@ export class TemplateStore {
     try {
       if (/^https?:\/\//i.test(fonte)) {
         extraido = await mkdtemp(join(tmpdir(), "opencorp-clone-"));
-        const git = spawnSync("git", ["clone", "--depth", "1", fonte, extraido], { stdio: "pipe" });
+        const git = await spawnAsync("git", ["clone", "--depth", "1", fonte, extraido]);
         if (git.status !== 0) {
           throw new TemplateError(
-            `não foi possível clonar "${fonte}": ${git.stderr?.toString().trim() || "git indisponível ou repositório inacessível"}`,
+            `não foi possível clonar "${fonte}": ${git.stderr.trim() || "git indisponível ou repositório inacessível"}`,
           );
         }
         dirFonte = extraido;
@@ -192,9 +192,9 @@ export class TemplateStore {
           throw new TemplateError(`arquivo não encontrado: ${fonte}`);
         }
         extraido = await mkdtemp(join(tmpdir(), "opencorp-corp-"));
-        const tar = spawnSync("tar", ["-xzf", fonte, "-C", extraido], { stdio: "pipe" });
+        const tar = await spawnAsync("tar", ["-xzf", fonte, "-C", extraido]);
         if (tar.status !== 0) {
-          throw new TemplateError(`falha ao extrair "${fonte}": ${tar.stderr?.toString() || "tar indisponível ou arquivo inválido"}`);
+          throw new TemplateError(`falha ao extrair "${fonte}": ${tar.stderr || "tar indisponível ou arquivo inválido"}`);
         }
         dirFonte = extraido;
       } else {

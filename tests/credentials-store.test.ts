@@ -153,6 +153,26 @@ describe("ETAPA 9 — CredentialsStore e injeção efêmera", () => {
     }
   });
 
+  it("claude-sdk usa o login do plano e ignora ANTHROPIC_API_KEY", () => {
+    const saved = { ...process.env };
+    for (const name of KNOWN_SECRET_ENV_VARS) delete process.env[name];
+    delete process.env.OPENCORP_CLAUDE_CONFIG_DIR;
+    try {
+      setCliLoginCommandRunner(() => ({ code: 0, stdout: JSON.stringify({ loggedIn: true, authMethod: "claude.ai", subscriptionType: "pro" }) }));
+      expect(checkEngineAuthStatus("claude-sdk", home)).toMatchObject({ authenticated: true, details: "pro" });
+      setCliLoginCommandRunner(() => ({ code: 0, stdout: JSON.stringify({ loggedIn: false }) }));
+      process.env.ANTHROPIC_API_KEY = "sk-nao-conta";
+      expect(checkEngineAuthStatus("claude-sdk", home).authenticated).toBe(false);
+    } finally {
+      for (const k of Object.keys(process.env)) if (!(k in saved)) delete process.env[k];
+      Object.assign(process.env, saved);
+    }
+  });
+
+  it("openheinerss é ponte local: autenticado sem credencial própria", () => {
+    expect(checkEngineAuthStatus("openheinerss", home)).toMatchObject({ authenticated: true, method: "Local (sem credencial própria)" });
+  });
+
   it("verifica OAuth pelo comando oficial do CLI e guarda em cache", () => {
     setCliLoginCommandRunner((bin, args) => {
       commands.push({ bin, args });

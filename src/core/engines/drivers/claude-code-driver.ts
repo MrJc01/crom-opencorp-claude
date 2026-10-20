@@ -11,7 +11,7 @@ import {
   type EngineExecutionOptions,
   type EngineTokenUsage,
 } from "../types.js";
-import { resolveEngineCredentials, checkEngineAuthStatus, probeCliLogin } from "../credentials-bridge.js";
+import { resolveEngineCredentials, checkEngineAuthStatusAsync, probeCliLoginAsync } from "../credentials-bridge.js";
 
 export class ClaudeCodeDriver implements EngineDriver {
   id = "claude-code";
@@ -24,6 +24,7 @@ export class ClaudeCodeDriver implements EngineDriver {
     "claude-3-5-sonnet",
     "claude-3-5-haiku",
   ];
+  fallbackModels = ["claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022"];
 
   async isInstalled(homeDir: string): Promise<EngineInstallStatus> {
     // Precedência D3: settings.binary_path → PATH → gerenciada → detecção legada.
@@ -96,7 +97,7 @@ export class ClaudeCodeDriver implements EngineDriver {
     }
 
     const t0 = Date.now();
-    const auth = checkEngineAuthStatus(this.id, homeDir);
+    const auth = await checkEngineAuthStatusAsync(this.id, homeDir);
 
     try {
       const { stdout } = await execFileAsync(status.path, ["--version"], { timeout: 3000 });
@@ -195,7 +196,7 @@ export class ClaudeCodeDriver implements EngineDriver {
 
     // Sessão OAuth: verificada pelo comando oficial `claude auth status`,
     // nunca lendo ~/.claude/.credentials.json (D4).
-    const sessao = probeCliLogin(this.id, homeDir);
+    const sessao = await probeCliLoginAsync(this.id, homeDir);
     if (sessao?.loggedIn) {
       return {
         motorId: this.id,

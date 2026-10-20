@@ -65,10 +65,19 @@ async function loopSupervisor(home: string, comServe: boolean, host?: string): P
   };
   log(`supervisor ativo (pid ${process.pid}) — tick a cada ${TICK_SEG}s${comServe ? " · com serve" : ""}`);
 
+  // Pid e instante do último scheduler lançado por este supervisor. O pidfile é reescrito
+  // pelo próprio scheduler e pode estar defasado; sem isso o supervisor lançava duplicatas.
+  let filhoSchedulerPid: number | undefined;
+  let filhoSchedulerEm = 0;
+  const CARENCIA_SCHEDULER_MS = 90_000;
+
   setInterval(() => {
     void (async () => {
       // 1. scheduler (o pulso)
-      if (!(await lerPidScheduler(home))) {
+      const vivoPorPidfile = await lerPidScheduler(home);
+      const vivoFilho = filhoSchedulerPid !== undefined && (await pidVivo(filhoSchedulerPid));
+      const emCarencia = Date.now() - filhoSchedulerEm < CARENCIA_SCHEDULER_MS;
+      if (!vivoPorPidfile && !vivoFilho && !emCarencia) {
         const tentativas = (reinicios.get("scheduler") ?? 0) + 1;
         reinicios.set("scheduler", tentativas);
         log(`scheduler morto — reiniciando (tentativa ${tentativas})`);
@@ -87,6 +96,8 @@ async function loopSupervisor(home: string, comServe: boolean, host?: string): P
             stdio: ["ignore", logFd, logFd],
           });
           filho.unref();
+          filhoSchedulerPid = filho.pid;
+          filhoSchedulerEm = Date.now();
           log(`scheduler reiniciado (pid ${filho.pid ?? 0})`);
         } catch (erro) {
           log(`falha ao reiniciar scheduler: ${erro instanceof Error ? erro.message : erro}`);

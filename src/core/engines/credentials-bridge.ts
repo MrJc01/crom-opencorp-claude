@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
+import { claudeConfigDirOpencorp } from "./drivers/claude-config-dir.js";
 import { join } from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 
 export interface EngineAuthStatus {
   authenticated: boolean;
@@ -66,15 +67,31 @@ const defaultCommandRunner: CommandRunner = (bin, args, timeoutMs) => {
   }
 };
 
+export type AsyncCommandRunner = (bin: string, args: string[], timeoutMs: number) => Promise<{ code: number; stdout: string }>;
+
+/** Versão não bloqueante: nunca congela o event loop do servidor enquanto o CLI responde. */
+const defaultAsyncCommandRunner: AsyncCommandRunner = (bin, args, timeoutMs) =>
+  new Promise((resolve) => {
+    execFile(bin, args, { timeout: timeoutMs, encoding: "utf8", windowsHide: true }, (error, stdout) => {
+      if (!error) return resolve({ code: 0, stdout: String(stdout ?? "") });
+      const e = error as { code?: number | string | null };
+      resolve({ code: typeof e.code === "number" ? e.code : 1, stdout: String(stdout ?? "") });
+    });
+  });
+
 let commandRunner: CommandRunner = defaultCommandRunner;
+let customRunner = false;
 const PROBE_CACHE_TTL_MS = 30_000;
 const probeCache = new Map<string, { at: number; result: CliLoginResult | undefined }>();
+const probesEmAndamento = new Map<string, Promise<CliLoginResult | undefined>>();
 
 /** Substitui o executor de comandos dos probes (testes). Retorna o anterior. */
 export function setCliLoginCommandRunner(runner: CommandRunner | undefined): CommandRunner {
   const previous = commandRunner;
   commandRunner = runner ?? defaultCommandRunner;
+  customRunner = runner !== undefined;
   probeCache.clear();
+  probesEmAndamento.clear();
   return previous;
 }
 
@@ -92,52 +109,139 @@ export function probeCliLogin(engineId: string, homeDir: string): CliLoginResult
   const key = `${engineId}::${homeDir}`;
   const cached = probeCache.get(key);
   if (cached && Date.now() - cached.at < PROBE_CACHE_TTL_MS) return cached.result;
-  const result = runCliLoginProbe(engineId, homeDir);
+  const result = runCliLoginProbeSync(engineId, homeDir);
   probeCache.set(key, { at: Date.now(), result });
   return result;
 }
 
-function runCliLoginProbe(engineId: string, homeDir: string): CliLoginResult | undefined {
+/**
+ * Versão assíncrona de `probeCliLogin`: mesmo cache de 30 s, sem bloquear o event loop e com uma
+ * única execução simultânea por motor. É a que as rotas HTTP devem usar.
+ */
+export function probeCliLoginAsync(engineId: string, homeDir: string): Promise<CliLoginResult | undefined> {
+  const key = `${engineId}::${homeDir}`;
+  const cached = probeCache.get(key);
+  if (cached && Date.now() - cached.at < PROBE_CACHE_TTL_MS) return Promise.resolve(cached.result);
+  const emAndamento = probesEmAndamento.get(key);
+  if (emAndamento) return emAndamento;
+  const p = (async () => {
+    const result = await runCliLoginProbe(engineId, homeDir, async (bin, args, ms) =>
+      customRunner ? commandRunner(bin, args, ms) : defaultAsyncCommandRunner(bin, args, ms),
+    );
+    probeCache.set(key, { at: Date.now(), result });
+    return result;
+  })().finally(() => probesEmAndamento.delete(key));
+  probesEmAndamento.set(key, p);
+  return p;
+}
+
+/** Último valor conhecido do probe (mesmo vencido), sem executar nada. */
+function probeEmCache(engineId: string, homeDir: string): { result: CliLoginResult | undefined; vencido: boolean } | undefined {
+  const cached = probeCache.get(`${engineId}::${homeDir}`);
+  return cached ? { result: cached.result, vencido: Date.now() - cached.at >= PROBE_CACHE_TTL_MS } : undefined;
+}
+
+function runCliLoginProbeSync(engineId: string, homeDir: string): CliLoginResult | undefined {
+  const comando = comandoDeProbe(engineId, homeDir);
+  return comando?.interpretar(commandRunner(comando.bin, comando.args, comando.timeoutMs));
+}
+
+async function runCliLoginProbe(engineId: string, homeDir: string, run: AsyncCommandRunner): Promise<CliLoginResult | undefined> {
+  const comando = comandoDeProbe(engineId, homeDir);
+  return comando?.interpretar(await run(comando.bin, comando.args, comando.timeoutMs));
+}
+
+interface ProbeComando {
+  bin: string;
+  args: string[];
+  timeoutMs: number;
+  interpretar(saida: { code: number; stdout: string }): CliLoginResult;
+}
+
+/** Comando oficial de status de cada CLI e a leitura da saída; a execução (sync ou async) é de quem chama. */
+function comandoDeProbe(engineId: string, homeDir: string): ProbeComando | undefined {
   switch (engineId) {
-    case "claude-code": {
-      const { code, stdout } = commandRunner(managedOrPath(homeDir, "claude"), ["auth", "status", "--json"], 5000);
-      try {
-        const status = JSON.parse(stdout) as { loggedIn?: boolean; authMethod?: string; subscriptionType?: string };
-        return {
-          loggedIn: status.loggedIn === true,
-          method: status.loggedIn ? `claude auth (${status.authMethod ?? "oauth"})` : "claude auth status",
-          details: status.loggedIn ? status.subscriptionType : "Execute 'claude auth login'",
-        };
-      } catch {
-        return { loggedIn: false, method: "claude auth status", details: code === 0 ? "saída não reconhecida" : "comando indisponível" };
-      }
-    }
-    case "codex": {
-      const { code, stdout } = commandRunner(managedOrPath(homeDir, "codex"), ["login", "status"], 5000);
-      const text = stdout.toLowerCase();
-      const loggedIn = code === 0 && text.includes("logged in") && !text.includes("not logged in");
-      return { loggedIn, method: "codex login status", details: stdout.trim().split("\n")[0] || undefined };
-    }
-    case "cursor": {
-      const { stdout } = commandRunner(managedOrPath(homeDir, "agent"), ["status", "--format", "json"], 5000);
-      try {
-        const status = JSON.parse(stdout) as { isAuthenticated?: boolean; message?: string };
-        return { loggedIn: status.isAuthenticated === true, method: "agent status", details: status.message };
-      } catch {
-        return { loggedIn: false, method: "agent status", details: "comando indisponível" };
-      }
-    }
+    case "claude-code":
+      return {
+        bin: managedOrPath(homeDir, "claude"),
+        args: ["auth", "status", "--json"],
+        timeoutMs: 5000,
+        interpretar: ({ code, stdout }) => {
+          try {
+            const status = JSON.parse(stdout) as { loggedIn?: boolean; authMethod?: string; subscriptionType?: string };
+            return {
+              loggedIn: status.loggedIn === true,
+              method: status.loggedIn ? `claude auth (${status.authMethod ?? "oauth"})` : "claude auth status",
+              details: status.loggedIn ? status.subscriptionType : "Execute 'claude auth login'",
+            };
+          } catch {
+            return { loggedIn: false, method: "claude auth status", details: code === 0 ? "saída não reconhecida" : "comando indisponível" };
+          }
+        },
+      };
+    case "codex":
+      return {
+        bin: managedOrPath(homeDir, "codex"),
+        args: ["login", "status"],
+        timeoutMs: 5000,
+        interpretar: ({ code, stdout }) => {
+          const text = stdout.toLowerCase();
+          const loggedIn = code === 0 && text.includes("logged in") && !text.includes("not logged in");
+          return { loggedIn, method: "codex login status", details: stdout.trim().split("\n")[0] || undefined };
+        },
+      };
+    case "cursor":
+      return {
+        bin: managedOrPath(homeDir, "agent"),
+        args: ["status", "--format", "json"],
+        timeoutMs: 5000,
+        interpretar: ({ stdout }) => {
+          try {
+            const status = JSON.parse(stdout) as { isAuthenticated?: boolean; message?: string };
+            return { loggedIn: status.isAuthenticated === true, method: "agent status", details: status.message };
+          } catch {
+            return { loggedIn: false, method: "agent status", details: "comando indisponível" };
+          }
+        },
+      };
     case "mimo": {
       // `mimo auth whoami` sai com 0 mesmo sem login; o texto é o sinal (0.1.15).
       const mimoBin = [join(homeDir, ".mimocode", "bin", "mimo"), join(homeDir, ".mimo", "bin", "mimo")].find((p) => existsSync(p)) ?? "mimo";
-      const { code, stdout } = commandRunner(mimoBin, ["auth", "whoami"], 8000);
-      const loggedIn = code === 0 && stdout.trim().length > 0 && !/not logged in/i.test(stdout);
-      return { loggedIn, method: "mimo auth whoami", details: loggedIn ? undefined : "Execute 'mimo auth login' ou configure um provedor terceiro" };
+      return {
+        bin: mimoBin,
+        args: ["auth", "whoami"],
+        timeoutMs: 8000,
+        interpretar: ({ code, stdout }) => {
+          const loggedIn = code === 0 && stdout.trim().length > 0 && !/not logged in/i.test(stdout);
+          return { loggedIn, method: "mimo auth whoami", details: loggedIn ? undefined : "Execute 'mimo auth login' ou configure um provedor terceiro" };
+        },
+      };
     }
-    case "copilot": {
-      const { code } = commandRunner("gh", ["auth", "status"], 5000);
-      return { loggedIn: code === 0, method: "gh auth status", details: code === 0 ? "GitHub CLI autenticado" : "Execute 'gh auth login' ou 'copilot login'" };
-    }
+    case "copilot":
+      return {
+        bin: "gh",
+        args: ["auth", "status"],
+        timeoutMs: 5000,
+        interpretar: ({ code }) => ({ loggedIn: code === 0, method: "gh auth status", details: code === 0 ? "GitHub CLI autenticado" : "Execute 'gh auth login' ou 'copilot login'" }),
+      };
+    default:
+      return undefined;
+  }
+}
+
+type ProbeFn = (engineId: string, homeDir: string) => CliLoginResult | undefined;
+
+/** Motor cujo status depende de qual comando de login (para pré-aquecer o cache sem bloquear). */
+function motorDoProbe(engineId: string): string | undefined {
+  switch (engineId) {
+    case "claude-code":
+    case "claude-sdk":
+      return "claude-code";
+    case "codex":
+    case "cursor":
+    case "copilot":
+    case "mimo":
+      return engineId;
     default:
       return undefined;
   }
@@ -147,8 +251,38 @@ function runCliLoginProbe(engineId: string, homeDir: string): CliLoginResult | u
  * Diagnóstico de autenticação de cada motor. Considera, nesta ordem: conta
  * ativa do OpenCorp, chaves geridas/ambiente e o comando oficial de status do
  * CLI. Nunca lê tokens de arquivos internos de terceiros.
+ *
+ * Esta versão é SÍNCRONA e pode bloquear o event loop até 5-8 s por motor (execFileSync): use só em
+ * CLI/scripts. Rotas HTTP devem usar `checkEngineAuthStatusAsync`.
  */
 export function checkEngineAuthStatus(engineId: string, homeDir: string): EngineAuthStatus {
+  return statusDeAutenticacao(engineId, homeDir, probeCliLogin);
+}
+
+/**
+ * Versão não bloqueante para rotas HTTP. Com `aceitarVencido`, devolve na hora o último valor conhecido
+ * do probe (mesmo vencido) e atualiza em segundo plano; sem valor conhecido, espera a primeira execução.
+ */
+export async function checkEngineAuthStatusAsync(
+  engineId: string,
+  homeDir: string,
+  opcoes: { aceitarVencido?: boolean } = {},
+): Promise<EngineAuthStatus> {
+  const alvo = motorDoProbe(engineId);
+  const prontos = new Map<string, CliLoginResult | undefined>();
+  if (alvo) {
+    const conhecido = opcoes.aceitarVencido ? probeEmCache(alvo, homeDir) : undefined;
+    if (conhecido) {
+      prontos.set(alvo, conhecido.result);
+      if (conhecido.vencido) void probeCliLoginAsync(alvo, homeDir).catch(() => undefined);
+    } else {
+      prontos.set(alvo, await probeCliLoginAsync(alvo, homeDir));
+    }
+  }
+  return statusDeAutenticacao(engineId, homeDir, (id) => prontos.get(id));
+}
+
+function statusDeAutenticacao(engineId: string, homeDir: string, probeCliLogin: ProbeFn): EngineAuthStatus {
   const creds = resolveEngineCredentials(homeDir);
   const conta = engineAccountWithKey(homeDir, engineId);
   if (conta) {
@@ -172,6 +306,21 @@ export function checkEngineAuthStatus(engineId: string, homeDir: string): Engine
         ? { authenticated: true, method: probe.method, details: probe.details }
         : { authenticated: false, method: "Sessão Claude ausente", details: "Execute 'claude auth login' no terminal ou configure ANTHROPIC_API_KEY" };
     }
+
+    case "claude-sdk": {
+      // Usa o login do plano (conta do OpenCorp ou a do CLI), nunca ANTHROPIC_API_KEY: a chave mudaria a cobrança.
+      if (claudeConfigDirOpencorp()) {
+        return { authenticated: true, method: "Login Claude (conta do OpenCorp)", details: "Pasta de login própria do OpenCorp" };
+      }
+      const probe = probeCliLogin("claude-code", homeDir)!;
+      return probe.loggedIn
+        ? { authenticated: true, method: probe.method, details: probe.details }
+        : { authenticated: false, method: "Sessão Claude ausente", details: "Execute 'claude auth login' no terminal (o claude-sdk usa o login, não chave de API)" };
+    }
+
+    case "openheinerss":
+      // Ponte local (JSON-RPC): não guarda credencial própria; cada harness que ela aciona usa o login dele.
+      return { authenticated: true, method: "Local (sem credencial própria)", details: "A credencial é do harness escolhido (ex.: claude-code, codex)" };
 
     case "codex": {
       if (creds.OPENAI_API_KEY) return { authenticated: true, method: "OPENAI_API_KEY", details: "Chave da OpenAI ativa" };
@@ -242,7 +391,7 @@ export function getEngineAuthInstructions(engineId: string): EngineAuthInstructi
       return {
         engineId,
         engineName: "Claude Code",
-        terminalCommand: "claude login",
+        terminalCommand: "claude auth login",
         envVarName: "ANTHROPIC_API_KEY",
         webUrl: "https://console.anthropic.com/settings/keys",
         urlLabel: "Anthropic Console",

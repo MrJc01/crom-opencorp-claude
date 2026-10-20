@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { opencorpHome } from "../../../utils/paths.js";
 import { mascararChave } from "./opencode-server.js";
+import { PROVIDER_DEFINITIONS, providerEnvVar, providersWithKeySources } from "../../models/providers.js";
 import { EngineAccountStore, type EngineAccount } from "../../engines/engine-account-store.js";
 
 export interface MensagemChat {
@@ -90,19 +91,21 @@ export function obterChavesProvedores(homeDir?: string): Record<string, string> 
   if (existsSync(secretsPath)) {
     try {
       const sec = JSON.parse(readFileSync(secretsPath, "utf8")) as Record<string, any>;
-      if (!chaves["openrouter"] && sec.openrouter_api_key) chaves["openrouter"] = String(sec.openrouter_api_key).trim();
-      if (!chaves["openrouter"] && sec.openrouter) chaves["openrouter"] = String(sec.openrouter).trim();
-      if (!chaves["openai"] && sec.openai_api_key) chaves["openai"] = String(sec.openai_api_key).trim();
-      if (!chaves["anthropic"] && sec.anthropic_api_key) chaves["anthropic"] = String(sec.anthropic_api_key).trim();
-      if (!chaves["google"] && sec.google_api_key) chaves["google"] = String(sec.google_api_key).trim();
+      for (const prov of providersWithKeySources()) {
+        if (chaves[prov.id]) continue;
+        for (const k of prov.secretKeys ?? []) {
+          if (sec[k]) { chaves[prov.id] = String(sec[k]).trim(); break; }
+        }
+      }
     } catch {}
   }
 
   // Variáveis de ambiente como fallback
-  if (!chaves["openrouter"] && process.env.OPENROUTER_API_KEY) chaves["openrouter"] = process.env.OPENROUTER_API_KEY.trim();
-  if (!chaves["openai"] && process.env.OPENAI_API_KEY) chaves["openai"] = process.env.OPENAI_API_KEY.trim();
-  if (!chaves["anthropic"] && process.env.ANTHROPIC_API_KEY) chaves["anthropic"] = process.env.ANTHROPIC_API_KEY.trim();
-  if (!chaves["google"] && process.env.GEMINI_API_KEY) chaves["google"] = process.env.GEMINI_API_KEY.trim();
+  for (const prov of providersWithKeySources()) {
+    const v = providerEnvVar(prov.id);
+    const val = v ? process.env[v] : undefined;
+    if (!chaves[prov.id] && val) chaves[prov.id] = val.trim();
+  }
 
   return chaves;
 }
@@ -113,62 +116,7 @@ export function obterChavesProvedores(homeDir?: string): Record<string, string> 
 export function listarProvedoresStatus(homeDir?: string): ProvedorInfo[] {
   const chaves = obterChavesProvedores(homeDir);
 
-  const provedoresDefinidos: Array<{
-    id: string;
-    nome: string;
-    tipo: "api_key" | "local" | "oauth";
-    descricao: string;
-    modelosSugeridos: string[];
-  }> = [
-    {
-      id: "openrouter",
-      nome: "OpenRouter (Universal & BYOK)",
-      tipo: "api_key",
-      descricao: "Roteador universal com suporte a BYOK Google AI Studio (custo $0), NVIDIA e centenas de modelos.",
-      modelosSugeridos: [
-        "google/gemini-3.8-flash",
-        "nvidia/nemotron-3.5-lightning:free",
-        "nvidia/nemotron-3-ultra-550b-a55b:free",
-        "minimax/minimax-m3:free",
-        "anthropic/claude-3.5-haiku",
-      ],
-    },
-    {
-      id: "opencode-go",
-      nome: "OpenCode-Go Native",
-      tipo: "api_key",
-      descricao: "Backend oficial de inferência rápida do OpenCode.",
-      modelosSugeridos: ["glm-5.3-flash", "deepseek-v3"],
-    },
-    {
-      id: "anthropic",
-      nome: "Anthropic API Direta",
-      tipo: "api_key",
-      descricao: "Acesso direto à API da Anthropic para Claude Sonnet/Haiku/Opus.",
-      modelosSugeridos: ["claude-3-7-sonnet", "claude-3-5-haiku"],
-    },
-    {
-      id: "google",
-      nome: "Google AI Studio Direto",
-      tipo: "api_key",
-      descricao: "Chave direta do Google AI Studio para Gemini 2.5/3.8 Flash e Pro.",
-      modelosSugeridos: ["gemini-2.5-flash", "gemini-3.8-flash"],
-    },
-    {
-      id: "openai",
-      nome: "OpenAI API Direta",
-      tipo: "api_key",
-      descricao: "Acesso direto à API da OpenAI para GPT-4o, o3-mini e embeddings.",
-      modelosSugeridos: ["gpt-4o-mini", "o3-mini"],
-    },
-    {
-      id: "ollama",
-      nome: "Ollama (Modelos Locais)",
-      tipo: "local",
-      descricao: "Servidor local Ollama rodando em http://localhost:11434.",
-      modelosSugeridos: ["llama3.2:latest", "qwen2.5-coder:latest"],
-    },
-  ];
+  const provedoresDefinidos = PROVIDER_DEFINITIONS;
 
   return provedoresDefinidos.map((p) => {
     const chave = chaves[p.id];

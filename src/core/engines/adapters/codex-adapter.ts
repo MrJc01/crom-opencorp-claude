@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { opencorpHome } from "../../../utils/paths.js";
-import { checkEngineAuthStatus, probeCliLogin } from "../credentials-bridge.js";
+import { checkEngineAuthStatusAsync, probeCliLoginAsync } from "../credentials-bridge.js";
 import { resolveEngineSpawnEnv } from "../../credentials/credentials-store.js";
 import { binaryOrPreflight } from "../installer/binary-resolver.js";
 import { CANONICAL_ENGINE_MANIFESTS, type EngineCapabilityManifest } from "../manifests.js";
@@ -176,8 +176,8 @@ export class CodexAdapter implements EngineAdapter {
     };
     this.authenticator = {
       engineId: this.engineId,
-      status: options.authStatusProbe ?? (async (home: string): Promise<EngineAuthStatus> => checkEngineAuthStatus(this.engineId, home)),
-      isLoggedIn: async (home: string) => probeCliLogin(this.engineId, home)?.loggedIn,
+      status: options.authStatusProbe ?? ((home: string): Promise<EngineAuthStatus> => checkEngineAuthStatusAsync(this.engineId, home)),
+      isLoggedIn: async (home: string) => (await probeCliLoginAsync(this.engineId, home))?.loggedIn,
       fetchTokens: (home: string, creds?: { tokenOuChave?: string; authType?: string }) =>
         this.driver.fetchLiveTokens(home, creds),
     };

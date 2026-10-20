@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, openSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { opencorpHome } from "../../../utils/paths.js";
-import { checkEngineAuthStatus } from "../credentials-bridge.js";
+import { checkEngineAuthStatusAsync } from "../credentials-bridge.js";
 import { envOpencodeIsolado } from "../../contexts/execution/opencode-server.js";
 import { CANONICAL_ENGINE_MANIFESTS, type EngineCapabilityManifest } from "../manifests.js";
 import { formatProcessKey, ProcessRegistry } from "../../runtime/process-registry.js";
@@ -148,7 +148,7 @@ export class OpenCodeAdapter implements EngineAdapter {
     this.authenticator = {
       engineId: this.engineId,
       status: async (home: string): Promise<EngineAuthStatus> => {
-        return checkEngineAuthStatus(this.engineId, home);
+        return checkEngineAuthStatusAsync(this.engineId, home);
       },
       // OpenCode usa chaves de provedor do OpenCorp; não há sessão OAuth nativa a verificar.
       isLoggedIn: async () => undefined,

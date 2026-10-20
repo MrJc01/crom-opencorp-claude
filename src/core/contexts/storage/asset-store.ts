@@ -2,7 +2,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statS
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawnAsync } from "../../../utils/spawn-async.js";
 import { z } from "zod";
 import { OpencorpError } from "../../shared/errors.js";
 import { FlowStore } from "../orchestration/flow-store.js";
@@ -294,9 +294,9 @@ export class AssetStore {
         const destinoAbs = resolve(destino);
         mkdirSync(dirname(destinoAbs), { recursive: true });
         const membros = readdirSync(pkg).filter((m) => !ehSegredo(m));
-        const tar = spawnSync("tar", ["-czf", destinoAbs, "-C", pkg, ...membros], { stdio: "pipe" });
+        const tar = await spawnAsync("tar", ["-czf", destinoAbs, "-C", pkg, ...membros]);
         if (tar.status !== 0) {
-          throw new AssetError(`falha ao empacotar .corp: ${tar.stderr?.toString() || "tar indisponível"}`);
+          throw new AssetError(`falha ao empacotar .corp: ${tar.stderr || "tar indisponível"}`);
         }
         destinoFinal = destinoAbs;
       } else {
@@ -524,17 +524,17 @@ export class AssetStore {
     try {
       if (/^(git\+|https?:\/\/|git@|ssh:\/\/)/.test(fonte) || fonte.endsWith(".git")) {
         extraido = await mkdtemp(join(tmpdir(), "opencorp-asset-clone-"));
-        const git = spawnSync("git", ["clone", "--depth", "1", fonte, extraido], { stdio: "pipe" });
+        const git = await spawnAsync("git", ["clone", "--depth", "1", fonte, extraido]);
         if (git.status !== 0) {
-          throw new AssetError(`não foi possível clonar "${fonte}": ${git.stderr?.toString().trim() || "git indisponível"}`);
+          throw new AssetError(`não foi possível clonar "${fonte}": ${git.stderr.trim() || "git indisponível"}`);
         }
         dirFonte = extraido;
       } else if (fonte.endsWith(".corp") || (existsSync(fonte) && statSync(fonte).isFile())) {
         if (!existsSync(fonte)) throw new AssetError(`arquivo não encontrado: ${fonte}`);
         extraido = await mkdtemp(join(tmpdir(), "opencorp-asset-corp-"));
-        const tar = spawnSync("tar", ["-xzf", fonte, "-C", extraido], { stdio: "pipe" });
+        const tar = await spawnAsync("tar", ["-xzf", fonte, "-C", extraido]);
         if (tar.status !== 0) {
-          throw new AssetError(`falha ao extrair "${fonte}": ${tar.stderr?.toString() || "tar indisponível"}`);
+          throw new AssetError(`falha ao extrair "${fonte}": ${tar.stderr || "tar indisponível"}`);
         }
         dirFonte = extraido;
       } else {

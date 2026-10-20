@@ -6,7 +6,7 @@ import { RegistryStore, type MetaRegistro } from "../storage/registry-store.js";
 import { eventBus } from "../../shared/event-bus.js";
 import { SessionManager, type OpcoesRun, type ResultadoRun } from "../execution/session-manager.js";
 import { mkdirRecursive, writeFileAtomic } from "../../../utils/fs-safe.js";
-import { opencorpHome } from "../../../utils/paths.js";
+import { opencorpHome, pathComCliLocal } from "../../../utils/paths.js";
 import { PromptStore } from "../agents/prompt-store.js";
 import { grauEntradaJoin } from "../../domain/flow/dag.js";
 
@@ -765,7 +765,62 @@ export class FlowStore {
     return flow;
   }
 
+  /**
+   * Executa o flow com trava por flow (`.opencorp/locks/executando-<flow>.json`): o mesmo flow não roda
+   * duas vezes ao mesmo tempo no workspace — nem cron sobre cron (ticks se sobrepõem quando o flow dura
+   * mais que o intervalo), nem execução manual sobre a agendada. Trava de processo morto é descartada.
+   */
+  /** Dono vivo da trava do flow (executando agora) ou null. Permite às rotas recusar um 2º disparo com 409. */
+  emExecucao(wsPath: string, flowId: string): { pid: number; inicio?: string } | null {
+    try {
+      const dono = JSON.parse(readFileSync(join(wsPath, ".opencorp", "locks", `executando-${flowId}.json`), "utf8")) as { pid?: number; inicio?: string };
+      if (!dono.pid) return null;
+      process.kill(dono.pid, 0);
+      return { pid: dono.pid, inicio: dono.inicio };
+    } catch {
+      return null;
+    }
+  }
+
   async executar(
+    wsPath: string,
+    flowId: string,
+    opts: { entrada?: string; model?: string; execId?: string; retomar?: boolean; gatilho?: { tipo: string; origem: string } } = {},
+  ): Promise<{ execId: string; status: "concluido" | "falhou" | "cancelado"; nos: NoExecInfo[]; contextoFinal: string }> {
+    const { mkdirSync, readFileSync, rmSync, writeFileSync } = await import("node:fs");
+    const dirTravas = join(wsPath, ".opencorp", "locks");
+    const trava = join(dirTravas, `executando-${flowId}.json`);
+    const conteudo = JSON.stringify({ pid: process.pid, inicio: new Date().toISOString() });
+    mkdirSync(dirTravas, { recursive: true });
+    try {
+      writeFileSync(trava, conteudo, { flag: "wx" });
+    } catch {
+      let dono: { pid?: number; inicio?: string } = {};
+      try {
+        dono = JSON.parse(readFileSync(trava, "utf8"));
+      } catch {}
+      let vivo = false;
+      try {
+        if (dono.pid) {
+          process.kill(dono.pid, 0);
+          vivo = true;
+        }
+      } catch {}
+      if (vivo) {
+        throw new FlowError(`flow "${flowId}" já está em execução (pid ${dono.pid}, desde ${dono.inicio ?? "?"})`);
+      }
+      writeFileSync(trava, conteudo);
+    }
+    try {
+      return await this.executarSemTrava(wsPath, flowId, opts);
+    } finally {
+      try {
+        if (readFileSync(trava, "utf8") === conteudo) rmSync(trava, { force: true });
+      } catch {}
+    }
+  }
+
+  private async executarSemTrava(
     wsPath: string,
     flowId: string,
     opts: { entrada?: string; model?: string; execId?: string; retomar?: boolean; gatilho?: { tipo: string; origem: string } } = {},
@@ -1573,7 +1628,8 @@ ${rotulos.map((r) => `- ${r}`).join("\n")}`;
           const execFileAsync = promisify(execFile);
 
           let saidaScript = "";
-          const timeout = Math.min(config.timeout_ms || 60000, 300000);
+          // Teto de 2 h: render de vídeo longo (Remotion) passa dos 5 min antigos; cada nó define o seu timeout_ms.
+          const timeout = Math.min(config.timeout_ms || 60000, 7_200_000);
 
           try {
             if (config.componente_id) {
@@ -1598,6 +1654,7 @@ ${rotulos.map((r) => `- ${r}`).join("\n")}`;
                   OPENCORP_FLOW_ID: flowId,
                   OPENCORP_NODE_ID: no.id,
                   OPENCORP_WORKSPACE_DIR: wsPath,
+                  PATH: pathComCliLocal(),
                 },
               });
               saidaScript = (res.stdout || res.stderr || "").trim();
@@ -1627,6 +1684,7 @@ ${rotulos.map((r) => `- ${r}`).join("\n")}`;
                   OPENCORP_FLOW_ID: flowId,
                   OPENCORP_NODE_ID: no.id,
                   OPENCORP_WORKSPACE_DIR: wsPath,
+                  PATH: pathComCliLocal(),
                 },
               });
               saidaScript = (res.stdout || res.stderr || "").trim();
@@ -1642,6 +1700,7 @@ ${rotulos.map((r) => `- ${r}`).join("\n")}`;
                   OPENCORP_FLOW_ID: flowId,
                   OPENCORP_NODE_ID: no.id,
                   OPENCORP_WORKSPACE_DIR: wsPath,
+                  PATH: pathComCliLocal(),
                 },
               });
               saidaScript = (res.stdout || res.stderr || "").trim();
@@ -1671,7 +1730,14 @@ ${rotulos.map((r) => `- ${r}`).join("\n")}`;
             await marcarNo(no.id, "ok");
           } catch (erro) {
             await marcarNo(no.id, "falhou", null);
-            throw new FlowError(`nó "${no.id}" (${no.tipo}) falhou: ${msg(erro)}`);
+            // "Command failed" só traz o stderr; scripts que logam no stdout ficariam sem motivo.
+            const e = erro as { stdout?: string; signal?: string | null; killed?: boolean };
+            const fimStdout = typeof e.stdout === "string" ? e.stdout.trim().split("\n").slice(-15).join("\n") : "";
+            const extra = [
+              e.killed || e.signal ? `(encerrado por ${e.signal ?? "timeout"})` : "",
+              fimStdout ? `últimas linhas do stdout:\n${fimStdout}` : "",
+            ].filter(Boolean).join("\n");
+            throw new FlowError(`nó "${no.id}" (${no.tipo}) falhou: ${msg(erro)}${extra ? `\n${extra}` : ""}`);
           }
         } else if (no.tipo === "reuniao") {
           // Nó de Convocação e Execução de Reunião de Diretoria / Agentes

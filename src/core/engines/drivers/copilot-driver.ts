@@ -11,7 +11,7 @@ import {
   type EngineExecutionOptions,
   type EngineTokenUsage,
 } from "../types.js";
-import { resolveEngineCredentials, checkEngineAuthStatus } from "../credentials-bridge.js";
+import { resolveEngineCredentials, checkEngineAuthStatusAsync } from "../credentials-bridge.js";
 
 export class CopilotDriver implements EngineDriver {
   id = "copilot";
@@ -96,7 +96,7 @@ export class CopilotDriver implements EngineDriver {
     }
 
     const t0 = Date.now();
-    const auth = checkEngineAuthStatus(this.id, homeDir);
+    const auth = await checkEngineAuthStatusAsync(this.id, homeDir);
 
     try {
       const { stdout } = await execFileAsync(status.path, ["--version"], { timeout: 3000 });

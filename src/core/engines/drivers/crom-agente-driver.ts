@@ -11,13 +11,14 @@ import {
   type EngineExecutionOptions,
   type EngineTokenUsage,
 } from "../types.js";
-import { resolveEngineCredentials, checkEngineAuthStatus } from "../credentials-bridge.js";
+import { resolveEngineCredentials, checkEngineAuthStatusAsync } from "../credentials-bridge.js";
 
 export class CromAgenteDriver implements EngineDriver {
   id = "crom-agente";
   name = "Crom-Agente Engine (Go)";
   description = "Motor local-first autônomo em Go com ciclo cognitivo ReAct, suporte a MCP, sandbox e daemon IPC";
   category = "hybrid" as const;
+  nativeSessionPassthrough = true;
   maintainer = "CromIA";
   supportedModelsHint = [
     "openrouter/google/gemini-3.8-flash",
@@ -99,7 +100,7 @@ export class CromAgenteDriver implements EngineDriver {
 
     const t0 = Date.now();
     const binPath = status.path;
-    const auth = checkEngineAuthStatus(this.id, homeDir);
+    const auth = await checkEngineAuthStatusAsync(this.id, homeDir);
 
     try {
       const { stdout } = await execFileAsync(binPath, ["healthcheck"], { timeout: 5000 }).catch(() =>

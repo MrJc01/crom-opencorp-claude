@@ -313,10 +313,6 @@ export const MODELOS_ROTACAO_POR_HARNESS: Record<string, string[]> = {
     "openrouter/qwen/qwen3.8-27b:free",
     "openrouter/cohere/north-mini-code:free",
   ],
-  "claude-code": [
-    "claude-3-7-sonnet-20250219",
-    "claude-3-5-sonnet-20241022",
-  ],
   codex: [
     "gpt-5.6-luna",
     "gpt-5.5",
@@ -387,7 +383,12 @@ export async function obterListaRotacaoPorHarness(
     } catch {}
   }
 
-  const padraoHarness = MODELOS_ROTACAO_POR_HARNESS[harness] || [];
+  // Rotação declarada pelo próprio motor (EngineDriver.fallbackModels) tem prioridade sobre a tabela legada.
+  let doMotor: string[] | undefined;
+  try {
+    doMotor = engineRegistry.resolveDriver(harness).fallbackModels;
+  } catch {}
+  const padraoHarness = doMotor ?? MODELOS_ROTACAO_POR_HARNESS[harness] ?? [];
   for (const m of padraoHarness) {
     const s = String(m).trim();
     if (s && !lista.includes(s)) lista.push(s);
@@ -1117,10 +1118,13 @@ export class SessionManager {
 
     let mortePorTimeout = false;
     let motivoTimeout = "";
-    const tetoMs = typeof opcoes.timeoutMs === "number" && opcoes.timeoutMs > 0 ? opcoes.timeoutMs : 600_000;
+    // Limites padrão vêm do motor (EngineDriver.timeoutDefaults); o núcleo não conhece ids de motor.
+    const padraoTetoMs = driver.timeoutDefaults?.tetoMs ?? 600_000;
+    const padraoInatividadeMs = driver.timeoutDefaults?.inatividadeMs ?? 60_000;
+    const tetoMs = typeof opcoes.timeoutMs === "number" && opcoes.timeoutMs > 0 ? opcoes.timeoutMs : padraoTetoMs;
     const inatividadeMs = typeof (opcoes as any).inatividadeMs === "number"
       ? (opcoes as any).inatividadeMs
-      : Number(process.env.OPENCORP_INATIVIDADE_TIMEOUT_MS || 60_000);
+      : Number(process.env.OPENCORP_INATIVIDADE_TIMEOUT_MS || padraoInatividadeMs);
 
     watchdog =
       (tetoMs > 0 || inatividadeMs > 0) && child.pid
@@ -1320,9 +1324,11 @@ export class SessionManager {
     const modeloOrigem = String(extras.modelo ?? "");
     const harness = this.harnessDaExecucao(meta);
     const capacidade = CapabilitiesPara(harness);
-    // TODO(F1): plugar opts.session nos demais drivers nativos (claude --resume,
-    // codex resume/fork etc.) quando a matriz de capabilities virar flags reais.
-    const repasseNativo = harness === "opencode" || harness === "crom-agente";
+    // O repasse da sessão nativa é declarado pelo driver (EngineDriver.nativeSessionPassthrough).
+    let repasseNativo = false;
+    try {
+      repasseNativo = engineRegistry.resolveDriver(harness).nativeSessionPassthrough === true;
+    } catch {}
     const modelo = (opts.model ?? modeloOrigem).trim();
 
     if (capacidade.continuaNativo && repasseNativo) {

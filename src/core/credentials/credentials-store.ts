@@ -24,12 +24,12 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { execFileSync } from "node:child_process";
+import { spawnAsync } from "../../utils/spawn-async.js";
 import { SecretsStore } from "../contexts/storage/secrets-store.js";
 import { EngineAccountStore, type EngineAccount } from "../engines/engine-account-store.js";
 import { EngineError } from "../engines/errors.js";
 
-/** Variáveis que cada motor pode receber. Motores ausentes recebem nenhuma. */
+/** Variáveis que cada motor pode receber (padrão legado). Motores ausentes recebem nenhuma. */
 export const ENGINE_CREDENTIAL_VARS: Readonly<Record<string, readonly string[]>> = Object.freeze({
   codex: ["OPENAI_API_KEY"],
   "claude-code": ["ANTHROPIC_API_KEY"],
@@ -70,6 +70,36 @@ const ENGINE_DEFAULT_PROVIDER: Readonly<Record<string, string>> = Object.freeze(
 export const KNOWN_SECRET_ENV_VARS: readonly string[] = Object.freeze([
   ...new Set([...Object.values(ENGINE_CREDENTIAL_VARS).flat(), ...Object.values(PROVIDER_ENV_VARS).flat()]),
 ]);
+
+/** Política declarada pelo manifest do motor (`credentialEnvVars`); sobrepõe a tabela legada. */
+export interface EngineCredentialPolicy {
+  envVars: readonly string[];
+  /** Provedor implícito das contas do motor (para mapear conta → variável). */
+  defaultProvider?: string;
+}
+
+const registeredPolicies = new Map<string, EngineCredentialPolicy>();
+
+/** Registra a política de credenciais de um motor (vinda do manifest). Nome do motor → variáveis aceitas. */
+export function registerEngineCredentialPolicy(engineId: string, policy: EngineCredentialPolicy): void {
+  registeredPolicies.set(engineId, { envVars: [...policy.envVars], defaultProvider: policy.defaultProvider });
+}
+
+export function clearEngineCredentialPolicies(): void {
+  registeredPolicies.clear();
+}
+
+/** Variáveis que o motor pode receber: manifest registrado, senão a tabela legada. */
+export function engineCredentialVars(engineId: string): readonly string[] {
+  return registeredPolicies.get(engineId)?.envVars ?? ENGINE_CREDENTIAL_VARS[engineId] ?? [];
+}
+
+/** A variável é segredo conhecido (tabelas legadas + políticas registradas)? */
+export function isKnownSecretEnvVar(name: string): boolean {
+  if (KNOWN_SECRET_ENV_VARS.includes(name)) return true;
+  for (const p of registeredPolicies.values()) if (p.envVars.includes(name)) return true;
+  return false;
+}
 
 /** Chaves do auth.json gerido pelo OpenCorp → variável correspondente. */
 const MANAGED_AUTH_KEYS: Readonly<Record<string, string>> = Object.freeze({
@@ -125,9 +155,9 @@ export function isAccountAllowedForWorkspace(account: Pick<EngineAccount, "works
 }
 
 export function accountEnvVars(engineId: string, account: Pick<EngineAccount, "provider" | "motorId">): string[] {
-  const provider = account.provider && account.provider !== account.motorId ? account.provider : ENGINE_DEFAULT_PROVIDER[engineId];
+  const provider = account.provider && account.provider !== account.motorId ? account.provider : registeredPolicies.get(engineId)?.defaultProvider ?? ENGINE_DEFAULT_PROVIDER[engineId];
   const vars = (provider && PROVIDER_ENV_VARS[provider]) || [];
-  const allowed = ENGINE_CREDENTIAL_VARS[engineId] ?? [];
+  const allowed = engineCredentialVars(engineId);
   return vars.filter((v) => allowed.includes(v));
 }
 
@@ -137,7 +167,7 @@ export interface CredentialsStoreOptions {
   accounts?: EngineAccountStore;
   hostEnv?: NodeJS.ProcessEnv;
   /** Delegação ao GitHub CLI (`gh auth token`). Injetável para testes. */
-  githubCliToken?: () => string | undefined;
+  githubCliToken?: () => string | undefined | Promise<string | undefined>;
 }
 
 export class CredentialsStore {
@@ -145,7 +175,7 @@ export class CredentialsStore {
   private readonly secrets: SecretsStore;
   private readonly accounts: EngineAccountStore;
   private readonly hostEnv: NodeJS.ProcessEnv;
-  private readonly githubCliToken: () => string | undefined;
+  private readonly githubCliToken: () => string | undefined | Promise<string | undefined>;
 
   constructor(opts: CredentialsStoreOptions) {
     this.homeDir = opts.homeDir;
@@ -157,7 +187,7 @@ export class CredentialsStore {
 
   /** Resolve o conjunto mínimo de credenciais de um motor para um workspace. */
   async resolveForSpawn(input: ResolveCredentialsInput): Promise<CredentialGrant> {
-    const allowed = ENGINE_CREDENTIAL_VARS[input.engineId] ?? [];
+    const allowed = engineCredentialVars(input.engineId);
     const grant: CredentialGrant = { engineId: input.engineId, workspaceId: input.workspaceId, env: {}, sources: [] };
     if (allowed.length === 0) return grant;
 
@@ -189,8 +219,8 @@ export class CredentialsStore {
 
     // Delegação oficial ao GitHub CLI, somente para o Copilot.
     if (input.engineId === "copilot" && !grant.sources.some((s) => s.variable === "COPILOT_GITHUB_TOKEN" || s.variable === "GH_TOKEN" || s.variable === "GITHUB_TOKEN")) {
-      const token = this.githubCliToken();
-      if (token) for (const variable of ENGINE_CREDENTIAL_VARS.copilot!) put(variable, token, "cli-delegation");
+      const token = await this.githubCliToken();
+      if (token) for (const variable of engineCredentialVars("copilot")) put(variable, token, "cli-delegation");
     }
 
     return grant;
@@ -207,7 +237,7 @@ export class CredentialsStore {
   ): Record<string, string> {
     const env: Record<string, string> = {};
     for (const [key, value] of Object.entries(base)) {
-      if (value !== undefined && !KNOWN_SECRET_ENV_VARS.includes(key)) env[key] = value;
+      if (value !== undefined && !isKnownSecretEnvVar(key)) env[key] = value;
     }
     Object.assign(env, grant.env);
     for (const [key, value] of Object.entries(extra)) if (value !== undefined) env[key] = value;
@@ -246,13 +276,10 @@ export class CredentialsStore {
   }
 }
 
-function defaultGithubCliToken(): string | undefined {
-  try {
-    const token = execFileSync("gh", ["auth", "token"], { timeout: 2500, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
-    return token.startsWith("gh") ? token : undefined;
-  } catch {
-    return undefined;
-  }
+async function defaultGithubCliToken(): Promise<string | undefined> {
+  const r = await spawnAsync("gh", ["auth", "token"], { timeoutMs: 2500 });
+  const token = r.status === 0 ? r.stdout.trim() : "";
+  return token.startsWith("gh") ? token : undefined;
 }
 
 const REDACTED = "[REDACTED]";
@@ -266,7 +293,9 @@ const grantedSecretValues = new Set<string>();
  */
 export function redactKnownSecrets(text: string): string {
   const values = [...grantedSecretValues];
-  for (const name of KNOWN_SECRET_ENV_VARS) {
+  const names = new Set(KNOWN_SECRET_ENV_VARS);
+  for (const p of registeredPolicies.values()) for (const v of p.envVars) names.add(v);
+  for (const name of names) {
     const value = process.env[name];
     if (value) values.push(value);
   }
@@ -281,7 +310,7 @@ export function redactSecrets(text: string, secrets: Iterable<string> | Record<s
   const values = new Set<string>();
   const add = (v: string | undefined) => { if (v && v.length >= 6) values.add(v); };
   if (Symbol.iterator in Object(secrets)) for (const v of secrets as Iterable<string>) add(v);
-  else for (const [k, v] of Object.entries(secrets as Record<string, string | undefined>)) if (KNOWN_SECRET_ENV_VARS.includes(k) || /KEY|TOKEN|SECRET|PASSWORD/i.test(k)) add(v);
+  else for (const [k, v] of Object.entries(secrets as Record<string, string | undefined>)) if (isKnownSecretEnvVar(k) || /KEY|TOKEN|SECRET|PASSWORD/i.test(k)) add(v);
   let out = text;
   for (const value of [...values].sort((a, b) => b.length - a.length)) out = out.split(value).join(REDACTED);
   return out;
@@ -292,7 +321,7 @@ export function redactEnv(env: Record<string, string | undefined>): Record<strin
   const out: Record<string, string> = {};
   for (const [key, value] of Object.entries(env)) {
     if (value === undefined) continue;
-    out[key] = KNOWN_SECRET_ENV_VARS.includes(key) || /KEY|TOKEN|SECRET|PASSWORD/i.test(key) ? REDACTED : value;
+    out[key] = isKnownSecretEnvVar(key) || /KEY|TOKEN|SECRET|PASSWORD/i.test(key) ? REDACTED : value;
   }
   return out;
 }

@@ -28,6 +28,8 @@ export interface PackItemConteudo {
   description?: string;
   skills?: string[];
   trigger?: string;
+  /** Metadados opcionais para a vitrine de modelos de agentes/fluxos. */
+  template?: Record<string, any>;
 }
 
 export interface PackDetalhado extends PackResumo {
@@ -55,134 +57,29 @@ export interface ResultadoInstalacaoPack {
   avisos?: string[];
 }
 
-// Catálogo nativo de Packs de Solução canônicos do OpenCorp
-const PACKS_EMBUTIDOS: PackDetalhado[] = [
-  {
-    id: "youtube-factory",
-    nome: "YouTube Shorts Factory",
-    versao: "1.0.0",
-    descricao: "Esteira autônoma ponta a ponta para garimpo de pautas, redação de roteiros dinâmicos e produção automatizada de vídeos verticais.",
-    categoria: "Mídia & Criação",
-    autor: "OpenCorp Core",
-    icone: "Video",
-    destaque: true,
-    total_agentes: 3,
-    total_fluxos: 2,
-    total_skills: 2,
-    requisitos: {
-      system: ["ffmpeg", "piper-tts"],
-      engines: ["openrouter"],
-    },
-    conteudo: {
-      agentes: [
-        { id: "pautador-youtube", role: "Pautador de Notícias", skills: ["web-search"] },
-        { id: "roteirista-video", role: "Roteirista de Vídeos Curtos", skills: ["web-search"] },
-        { id: "analista-qualidade", role: "Analista de Qualidade e Compliance", skills: [] },
-      ],
-      fluxos: [
-        { id: "yt-pautador", nome: "Garimpo Diário de Pautas", trigger: "cron" },
-        { id: "yt-esteira-shorts", nome: "Renderização e Produção de Shorts", trigger: "manual" },
-      ],
-      skills: [
-        { id: "web-search", nome: "web-search", description: "Busca de dados e fontes na web" },
-        { id: "flow-orchestrator", nome: "flow-orchestrator", description: "Padrões de fluxos declarativos" },
-      ],
-      assets: ["pautas.sample.json", "video-template/"],
-    },
-  },
-  {
-    id: "sre-devops",
-    nome: "SRE & Automação de Infraestrutura",
-    versao: "1.0.0",
-    descricao: "Monitoramento proativo de logs do daemon, recuperação automática de processos zumbis e checkpoints Git semânticos.",
-    categoria: "DevOps & SRE",
-    autor: "OpenCorp Core",
-    icone: "ShieldCheck",
-    destaque: true,
-    total_agentes: 2,
-    total_fluxos: 2,
-    total_skills: 2,
-    requisitos: {
-      system: ["git", "lsof"],
-      engines: ["openrouter"],
-    },
-    conteudo: {
-      agentes: [
-        { id: "auditor-infra", role: "Auditor de Infraestrutura e Processos", skills: ["workspace-auditor"] },
-        { id: "engenheiro-deploy", role: "Engenheiro de Git e Checkpoints", skills: ["git-ops"] },
-      ],
-      fluxos: [
-        { id: "sre-healthcheck", nome: "Diagnóstico Periódico de Saúde", trigger: "cron" },
-        { id: "sre-auto-remediation", nome: "Limpeza de Zumbis e Locks", trigger: "webhook" },
-      ],
-      skills: [
-        { id: "workspace-auditor", nome: "workspace-auditor", description: "Rotinas de auditoria de integridade" },
-        { id: "git-ops", nome: "git-ops", description: "Gestão automatizada de Git e branches" },
-      ],
-      assets: ["healthcheck-rules.json"],
-    },
-  },
-  {
-    id: "ecommerce-ops",
-    nome: "E-Commerce & Operações",
-    versao: "1.0.0",
-    descricao: "Controle de estoque, triagem de pedidos pendentes e atendimento automatizado com inteligência artificial.",
-    categoria: "Operações & Vendas",
-    autor: "OpenCorp Partner",
-    icone: "ShoppingBag",
-    destaque: false,
-    total_agentes: 2,
-    total_fluxos: 2,
-    total_skills: 2,
-    requisitos: {
-      engines: ["openrouter"],
-    },
-    conteudo: {
-      agentes: [
-        { id: "gerente-estoque", role: "Controlador de Estoque e Catálogo", skills: ["model-governance"] },
-        { id: "analista-pedidos", role: "Triador de Pedidos e Rastreio", skills: ["web-search"] },
-      ],
-      fluxos: [
-        { id: "ecommerce-sincronizacao", nome: "Sincronização Noturna de Catálogo", trigger: "cron" },
-        { id: "ecommerce-alertas", nome: "Alertas de Baixo Estoque", trigger: "webhook" },
-      ],
-      skills: [
-        { id: "model-governance", nome: "model-governance", description: "Alocação eficiente de modelos" },
-        { id: "web-search", nome: "web-search", description: "Pesquisa de fornecedores e produtos" },
-      ],
-      assets: ["catalogo-modelo.json"],
-    },
-  },
-  {
-    id: "compliance-legal",
-    nome: "Auditoria & Governança Jurídica",
-    versao: "1.0.0",
-    descricao: "Validação determinística de termos de uso, políticas de privacidade e auditoria contínua de modelos e licenças.",
-    categoria: "Governança & Legal",
-    autor: "OpenCorp Core",
-    icone: "Scale",
-    destaque: false,
-    total_agentes: 2,
-    total_fluxos: 1,
-    total_skills: 2,
-    requisitos: {
-      engines: ["openrouter"],
-    },
-    conteudo: {
-      agentes: [
-        { id: "auditor-compliance", role: "Auditor de Políticas e LGPD", skills: ["model-governance"] },
-        { id: "analista-politicas", role: "Revisor de Termos e Licenças", skills: ["workspace-auditor"] },
-      ],
-      fluxos: [
-        { id: "compliance-revisao-semanal", nome: "Revisão Semanal de Conformidade", trigger: "cron" },
-      ],
-      skills: [
-        { id: "model-governance", nome: "model-governance", description: "Diretrizes de xB e segurança" },
-        { id: "workspace-auditor", nome: "workspace-auditor", description: "Checklists de auditoria" },
-      ],
-    },
-  },
-];
+/** Normaliza um manifesto `pack.json` (chaves em português ou inglês) para PackDetalhado. */
+function normalizarManifesto(dados: Record<string, any>, idPadrao: string): PackDetalhado {
+  const lista = (pt: unknown, en: unknown): any[] => (Array.isArray(pt) ? pt : Array.isArray(en) ? en : []);
+  const agentes = lista(dados.conteudo?.agentes, dados.contents?.agents) as PackItemConteudo[];
+  const fluxos = lista(dados.conteudo?.fluxos, dados.contents?.flows) as PackItemConteudo[];
+  const skills = lista(dados.conteudo?.skills, dados.contents?.skills) as PackItemConteudo[];
+  const assets = lista(dados.conteudo?.assets, dados.contents?.assets) as string[];
+  return {
+    id: dados.id || idPadrao,
+    nome: dados.nome || dados.name || idPadrao,
+    versao: dados.versao || dados.version || "1.0.0",
+    descricao: dados.descricao || dados.description || "",
+    categoria: dados.categoria || dados.category || "Geral",
+    autor: dados.autor || dados.author || "Custom",
+    icone: dados.icone || dados.icon || "Package",
+    destaque: Boolean(dados.destaque || dados.featured),
+    total_agentes: agentes.length,
+    total_fluxos: fluxos.length,
+    total_skills: skills.length,
+    requisitos: dados.requisitos || dados.requirements,
+    conteudo: { agentes, fluxos, skills, assets },
+  };
+}
 
 export class PackStore {
   private readonly homeDir: string;
@@ -193,59 +90,39 @@ export class PackStore {
     this.packsDir = opts.packsDir ?? join(projectRoot(), "templates", "packs");
   }
 
-  async listar(): Promise<PackResumo[]> {
-    const mapa = new Map<string, PackResumo>();
-
-    // 1. Carrega embutidos
-    for (const p of PACKS_EMBUTIDOS) {
-      mapa.set(p.id, {
-        id: p.id,
-        nome: p.nome,
-        versao: p.versao,
-        descricao: p.descricao,
-        categoria: p.categoria,
-        autor: p.autor,
-        icone: p.icone,
-        total_agentes: p.total_agentes,
-        total_fluxos: p.total_fluxos,
-        total_skills: p.total_skills,
-        destaque: p.destaque,
-      });
-    }
-
-    // 2. Escaneia diretórios de packs em disco (templates/packs e ~/.opencorp/packs)
-    const dirsVarredura = [this.packsDir, join(this.homeDir, "packs")];
-    for (const dir of dirsVarredura) {
-      if (existsSync(dir)) {
+  /**
+   * Registro de packs: o núcleo não embute nenhum domínio. Cada pack é um
+   * manifesto `<dir>/<id>/pack.json` em `templates/packs` ou `~/.opencorp/packs`
+   * (o segundo sobrescreve o primeiro pelo id).
+   */
+  private carregarRegistro(): Map<string, PackDetalhado> {
+    const mapa = new Map<string, PackDetalhado>();
+    for (const dir of [this.packsDir, join(this.homeDir, "packs")]) {
+      if (!existsSync(dir)) continue;
+      let entradas;
+      try {
+        entradas = readdirSync(dir, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+      for (const e of entradas) {
+        if (!e.isDirectory()) continue;
+        const packJsonPath = join(dir, e.name, "pack.json");
+        if (!existsSync(packJsonPath)) continue;
         try {
-          const entradas = readdirSync(dir, { withFileTypes: true });
-          for (const e of entradas) {
-            if (!e.isDirectory()) continue;
-            const packJsonPath = join(dir, e.name, "pack.json");
-            if (existsSync(packJsonPath)) {
-              try {
-                const dados = JSON.parse(readFileSync(packJsonPath, "utf8")) as Record<string, any>;
-                mapa.set(dados.id || e.name, {
-                  id: dados.id || e.name,
-                  nome: dados.name || dados.nome || e.name,
-                  versao: dados.version || dados.versao || "1.0.0",
-                  descricao: dados.description || dados.descricao || "",
-                  categoria: dados.category || dados.categoria || "Geral",
-                  autor: dados.author || dados.autor || "Custom",
-                  icone: dados.icon || dados.icone || "Package",
-                  total_agentes: Array.isArray(dados.contents?.agents) ? dados.contents.agents.length : 0,
-                  total_fluxos: Array.isArray(dados.contents?.flows) ? dados.contents.flows.length : 0,
-                  total_skills: Array.isArray(dados.contents?.skills) ? dados.contents.skills.length : 0,
-                  destaque: Boolean(dados.featured || dados.destaque),
-                });
-              } catch {}
-            }
-          }
+          const pack = normalizarManifesto(JSON.parse(readFileSync(packJsonPath, "utf8")) as Record<string, any>, e.name);
+          mapa.set(pack.id, pack);
         } catch {}
       }
     }
+    return mapa;
+  }
 
-    return Array.from(mapa.values()).sort((a, b) => {
+  async listar(): Promise<PackResumo[]> {
+    const resumos: PackResumo[] = Array.from(this.carregarRegistro().values()).map(
+      ({ requisitos: _r, conteudo: _c, ...resumo }) => resumo,
+    );
+    return resumos.sort((a, b) => {
       if (a.destaque && !b.destaque) return -1;
       if (!a.destaque && b.destaque) return 1;
       return a.nome.localeCompare(b.nome);
@@ -253,43 +130,8 @@ export class PackStore {
   }
 
   async obter(packId: string): Promise<PackDetalhado> {
-    const embutido = PACKS_EMBUTIDOS.find((p) => p.id === packId);
-    if (embutido) return embutido;
-
-    const candidatos = [
-      join(this.packsDir, packId, "pack.json"),
-      join(this.homeDir, "packs", packId, "pack.json"),
-    ];
-
-    for (const packJsonPath of candidatos) {
-      if (existsSync(packJsonPath)) {
-        try {
-          const dados = JSON.parse(readFileSync(packJsonPath, "utf8")) as Record<string, any>;
-          return {
-            id: dados.id || packId,
-            nome: dados.name || dados.nome || packId,
-            versao: dados.version || dados.versao || "1.0.0",
-            descricao: dados.description || dados.descricao || "",
-            categoria: dados.category || dados.categoria || "Geral",
-            autor: dados.author || dados.autor || "Custom",
-            icone: dados.icon || dados.icone || "Package",
-            total_agentes: Array.isArray(dados.contents?.agents) ? dados.contents.agents.length : 0,
-            total_fluxos: Array.isArray(dados.contents?.flows) ? dados.contents.flows.length : 0,
-            total_skills: Array.isArray(dados.contents?.skills) ? dados.contents.skills.length : 0,
-            requisitos: dados.requirements,
-            conteudo: {
-              agentes: Array.isArray(dados.contents?.agents) ? dados.contents.agents : [],
-              fluxos: Array.isArray(dados.contents?.flows) ? dados.contents.flows : [],
-              skills: Array.isArray(dados.contents?.skills) ? dados.contents.skills : [],
-              assets: Array.isArray(dados.contents?.assets) ? dados.contents.assets : [],
-            },
-          };
-        } catch (err: unknown) {
-          throw new PackError(`Erro ao ler manifesto do pack "${packId}": ${err instanceof Error ? err.message : String(err)}`);
-        }
-      }
-    }
-
+    const pack = this.carregarRegistro().get(packId);
+    if (pack) return pack;
     throw new PackError(`Pack de solução "${packId}" não encontrado.`);
   }
 
