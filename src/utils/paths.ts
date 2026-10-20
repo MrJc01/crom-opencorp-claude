@@ -102,3 +102,14 @@ function _encontrarRaiz(inicio: string): string | null {
   }
   return null;
 }
+
+/**
+ * PATH com o `oc`/`opencorp` deste checkout na frente. O `oc` global do sistema pode ser de outra
+ * instalação do OpenCorp (ex.: o repositório original); agentes, Secretário e scripts de flow
+ * precisam chamar este.
+ */
+export function pathComCliLocal(pathAtual: string = process.env.PATH ?? ""): string {
+  const dir = join(projectRoot(), "bin", "path");
+  if (!existsSync(dir)) return pathAtual;
+  return [dir, ...pathAtual.split(":").filter((p) => p && p !== dir)].join(":");
+}

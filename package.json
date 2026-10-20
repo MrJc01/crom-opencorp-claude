@@ -1,12 +1,8 @@
 {
-  "name": "opencorp",
+  "name": "opencorp-claude",
   "version": "0.7.0",
-  "description": "Sistema Operacional de Empresas Autônomas dirigido por CLI — orquestra sessões OpenCode em workspaces governados",
+  "description": "OpenCorp com o Claude Agent SDK como motor base (fork de opencorp)",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/crom-org/opencorp.git"
-  },
   "type": "module",
   "main": "dist/cli/index.js",
   "bin": {
@@ -30,6 +26,7 @@
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.116",
+    "@anthropic-ai/claude-agent-sdk": "^0.3.300",
     "@assistant-ui/react": "^0.15.21",
     "@assistant-ui/react-ai-sdk": "^1.4.12",
     "@assistant-ui/react-markdown": "^0.14.16",
