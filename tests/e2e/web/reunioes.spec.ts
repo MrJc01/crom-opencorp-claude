@@ -19,6 +19,9 @@ test.describe("Web Reuniões: convocar, sala, histórico e ata", () => {
     await page.getByRole("button", { name: "Iniciar Deliberação" }).click();
     await page.waitForURL(/reuniao=/, { timeout: T(20000) });
     await expect(page.getByText(pauta).first()).toBeVisible({ timeout: T(15000) });
+    // O modal também tem um <textarea> e fica no mesmo contêiner: sem esperar ele sair, `textarea` pode apontar para o
+    // campo do modal enquanto ele desmonta e o texto digitado se perde (foi a causa da falha intermitente).
+    await expect(page.getByText("Convocar Nova Reunião Colegiada")).toHaveCount(0, { timeout: T(15000) });
   }
 
   test("modal convocar cria sala e fecha", async ({ page }) => {
@@ -33,7 +36,7 @@ test.describe("Web Reuniões: convocar, sala, histórico e ata", () => {
   test("enviar mensagem na sala aparece no feed", async ({ page }) => {
     await convocar(page, `Web sala msg ${Date.now()}`);
     const texto = `msg web ${Date.now()}`;
-    const input = page.locator("main textarea").last();
+    const input = page.getByPlaceholder(/Envie uma ponderação/);
     await expect(input).toBeVisible({ timeout: T(15000) });
     await input.fill(texto);
     await input.press("Enter");

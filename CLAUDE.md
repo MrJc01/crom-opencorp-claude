@@ -79,7 +79,7 @@ npx vitest run
 npm run build
 ```
 
-Suíte E2E (Playwright): rode por `scripts/e2e-seguro.sh` (tudo em RAM, via `rodar-pesado.sh`; ver `docs/CHECKLIST.md`, rodada 3b). Em 2026-10-20: 346 de 357 passaram, 11 ignorados por falta de binário.
+Suíte E2E (Playwright): rode por `scripts/e2e-seguro.sh` (tudo em RAM, via `rodar-pesado.sh`; ver `docs/CHECKLIST.md`, rodada 3b). Em 2026-10-20: 347 passaram, 0 falharam, 11 ignorados por falta de binário (6,9 min, em RAM).
 
 ## Pendências conhecidas
 
