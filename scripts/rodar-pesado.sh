@@ -9,7 +9,10 @@
 #  2. Recusa começar com pouca memória livre (OPENCORP_PESADO_MEM_MIN_MB, padrão 4500).
 #  3. Limita a memória da tarefa (OPENCORP_PESADO_MEM, padrão 5G, sem swap): se estourar, SÓ ELA morre
 #     (código 137) e o resto do PC, incluindo os vídeos dos canais, segue.
-#  4. Prioridade mínima de CPU e de disco (nice 19, ionice classe 3, CPUWeight baixo).
+#  4. Prioridade BAIXA, mas nunca "idle": nice 10, ionice classe 2 nível 7 (melhor esforço, o menor), pesos 50.
+#     Em 2026-10-20 a classe idle de I/O (ionice -c3) deixou o servidor de teste sem disco por >20 s enquanto os canais
+#     renderizavam vídeo: uma cópia síncrona travou o event loop e o watchdog encerrou o servidor. O que protege o PC é
+#     o LIMITE DE MEMÓRIA (item 3), não a prioridade; por isso a prioridade não pode ser a mais baixa possível.
 #
 # Uso:  scripts/rodar-pesado.sh npx vitest run
 #       scripts/rodar-pesado.sh npx playwright test tests/e2e/x.spec.ts --workers=1
@@ -46,10 +49,19 @@ if [ "$(disponivel_mb)" -lt "$MEM_MIN_MB" ]; then
   exit 75
 fi
 
-echo "[rodar-pesado] limite de memória ${LIMITE_MEM}, prioridade mínima: $*" >&2
+# Temporários em RAM: o disco do dono é lento (SSD 87% cheio, ~124 ms por escrita) e os testes criam milhares de
+# arquivos pequenos em tmpdir(). Em /dev/shm eles não tocam no disco.
+if [ -d /dev/shm ] && [ "$(df -Pm /dev/shm | awk 'NR==2 {print $4}')" -gt 1500 ]; then
+  export TMPDIR="/dev/shm/opencorp-tmp-$$"
+  mkdir -p "$TMPDIR"
+  trap 'rm -rf "$TMPDIR"' EXIT
+fi
+echo "[rodar-pesado] limite de memória ${LIMITE_MEM}, prioridade baixa, temporários em ${TMPDIR:-/tmp}: $*" >&2
 if systemd-run --user --scope -q -p MemoryMax=1G -p MemorySwapMax=0 true 2>/dev/null; then
-  exec nice -n 19 ionice -c3 systemd-run --user --scope -q \
-    -p "MemoryMax=${LIMITE_MEM}" -p MemorySwapMax=0 -p CPUWeight=20 -p IOWeight=20 -- "$@"
+  nice -n 10 ionice -c2 -n7 systemd-run --user --scope -q \
+    -p "MemoryMax=${LIMITE_MEM}" -p MemorySwapMax=0 -p CPUWeight=50 -p IOWeight=50 -- "$@"
+  exit $?
 fi
 echo "[rodar-pesado] AVISO: cgroup de usuário indisponível; rodando só com nice/ionice, SEM limite de memória." >&2
-exec nice -n 19 ionice -c3 "$@"
+nice -n 10 ionice -c2 -n7 "$@"
+exit $?

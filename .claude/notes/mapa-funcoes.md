@@ -56,3 +56,5 @@
 | `buscarHistoricoComMeta` | `runtime/history-client.ts` | Como `buscarHistorico` + `logEntradas` e `emExecucao` (cabeçalhos do CONTRATO REATTACH) |
 | `aplicarEventoSse` (novos casos) | `runtime/sse-reducer.ts` | `aprovacao_resolvida` {id,status} e `inativo`; `ResultadoEvento.terminou` |
 | efeito de reassinatura | `runtime/secretary-runtime-adapter.ts` (`useOpenCorpSecretarioRuntime`) | Ao montar com sessão persistida: busca histórico+meta; se em execução, reassina e continua a última mensagem do assistente; não publica em `live-turns` (remontar reassina de novo); `onCancel` inerte nesse estado |
+| `cancelarTurnoReassinado` | `runtime/reassinar.ts` | 'Parar' de turno reassinado: `POST /secretario/sessoes/:id/cancelar?workspace=`; SSE segue aberto até o `fim`. Usado por `onCancel` do runtime |
+| `criarRecurso`, `comRetryTransporte`, `esperarServidorPronto` | `tests/e2e/helpers.ts` | Seeds de E2E que falham alto e repetem só erro de transporte (reconhece 'já existe' = 422) |

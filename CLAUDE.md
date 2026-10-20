@@ -29,7 +29,7 @@ Publicado (público) em https://github.com/MrJc01/crom-opencorp-claude como repo
 - Conta do Claude só para o OpenCorp: o serviço define `OPENCORP_CLAUDE_CONFIG_DIR=/home/j/.opencorp/claude-conta`. Depois de
   `CLAUDE_CONFIG_DIR=/home/j/.opencorp/claude-conta claude` + `/login`, agentes e Secretário passam a usar essa conta
   (`claudeConfigDirOpencorp()` em engines/drivers/claude-config-dir.ts; o sandbox monta essa pasta). Sem login lá, usa o ~/.claude padrão.
-- `npm run build`, `npx tsc --noEmit -p .` e `npx vitest run` passam (166 arquivos, 1606 testes em 2026-10-20).
+- `npm run build`, `npx tsc --noEmit -p .` e `npx vitest run` passam (171 arquivos, 1638 testes em 2026-10-20).
 - Secretário web: histórico por log JSONL de eventos (`engines/event-log.ts`), runtime do Assistant UI alimentado pelo
   servidor, hook único de abas (`features/chat/hooks/useAbasSecretario.ts`). Núcleo agnóstico: timeouts/regras vêm do
   manifest do motor; `GET /api/motores` expõe o manifest; adaptador `openheinerss` registrado (opcional). Packs de domínio
@@ -79,17 +79,17 @@ npx vitest run
 npm run build
 ```
 
-Suíte E2E (Playwright): 339–342 de 356 em 3 rodadas de 2026-10-20; falhas restantes são de carga da máquina e variam a cada rodada (ver `docs/CHECKLIST.md`). Rode com o PC ocioso.
+Suíte E2E (Playwright): rode por `scripts/e2e-seguro.sh` (tudo em RAM, via `rodar-pesado.sh`; ver `docs/CHECKLIST.md`, rodada 3b). Em 2026-10-20: 346 de 357 passaram, 11 ignorados por falta de binário.
 
 ## Pendências conhecidas
 
 - `tests/runs-robustos.test.ts`: a falha sob carga era corrida do próprio teste (corrigida em 2026-10-20, 15/15).
-- E2E (Playwright) roda isolado: `HOME=/tmp/e2e-home PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright npx playwright test ...` (porta 4399, nunca o daemon da 4100). Não use `pkill -f` com texto do próprio comando. Um servidor E2E órfão chegou a 100% de CPU sem causa conhecida: matar a porta 4399 antes de rodar de novo.
+- E2E (Playwright) roda isolado e em RAM: `scripts/e2e-seguro.sh [specs]` (porta 4399, nunca o daemon da 4100; home em /dev/shm). Não use `pkill -f` com texto do próprio comando. Um servidor E2E órfão chegou a 100% de CPU sem causa conhecida (agora o watchdog do event loop deixaria diagnóstico): mate a porta 4399 antes de rodar de novo.
 - Testes que dependem de `dist/` e `web-dist/` exigem `npm run build` antes (já feito nesta cópia).
 
 ## Regras de trabalho
 
-- **O PC do dono já travou duas vezes por falta de memória** (14 GB de RAM, 2 GB de swap, canais renderizando vídeo ao mesmo
+- **O PC do dono já travou duas vezes por falta de memória e tem disco lento** (SSD 87% cheio, escritas de 120–260 ms; evite escrever muito em disco: use /dev/shm para temporários) (14 GB de RAM, 2 GB de swap, canais renderizando vídeo ao mesmo
   tempo; o log do boot mostrou "Under memory pressure" antes da queda). Por isso: TODA tarefa pesada (tsc, vitest, playwright,
   build) roda por `scripts/rodar-pesado.sh <comando>` (uma por vez, limite de memória, prioridade mínima). NUNCA rode carga
   artificial de CPU/memória (queimadores) e nunca duas suítes ao mesmo tempo, nem em sessões paralelas.
