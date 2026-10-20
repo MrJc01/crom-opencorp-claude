@@ -10,7 +10,7 @@ import {
 } from "./chat-store.js";
 import { assinarTurno, obterTurno, publicarTurno } from "./live-turns.js";
 import { buscarHistorico, buscarHistoricoComMeta, sessaoTemHistorico } from "./history-client.js";
-import { estadoDaMensagemBackend, reassinarTurno } from "./reassinar.js";
+import { cancelarTurnoReassinado, estadoDaMensagemBackend, reassinarTurno } from "./reassinar.js";
 import type { StatusAprovacao } from "./message-converter.js";
 import { partesDoEstado, type EstadoTurno } from "./sse-reducer.js";
 import { executarTerminalDireto, executarTurno } from "./turno-stream.js";
@@ -261,9 +261,12 @@ export function useOpenCorpSecretarioRuntime(options: SecretaryRuntimeOptions = 
   onNewRef.current = onNew;
 
   const onCancel = useCallback(async () => {
-    // Turno reassinado: ainda não há endpoint para cancelar o turno do servidor (ver "Pedidos entre frentes");
-    // fechar só o SSE faria a UI parecer parada com o turno vivo. Não faz nada.
-    if (reassinandoRef.current) return;
+    // Turno reassinado: fechar o SSE não cancela o turno do servidor; pede o cancelamento e espera o fim pelo SSE.
+    if (reassinandoRef.current) {
+      filaRef.current = [];
+      await cancelarTurnoReassinado(sessaoIdRef.current!, optionsRef.current.workspaceId, optionsRef.current.headers);
+      return;
+    }
     filaRef.current = [];
     abortRef.current?.abort();
   }, []);

@@ -16,6 +16,7 @@ export const HEARTBEAT_EVENTOS_MS = 15_000;
  */
 export async function handleEventosRoutes(ctx: RouteContext): Promise<boolean> {
   const { req, res, url, rota, resolverWs, homeDir } = ctx;
+
   const m = /^\/secretario\/sessoes\/([^/]+)\/eventos$/.exec(rota);
   if (!m || req.method !== "GET") return false;
 

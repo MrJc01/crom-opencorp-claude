@@ -1,4 +1,5 @@
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, symlinkSync } from "node:fs";
+import { cp as cpAsync, mkdir as mkdirAsync, rename as renameAsync, rm as rmAsync } from "node:fs/promises";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { join, resolve } from "node:path";
 import Database from "better-sqlite3";
@@ -256,29 +257,32 @@ export class WorkspaceManager {
     const raiz = await this.raiz();
     const destino = customPath ?? join(raiz, id);
 
+    // As cópias são assíncronas de propósito: o esqueleto tem muitos arquivos e uma cópia síncrona bloqueava o servidor
+    // inteiro (inclusive /health e SSE) enquanto o disco estivesse ocupado; o watchdog do event loop chegou a matar o
+    // servidor por isso.
     if (customPath) {
       // Pasta customizada: cria se não existe, mas não sobrescreve conteúdo existente
-      mkdirSync(destino, { recursive: true });
+      await mkdirAsync(destino, { recursive: true });
       // Se a pasta não tem .opencorp, aplica skeleton somente na estrutura .opencorp
       const opencorpDir = join(destino, ".opencorp");
       if (!existsSync(opencorpDir)) {
         // Copia o skeleton para um tmp e depois move apenas a estrutura .opencorp
         const tmp = join(raiz, `.${id}.tmp-${process.pid}-${randomUUID()}`);
         try {
-          mkdirSync(raiz, { recursive: true });
-          cpSync(skeletonDir, tmp, { recursive: true });
+          await mkdirAsync(raiz, { recursive: true });
+          await cpAsync(skeletonDir, tmp, { recursive: true });
           // Move apenas o .opencorp e docs do skeleton para o destino
           const tmpOpencorp = join(tmp, ".opencorp");
           if (existsSync(tmpOpencorp)) {
-            cpSync(tmpOpencorp, opencorpDir, { recursive: true });
+            await cpAsync(tmpOpencorp, opencorpDir, { recursive: true });
           }
           const tmpDocs = join(tmp, "docs");
           const destDocs = join(destino, "docs");
           if (existsSync(tmpDocs) && !existsSync(destDocs)) {
-            cpSync(tmpDocs, destDocs, { recursive: true });
+            await cpAsync(tmpDocs, destDocs, { recursive: true });
           }
         } finally {
-          rmSync(tmp, { recursive: true, force: true });
+          await rmAsync(tmp, { recursive: true, force: true });
         }
       }
     } else {
@@ -290,11 +294,11 @@ export class WorkspaceManager {
       }
       const tmp = join(raiz, `.${id}.tmp-${process.pid}-${randomUUID()}`);
       try {
-        mkdirSync(raiz, { recursive: true });
-        cpSync(skeletonDir, tmp, { recursive: true });
-        renameSync(tmp, destino);
+        await mkdirAsync(raiz, { recursive: true });
+        await cpAsync(skeletonDir, tmp, { recursive: true });
+        await renameAsync(tmp, destino);
       } catch (erro) {
-        rmSync(tmp, { recursive: true, force: true });
+        await rmAsync(tmp, { recursive: true, force: true });
         throw new WorkspaceError(`não foi possível criar o workspace "${id}": ${msg(erro)}`);
       }
     }

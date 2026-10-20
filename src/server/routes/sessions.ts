@@ -160,6 +160,16 @@ export async function handleSessionRoutes(ctx: RouteContext): Promise<boolean> {
   if (mExecCancelar && (req.method === "POST" || req.method === "DELETE")) {
     const ws = await resolverWs(url);
     const id = decodeURIComponent(mExecCancelar[1]!);
+
+    // Turno de conversa do Secretário ainda vivo (inclusive o de quem reassinou depois de sair da tela, cuja
+    // conexão original já caiu): aborta pelo próprio turno.
+    const turnoVivo = streamsSecretarioAtivos.get(id);
+    if (turnoVivo?.cancelar) {
+      turnoVivo.cancelar();
+      enviar(res, 200, { ok: true, id, status: "cancelado", cancelado: true, mensagem: "Turno encerrado com sucesso." });
+      return true;
+    }
+
     let cancelado = false;
     let wsAlvo = ws.path;
 

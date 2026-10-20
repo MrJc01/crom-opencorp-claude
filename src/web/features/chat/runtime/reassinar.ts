@@ -71,3 +71,25 @@ export async function* reassinarTurno(r: ReassinaturaTurno): AsyncGenerator<Esta
     }
   }
 }
+
+/**
+ * "Parar" de um turno reassinado: a conexão do POST original já caiu, então fechar o SSE não cancela
+ * nada. Pede ao servidor (`POST /secretario/sessoes/:id/cancelar`) e deixa o SSE aberto para receber o fim.
+ */
+export async function cancelarTurnoReassinado(
+  sessaoId: string,
+  workspaceId: string | undefined,
+  headersExtras: Record<string, string> = {},
+): Promise<boolean> {
+  try {
+    const q = new URLSearchParams({ workspace: workspaceId || "default" });
+    const res = await fetch(`${originAtual()}/secretario/sessoes/${encodeURIComponent(sessaoId)}/cancelar?${q.toString()}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...obterAuthHeaders(), ...headersExtras },
+      body: "{}",
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { estadoDaMensagemBackend, reassinarTurno } from "../../../src/web/features/chat/runtime/reassinar.js";
+import { cancelarTurnoReassinado, estadoDaMensagemBackend, reassinarTurno } from "../../../src/web/features/chat/runtime/reassinar.js";
 import { buscarHistoricoComMeta } from "../../../src/web/features/chat/runtime/history-client.js";
 import { aplicarEventoSse, criarEstadoTurno, partesDoEstado } from "../../../src/web/features/chat/runtime/sse-reducer.js";
 import { marcarAprovacao } from "../../../src/web/features/chat/runtime/chat-store.js";
@@ -178,5 +178,24 @@ describe("reassinarTurno", () => {
     expect(proximo.done).toBe(true);
     expect(cancelado).toHaveBeenCalled();
     expect(estados).toEqual(["Vou editar a"]);
+  });
+});
+
+describe("cancelarTurnoReassinado", () => {
+  it("POST /secretario/sessoes/:id/cancelar?workspace= e devolve ok", async () => {
+    const f = vi.fn(async () => new Response('{"ok":true}', { status: 200 }));
+    vi.stubGlobal("fetch", f);
+    expect(await cancelarTurnoReassinado("s 1", "ws", { "x-a": "1" })).toBe(true);
+    const [url, init] = f.mock.calls[0] as any;
+    expect(String(url)).toContain("/secretario/sessoes/s%201/cancelar?workspace=ws");
+    expect(init.method).toBe("POST");
+    expect(init.headers["x-a"]).toBe("1");
+  });
+
+  it("falha de rede ou HTTP devolve false sem lançar", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("x", { status: 500 })));
+    expect(await cancelarTurnoReassinado("s", "ws")).toBe(false);
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("rede"); }));
+    expect(await cancelarTurnoReassinado("s", "ws")).toBe(false);
   });
 });

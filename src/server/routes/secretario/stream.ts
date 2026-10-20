@@ -30,7 +30,10 @@ import { criarTradutorSse, resumirFerramenta } from "./sse-eventos.js";
 import type { RouteContext } from "../types.js";
 
 /** Streams `/secretario/conversa/stream` em voo por sessão. */
-export const streamsSecretarioAtivos = new Map<string, { res: { destroyed: boolean; writableEnded: boolean } }>();
+export const streamsSecretarioAtivos = new Map<
+  string,
+  { res: { destroyed: boolean; writableEnded: boolean }; /** Aborta o turno vivo (rota de cancelar, para quem reassinou). */ cancelar?: () => void }
+>();
 /** Timers de grace period antes de abortar caso o cliente reconecte (ex: F5 / refresh). */
 export const timersGraceAbort = new Map<string, NodeJS.Timeout>();
 
@@ -330,6 +333,8 @@ export async function handleStreamRoutes(ctx: RouteContext): Promise<boolean> {
             };
             gravar({ t: new Date().toISOString(), tipo: "user", text: mensagem });
             const ac = new AbortController();
+            const entradaAtiva = streamsSecretarioAtivos.get(ref.id);
+            if (entradaAtiva) entradaAtiva.cancelar = () => ac.abort();
             // Com uma aprovação pendente, sair da tela não pode matar o turno: o dono volta, vê o cartão
             // no histórico e decide. O prazo da própria aprovação (10 min) limita a espera.
             let aguardandoAprovacao = false;

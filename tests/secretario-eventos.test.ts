@@ -179,6 +179,19 @@ describe("Secretário: reattach (GET /secretario/sessoes/:id/eventos)", () => {
     expect(todos.filter((x) => x === "aprovacao")).toHaveLength(1);
   });
 
+  it("cancelar: com turno vivo aciona o abort do próprio turno (parar de quem reassinou), pela rota única de cancelar", async () => {
+    let abortado = false;
+    streamsSecretarioAtivos.set("sessao-cancelavel", { res: { destroyed: false, writableEnded: false }, cancelar: () => { abortado = true; } });
+    try {
+      const res = await api("/secretario/sessoes/sessao-cancelavel/cancelar?workspace=ws-reat", { method: "POST", body: "{}" });
+      expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({ ok: true, cancelado: true });
+      expect(abortado).toBe(true);
+    } finally {
+      streamsSecretarioAtivos.delete("sessao-cancelavel");
+    }
+  });
+
   it("sem turno vivo: event: inativo e fecha", async () => {
     const sessao = "reat-1";
     expect(streamsSecretarioAtivos.has(sessao)).toBe(false);
