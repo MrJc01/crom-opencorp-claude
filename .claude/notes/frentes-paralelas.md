@@ -1,0 +1,59 @@
+# Frentes paralelas — regras anti-duplicação
+
+## Regras para TODO agente/sessão
+1. Antes de criar função, hook, tipo ou constante: `grep -rn` pelo nome/ideia em `src/` e leia `mapa-funcoes.md`. Se existe, reuse e importe.
+2. Código compartilhado tem UM dono (tabela abaixo). Se precisa de algo no arquivo de outra frente, NÃO edite: registre o pedido em "Pedidos entre frentes" no fim deste arquivo.
+3. Só edite arquivos da sua frente. Sem commit, sem push, sem trocar de branch (checkout compartilhado; os arquivos não se sobrepõem).
+4. Ao criar função/hook novo exportado, adicione uma linha em `mapa-funcoes.md` (nome, arquivo, para que serve).
+5. Ao terminar: rode `npx tsc --noEmit -p .`, `npx tsc --noEmit -p tsconfig.web.json` e os testes da sua área; marque o item em `docs/CHECKLIST.md`; resuma em até 10 linhas.
+6. Não rode `npm run build` nem reinicie o daemon (quem integra faz isso no fim).
+
+## Frentes e donos de arquivo
+| Frente | Pode editar | Não pode tocar |
+|---|---|---|
+| ABAS (passo 6) | `src/web/features/chat/hooks/useAbasSecretario.ts` (novo), `views/SecretarioView.tsx`, `components/SecretarioDock.tsx`, `components/OpenCodeTabsHeader.tsx`, `tests/unit/web/opencode-tabs-header.test.ts` | `SecretarioChat.tsx`, `runtime/*` |
+| RUNTIME (passo 4) | `src/web/features/chat/runtime/*`, `components/SecretarioChat.tsx`, `components/EngineApprovalCard.tsx`, `components/AssistantTools.tsx`, `src/web/lib/chat/secretary-stream.ts` | arquivos de abas |
+| MOTOR (frente C) | `src/core/engines/**` (exceto `event-log.ts`, `events.ts` só adicionar), `src/core/contexts/execution/{session-manager,execution-driver}.ts`, `src/utils/paths.ts`, `src/core/credentials/credentials-store.ts`, `src/core/models/catalog.ts`, `src/core/contexts/agents/model-resolver.ts`, `src/server/routes/secretario/{helpers,context-builder}.ts` | `src/web/**` |
+| DOMÍNIO | `src/core/contexts/platform/packs-store.ts`, `src/web/features/assets/views/AtivosView.tsx` e o que for novo para packs | o resto |
+| MOTOR-UI (depois do MOTOR) | `src/web/lib/chat/constants.ts`, `src/web/features/agents/constants.ts`, `EngineAuthModal.tsx`, `secretTemplates.ts` | |
+
+## Rodada 2 (2026-10-20, depois de A+B testadas no navegador)
+| Frente | Pode editar | Não pode tocar |
+|---|---|---|
+| MOTOR-UI | `src/web/lib/chat/constants.ts`, `src/web/features/agents/constants.ts`, `src/web/features/settings/components/EngineAuthModal.tsx`, `src/web/features/settings/constants/secretTemplates.ts`, outros `src/web/**` que citem motor/modelo fixo (exceto `features/chat/runtime/*`, `hooks/`, `SecretarioChat.tsx`), e a rota/endpoint que expõe o manifest dos motores se faltar (`src/server/routes/` só o arquivo de engines) | `src/core/**` |
+| MOTOR-CRED | `src/core/credentials/credentials-store.ts`, `src/core/contexts/execution/llm-client.ts`, restos de Claude em `src/core/models/*` e `src/core/contexts/agents/*` | `src/web/**`, `src/core/engines/**` |
+| OPENHEINERSS | arquivos NOVOS `src/core/engines/adapters/openheinerss-*.ts`, `src/core/engines/drivers/openheinerss-*.ts`, registro em `src/core/engines/index.ts`/`registry.ts` (só acrescentar), testes novos | resto de engines |
+| QUALIDADE | só `tests/**` e `e2e/**` (ou onde o Playwright mora); relata causa-raiz de falhas; NÃO edita `src/` | `src/**` |
+| (orquestrador) | `src/server/routes/secretario/hitl.ts`, `system.ts`, `docs/`, `.claude/notes/` | |
+
+## Rodada 3 (2026-10-20, noite): "corrija tudo" — nada de entregar com falha conhecida
+| Frente | Pode editar | Não pode tocar |
+|---|---|---|
+| E2E-ROBUSTO | `tests/**`, `playwright.config.ts`, fixtures/helpers de E2E; só ESCREVE em `src/` se achar bug real e então avisa o dono da área em "Pedidos entre frentes" | `src/**` |
+| WATCHDOG | arquivo NOVO `src/server/event-loop-watchdog.ts`, `src/cli/commands/serve.ts` (ligar o watchdog), `src/core/engines/credentials-bridge.ts` (probes), e qualquer `execFileSync`/`execSync`/`spawnSync`/`readFileSync` pesado em caminho de requisição HTTP que bloqueie o event loop | `src/web/**`, `stream.ts`, `event-log.ts` |
+| REATTACH-BACK | `src/core/engines/event-log.ts`, `src/server/routes/secretario/stream.ts` e `sessions.ts` (só a rota de mensagens), arquivo NOVO `src/server/routes/secretario/eventos.ts`, arquivo NOVO `src/server/routes/secretario/sse-eventos.ts` (tradução AgentEvent→SSE compartilhada) | `src/web/**` |
+| REATTACH-FRONT | `src/web/features/chat/runtime/*`, `SecretarioChat.tsx`, `src/web/lib/chat/secretary-stream.ts` | `src/server/**`, `src/core/**` |
+
+CONTRATO REATTACH (backend ↔ front), definido pelo orquestrador:
+1. `GET /secretario/sessoes/:id/mensagens` continua devolvendo o ARRAY de mensagens, e ganha 2 cabeçalhos de resposta: `x-oc-log-entradas: <N>` (nº de entradas do log lidas) e `x-oc-em-execucao: 1|0` (há turno vivo agora para essa sessão).
+2. NOVO `GET /secretario/sessoes/:id/eventos?workspace=<ws>&desde=<N>` (SSE). Reenvia as entradas do log a partir do índice N e depois acompanha ao vivo as novas, até o turno terminar. Usa os MESMOS nomes de evento SSE que `POST /secretario/conversa/stream` (`inicio`, `delta`, `acao`, `aprovacao`, `fim`, `erro`), para o front reaproveitar o consumidor atual. Se não há turno vivo: envia `event: inativo` e fecha. Extra: evento `aprovacao_resolvida` `{id, status}` quando uma aprovação é decidida (o cartão atualiza ao vivo).
+3. A tradução AgentEvent→SSE passa a viver em UM lugar (`sse-eventos.ts`), usado por `stream.ts` e por `eventos.ts`: proibido copiar.
+4. O log (`EventLog`) ganha um emissor em memória por sessão (`assinar(ws, sessao, cb)` devolve função de cancelar) acionado a cada `anexar`; o endpoint usa isso, sem polling de arquivo.
+
+## Pedidos entre frentes
+- MOTOR → MOTOR-UI/front: o front ainda tem constantes de motor/modelo (`src/web/lib/chat/constants.ts`, `agents/constants.ts`, `EngineAuthModal.tsx`). Devem vir de `/api` do registry (manifest: `limits`, `modelPrefixes`, `instructionFiles`, `toolPolicyModes`) e não de listas fixas.
+- MOTOR → RUNTIME/stream.ts: novos eventos `artifact.produced` e `session.updated` existem em `AgentEvent`; stream.ts/hitl.ts podem repassá-los (hoje o log/redutor os ignora sem erro).
+- MOTOR → quem editar llm-client.ts: lista de provedores com `anthropic`/claude-3 (llm-client.ts:133-148) é catálogo de provedor, fora da minha frente.
+- MOTOR-CRED → engines: `credentials-store.ts` agora tem `registerEngineCredentialPolicy(engineId, {envVars, defaultProvider?})` (lê do manifest `credentialEnvVars`; fallback = tabela legada). Falta chamá-lo em `EngineRegistry.registerAdapter` a partir de `manifest.credentialEnvVars` e de um novo campo opcional `credentialDefaultProvider`. Cuidado: o manifest do claude-sdk declara ANTHROPIC_API_KEY, mas hoje o claude-sdk não tem entrada na tabela (usa login); registrar mudaria isso — omitir o campo no claude-sdk ou aceitar a mudança.
+- QUALIDADE → src/server/routes/flows.ts:213 (e :237): `POST /flows/:id/run` responde 200 com `exec_id` e dispara `flows.executar(...).catch(() => undefined)`. Com a trava por flow (flow-store.ts:779-798), o 2º disparo simultâneo do mesmo flow lança FlowError "já está em execução" que é engolido: o cliente recebe um `exec_id` de uma execução que nunca existe. Correção proposta: antes do 200, checar a trava (ou fazer `executar` expor um `adquirirTrava()` síncrono) e responder 409 com a mensagem do FlowError.
+- QUALIDADE → src/server/routes/secretario/stream.ts:276: só motores ≠ opencode passam pelo runtime conversacional (cartão `aprovacao`); o opencode segue no caminho legado, então o E2E do cartão Aprovar não roda com o `opencode` falso do repo. O fake do Codex (tests/fixtures/fake-codex-app-server.ts) é launcher em processo, não binário stdio: um E2E exigiria um wrapper `codex` no PATH do webServer + auth fake. Não feito.
+- QUALIDADE: o resolvedor de binário dá precedência ao PATH sobre `<home>/.opencorp/bin` (Precedência D3). Testes que instalam runner fake em `<home>/.opencorp/bin` precisam também pôr esse diretório no PATH do processo (corrigido nos specs sessao-continuar-duplicar e isolamento-workspaces).
+- QUALIDADE → src/web/features/chat/components/SecretarioChat.tsx:~525-590: os tool UIs (`ask_question`, `question`…) são arrow functions criadas inline no `components={{ tools: … }}`; cada re-render do SecretarioChat cria um tipo de componente novo e REMONTA o PerguntaCard, perdendo `indice/respostas/livre/textoLivre` (useState local). E2E `secretario-custom-persistence.spec.ts:94` falha (card volta a "Pergunta 1 de 2 · 0/2" após ~2,5 s) quando rodado depois de outros specs de chat (reproduz com `chat composer historico ia-perguntas ... secretario-custom`; sozinho passa). Correção: declarar os tool UIs fora do render (ou `useMemo`/`useCallback` estáveis) e passar o que precisam (`respondida`, `runtime`) por contexto/ref.
+- QUALIDADE → src/core/engines/credentials-bridge.ts:245: `terminalCommand: "claude login"`, enquanto o resto do código/UI usa `claude auth login` (credentials-bridge.ts:109,173,316; modal antigo). Padronizar para `claude auth login`; o E2E motores-multi-agent agora aceita os dois.
+- REATTACH-FRONT → REATTACH-BACK/dono do servidor: não existe endpoint para cancelar um turno reassinado (o 'parar' normal cancela porque fechar a conexão do POST aborta o turno). Pedido: `POST /secretario/sessoes/:id/cancelar?workspace=` que aborte o turno vivo. Até lá o botão parar (ChatComposer.tsx, fora da minha frente) continua visível, mas o `onCancel` do runtime é inerte enquanto reassina; ideal: ChatComposer desabilitar o Cancel nesse estado.
+
+## Resultado QUALIDADE (2026-10-20)
+E2E isolado (porta 4399, OPENCORP_HOME=/tmp/opencorp-e2e, HOME=/tmp/e2e-home; sem tocar no daemon 4100): 356 testes. Última rodada completa: 344 passaram, 11 skipped (harness sem binário), 1 falhou (secretario-custom-persistence, bug de src acima). Rodada 1 (dist velho): 9 falhas; rodada 2 (dist novo): 7. Corrigidos nos TESTES: sessao-continuar-duplicar e isolamento-workspaces (PATH real vencia o runner fake), ativos/ativos-simple (URL agora /w/<ws>/ativos), docs (permissão de clipboard), operacao-continua (trava por flow), approvals (fila compartilhada), motores-multi-agent (comando de login). runs-robustos: corrida do teste (hitl_pendente escrito antes do run gravar pid/status em meta.json e sobrescrito); 12/15 falhavam sob carga (24 CPUs ocupadas), 15/15 passam depois do ajuste. E2E do cartão Aprovar do Secretário NÃO feito (ver stream.ts:276).
+- QUALIDADE → src/server/routes/secretario/stream.ts:281 (`const sId = corpo.sessao_id || url.searchParams.get("sessao") || undefined;` no caminho do runtime): o front manda o id de rascunho `sessao-<ts>` e o servidor o repassa a `runtime.create({conversationId})`, que o trata como sessão nativa a retomar. Consequência: o log/histórico fica sob `sessao-<ts>`, o front nunca promove a aba (o id não muda) e `sessaoTemHistorico()` (history-client.ts:6) rejeita ids `sessao-`/`draft-`; ao sair da tela e voltar o chat aparece VAZIO e o cartão de aprovação pendente some (com motor real, `session.resume` de um id inexistente tende a falhar). Correção: ignorar ids `sessao-`/`draft-` aqui (`const sId = sessaoTemHistorico(bruto) ? bruto : undefined`) para o runtime criar a conversa e devolver o id nativo no evento `inicio`. Validado: com esse único ajuste num dist copiado (/tmp/ocfork), `tests/e2e/secretario-aprovacao.spec.ts` passa 16/16 (--repeat-each=8). Sem o ajuste o spec falha em `sairEVoltar`.
+- QUALIDADE: E2E do Secretário com motor conversacional usa `tests/e2e/fixtures/bin/openheinerss` (wrapper do fake JSON-RPC dos testes unitários) apontado por `OPENHEINERSS_BIN` no webServer do playwright.config.ts. Observado (comportamento, não bug): a resposta final após aprovação só aparece pelo histórico (F5), pois a conexão SSE original foi fechada ao sair da tela.
+

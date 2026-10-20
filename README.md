@@ -1,3 +1,29 @@
+> [!WARNING]
+> ## Repositório temporário
+>
+> **`crom-opencorp-claude` é um fork de trabalho, temporário.** Ele existe só para experimentar e consolidar o uso do
+> **Claude Agent SDK** como motor do OpenCorp. **Não é o projeto de referência.**
+>
+> ### 👉 O repositório original e oficial é **[crom-org/opencorp](https://github.com/crom-org/opencorp)**
+>
+> Use o original para instalar, acompanhar, reportar problemas ou contribuir. O que for aprendido aqui será levado de
+> volta ao original, que continua independente de motor. Este fork não tem garantia de estabilidade, de compatibilidade
+> nem de manutenção, e pode ser arquivado ou apagado quando cumprir o objetivo.
+
+## O que este fork faz de diferente
+
+- **Motor `claude-sdk`** (login do Claude Code, sem chave de API) para agentes, fluxos e Secretário.
+- **Secretário web com histórico confiável**: cada conversa é gravada como um log de eventos no servidor, e o histórico
+  e as aprovações pendentes sobrevivem a sair da tela e a recarregar (Assistant UI com runtime alimentado pelo servidor).
+- **Núcleo agnóstico de motor e de domínio**: timeouts e regras vêm do *manifest* do motor, `GET /api/motores` expõe esse
+  manifest, e packs de domínio (como YouTube Shorts) são dados, não código do núcleo.
+- **Motor opcional `openheinerss`** (ponte JSON-RPC local) registrado ao lado dos demais.
+- Detalhes, decisões e o que falta: [`LEIAME.md`](LEIAME.md), [`CLAUDE.md`](CLAUDE.md) e [`docs/CHECKLIST.md`](docs/CHECKLIST.md).
+
+Licença: MIT, a mesma do projeto original.
+
+---
+
 <div align="center">
   <img src="docs/assets/logo.png" alt="OpenCorp Logo" width="180" />
   <h1>OpenCorp</h1>
