@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { useOpenCorp } from "../../providers/OpenCorpProvider.js";
+import { useNomeWorkspace } from "./useNomeWorkspace.js";
 import { workspacePath } from "../../lib/routes.js";
 
 interface ItemNav {
@@ -76,6 +77,7 @@ export interface SidebarProps {
 
 export const Sidebar: FC<SidebarProps> = ({ mobileAberta, aoFecharMobile }) => {
   const { workspaceId } = useOpenCorp();
+  const nomeWorkspace = useNomeWorkspace();
   // Dentro de um workspace os links apontam direto para /w/<ws>/<módulo>
   // (sem passar pelo redirecionamento legado), e o item ativo fica destacado.
   const destino = (to: string): string => {
@@ -224,12 +226,12 @@ export const Sidebar: FC<SidebarProps> = ({ mobileAberta, aoFecharMobile }) => {
         >
           <div className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>{workspaceId || "daemon"}</span>
+            <span>{nomeWorkspace || "daemon"}</span>
           </div>
           <Activity size={12} className="text-zinc-600" />
         </div>
         {recolhida && (
-          <div className="hidden md:flex justify-center" title={`Workspace: ${workspaceId}`}>
+          <div className="hidden md:flex justify-center" title={`Workspace: ${nomeWorkspace}`}>
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
           </div>
         )}

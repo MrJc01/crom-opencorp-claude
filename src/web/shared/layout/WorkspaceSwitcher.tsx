@@ -19,6 +19,7 @@ import {
 import type { WorkspaceResumo } from "@opencorp/sdk";
 import { useOpenCorp } from "../../providers/OpenCorpProvider.js";
 import { workspacePath } from "../../lib/routes.js";
+import { useNomeWorkspace } from "./useNomeWorkspace.js";
 import { NovoWorkspaceModal } from "../../features/home/components/NovoWorkspaceModal.js";
 
 /**
@@ -69,6 +70,7 @@ function extrairSearchParams(search: string): Record<string, string> {
 
 export const WorkspaceSwitcher: FC = () => {
   const { workspaceId, client, tratarErro } = useOpenCorp();
+  const nomeWorkspace = useNomeWorkspace();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -185,7 +187,7 @@ export const WorkspaceSwitcher: FC = () => {
           className="text-emerald-400 group-hover:scale-110 transition-transform shrink-0"
         />
         <span className="font-semibold text-zinc-200 max-w-[140px] sm:max-w-[200px] truncate">
-          {workspaceId || "Selecionar workspace"}
+          {nomeWorkspace || "Selecionar workspace"}
         </span>
         <ChevronDown
           size={12}
@@ -263,7 +265,7 @@ export const WorkspaceSwitcher: FC = () => {
                         }
                       />
                       <div className="min-w-0">
-                        <span className="truncate block font-semibold">{ws.id}</span>
+                        <span className="truncate block font-semibold">{typeof ws.nome === "string" && ws.nome ? ws.nome : ws.id}</span>
                         {ws.path && (
                           <span className="text-[10px] text-zinc-500 truncate block font-sans">
                             {ws.path}

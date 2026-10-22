@@ -19,6 +19,8 @@ export interface RegistroWorkspace {
   criado_em: string;
   /** Caminho absoluto customizado — se omitido, usa <raiz>/<id> */
   path?: string;
+  /** Nome de exibição na interface (o id continua sendo a chave de pastas, fluxos e scripts) */
+  nome?: string;
 }
 
 export interface EstadoWorkspaces {
@@ -51,7 +53,7 @@ const estadoSchema = z.union([
     version: z.number().int().default(1),
     ativo: z.string().nullable().default(null),
     workspaces: z
-      .array(z.object({ id: z.string().min(1), criado_em: z.string().min(1), path: z.string().optional() }))
+      .array(z.object({ id: z.string().min(1), criado_em: z.string().min(1), path: z.string().optional(), nome: z.string().optional() }))
       .default([]),
   }),
   z.array(
@@ -71,6 +73,7 @@ const estadoSchema = z.union([
         id: a.id,
         criado_em: a.criado_em ?? new Date().toISOString(),
         path: a.path,
+        nome: a.nome,
       })),
     };
   }),

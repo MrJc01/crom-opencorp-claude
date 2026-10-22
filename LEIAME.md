@@ -85,6 +85,18 @@ Estado: `node scripts/estado_pauta.mjs --resumo` no workspace; boletim: `node sc
 
 ## Registro de pedidos (mais recente primeiro)
 
+- 2026-10-21 — interface mostrava "yt-factory-01": workspaces.json ganhou o campo opcional `nome` ("Bit Proibido", "Fundão"); o id não muda (é chave de pastas/fluxos).
+  Mostrado no seletor do topo e no rodapé do menu (`useNomeWorkspace`); outras telas ainda mostram o id. Teste novo em `tests/workspace-manager.test.ts`.
+
+- 2026-10-21 — divulgação Crom em TODO vídeo dos canais: popup de canto no meio + vinheta + propaganda Crom TV no fim (feito, fora deste repo).
+  crom.run = comunidade; tv.crom.run = projeto Crom TV; YouTube @crom_run; cruzada Bit Proibido ↔ Fundão. 15 vinhetas, 5 popups,
+  tudo em `~/.opencorp/promo-crom-run` (`gerar.py`, `aplicar.py`, `promo.mjs`) e cópia organizada em `~/Vídeos/Crom Promo`.
+  Gancho: `remotion-shorts/renderizar.mjs` (shorts e boletim de ambos) e `workspaces/fundao/scripts/produzir_longo.mjs`; falha nunca derruba
+  a esteira; `OPENCORP_SEM_PROMO=1` desliga. Vale só para renders novos. Vídeo longo recebe vários popups (1 a cada ~2 min, 2 a 5, trocando de assunto; fica na faixa do cabeçalho); Short recebe 1.
+  Atraso do boletim do bitproibido (2026-10-21, corrigido em `yt-factory-01`): Shorts não usam mais o slot 13:00 (reservado ao boletim, que tenta 13:00, 13:30, 12:30);
+  `agendar_boletim_10h.py` usa o próximo slot livre em vez de "amanhã 13:00"; flow `yt-boletim-upload-10h` roda `10,40 10-14 * * *` (timeout 15 min);
+  `yt-boletim-diario` passa a `17 7-12 * * *`. Pendente: reprovação do revisor por "fato sem respaldo" ainda só refaz na hora seguinte; render do Fundão na mesma janela.
+
 - 2026-10-20 — "fazer tudo": Secretário web no Assistant UI (histórico, aprovações, abas), núcleo agnóstico de motor e de
   domínio, adaptador openheinerss, READMEs dos dois canais, checklist. Feito e testado no navegador; detalhes e o que
   falta em `docs/CHECKLIST.md` (pendente: causa do servidor E2E órfão a 100% de CPU, E2E do cartão de aprovação).

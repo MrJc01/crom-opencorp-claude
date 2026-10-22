@@ -10,6 +10,8 @@ import type { HttpClient, RequestOptions } from "../http-client.js";
 
 export interface WorkspaceResumo {
   id: string;
+  /** Nome de exibição; sem ele a interface mostra o id. */
+  nome?: string;
   path: string;
   ativo?: boolean;
   criado_em?: string;

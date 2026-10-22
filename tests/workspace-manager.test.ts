@@ -67,6 +67,19 @@ describe("WorkspaceManager — criar", () => {
     expect(atual?.id).toBe("primeiro");
   });
 
+  it("mantém o nome de exibição de workspaces.json ao listar", async () => {
+    const home = await tmpDir();
+    const m = managerEm(home);
+    await m.criar("canal-um");
+    const arq = join(home, ".opencorp", "workspaces.json");
+    const estado = JSON.parse(await readFile(arq, "utf8"));
+    estado.workspaces[0].nome = "Canal Um";
+    await writeFile(arq, JSON.stringify(estado));
+    const lista = await managerEm(home).listar();
+    expect(lista[0]?.id).toBe("canal-um");
+    expect(lista[0]?.nome).toBe("Canal Um");
+  });
+
   it("rejeita id fora do kebab-case", async () => {
     const home = await tmpDir();
     const m = managerEm(home);
