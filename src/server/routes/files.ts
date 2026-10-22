@@ -183,15 +183,16 @@ const ARVORE_IGNORAR_DIRS = new Set([
 ]);
 const ARVORE_CAP_NOS = 15000;
 
-async function construirArvore(raiz: string, profundidadeMax: number): Promise<{ arvore: NoArvore[]; truncado: boolean }> {
+/**
+ * Árvore do workspace em largura (nível por nível): o teto de nós só corta os níveis mais fundos, nunca uma pasta
+ * da raiz. Antes a busca era em profundidade e `.opencorp` (ordem alfabética) gastava os 15 mil nós, deixando
+ * exports, registries, scripts etc. vazias no IDE.
+ */
+export async function construirArvore(raiz: string, profundidadeMax: number, cap = ARVORE_CAP_NOS): Promise<{ arvore: NoArvore[]; truncado: boolean }> {
   let total = 0;
   let truncado = false;
-  async function listar(dirAbs: string, rel: string, profundidade: number): Promise<NoArvore[]> {
-    if (profundidade > 1 && total >= ARVORE_CAP_NOS) {
-      truncado = true;
-      return [];
-    }
-    if (profundidade > profundidadeMax) return [];
+
+  async function lerDir(dirAbs: string, rel: string): Promise<NoArvore[]> {
     let entradas: import("node:fs").Dirent[] = [];
     try {
       entradas = (await readdir(dirAbs, { withFileTypes: true })).filter((e) => {
@@ -208,45 +209,39 @@ async function construirArvore(raiz: string, profundidadeMax: number): Promise<{
       if (!a.isDirectory() && b.isDirectory()) return 1;
       return a.name.localeCompare(b.name);
     });
-
-    const resultado: NoArvore[] = [];
+    const nos: NoArvore[] = [];
     for (const e of entradas) {
-      if (profundidade > 1 && total >= ARVORE_CAP_NOS) {
-        truncado = true;
-        break;
-      }
-      const caminhoItemRel = rel ? `${rel}/${e.name}` : e.name;
-      const caminhoItemAbs = join(dirAbs, e.name);
-
+      const caminho = rel ? `${rel}/${e.name}` : e.name;
       if (e.isDirectory()) {
-        if (ARVORE_IGNORAR_DIRS.has(e.name)) continue;
-        total++;
-        const filhos = await listar(caminhoItemAbs, caminhoItemRel, profundidade + 1);
-        resultado.push({
-          nome: e.name,
-          caminho: caminhoItemRel,
-          tipo: "dir",
-          filhos,
-        });
+        nos.push({ nome: e.name, caminho, tipo: "dir", filhos: [] });
       } else {
-        total++;
         let tamanho: number | undefined;
         try {
-          const st = await stat(caminhoItemAbs);
-          tamanho = st.size;
+          tamanho = (await stat(join(dirAbs, e.name))).size;
         } catch {}
-        resultado.push({
-          nome: e.name,
-          caminho: caminhoItemRel,
-          tipo: "arquivo",
-          tamanho,
-        });
+        nos.push({ nome: e.name, caminho, tipo: "arquivo", tamanho });
       }
     }
-    return resultado;
+    return nos;
   }
 
-  const arvore = await listar(raiz, "", 1);
+  const arvore = await lerDir(raiz, "");
+  total += arvore.length;
+  let nivel = arvore.filter((n) => n.tipo === "dir");
+  for (let profundidade = 2; profundidade <= profundidadeMax && nivel.length > 0; profundidade++) {
+    // O teto vale entre níveis: um nível é sempre listado por inteiro, assim nenhuma pasta irmã fica vazia.
+    if (total >= cap) {
+      truncado = true;
+      break;
+    }
+    const proximo: NoArvore[] = [];
+    for (const dir of nivel) {
+      dir.filhos = await lerDir(join(raiz, dir.caminho), dir.caminho);
+      total += dir.filhos.length;
+      for (const f of dir.filhos) if (f.tipo === "dir") proximo.push(f);
+    }
+    nivel = proximo;
+  }
   return { arvore, truncado };
 }
 

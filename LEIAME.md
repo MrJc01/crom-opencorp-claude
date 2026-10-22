@@ -85,6 +85,9 @@ Estado: `node scripts/estado_pauta.mjs --resumo` no workspace; boletim: `node sc
 
 ## Registro de pedidos (mais recente primeiro)
 
+- 2026-10-21 — pastas do Workspace IDE vazias: o teto de 15 mil nós da árvore era gasto por `.opencorp` (busca em profundidade) e as demais pastas vinham sem filhos.
+  `construirArvore` (`src/server/routes/files.ts`) agora lista nível por nível; o teto só corta níveis fundos. Teste: `tests/files-arvore.test.ts`. Corrigido, sem commit.
+
 - 2026-10-21 — interface mostrava "yt-factory-01": workspaces.json ganhou o campo opcional `nome` ("Bit Proibido", "Fundão"); o id não muda (é chave de pastas/fluxos).
   Mostrado no seletor do topo e no rodapé do menu (`useNomeWorkspace`); outras telas ainda mostram o id. Teste novo em `tests/workspace-manager.test.ts`.
 
