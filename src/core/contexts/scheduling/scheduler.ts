@@ -284,6 +284,17 @@ export class Scheduler {
     return Array.from(mapa.values());
   }
 
+  /** Ids dos workspaces pausados (campo `pausado` de workspaces.json). */
+  private async workspacesPausados(): Promise<Set<string>> {
+    try {
+      const { WorkspaceManager } = await import("../workspace/workspace-manager.js");
+      const wm = new WorkspaceManager({ homeDir: this.homeDir });
+      return new Set((await wm.listar()).filter((w) => w.pausado).map((w) => w.id));
+    } catch {
+      return new Set();
+    }
+  }
+
   private async resolverWorkspacePath(wsId?: string): Promise<{ id: string; path: string }> {
     const { join } = await import("node:path");
     const { mkdir } = await import("node:fs/promises");
@@ -754,7 +765,10 @@ export class Scheduler {
       const catchUp = settings.scheduler?.catch_up === true;
       const catchUpMaxMin = typeof settings.scheduler?.catch_up_max_min === "number" ? settings.scheduler.catch_up_max_min : 60;
 
+      const pausados = await this.workspacesPausados();
+
       for (const ws of workspaces) {
+        if (pausados.has(ws.id)) continue;
         let flowsList: Awaited<ReturnType<typeof flowStore.listar>>;
         try {
           flowsList = await flowStore.listar(ws.path);

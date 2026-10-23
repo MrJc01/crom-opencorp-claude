@@ -85,6 +85,13 @@ Estado: `node scripts/estado_pauta.mjs --resumo` no workspace; boletim: `node sc
 
 ## Registro de pedidos (mais recente primeiro)
 
+- 2026-10-23 — PC travando: (1) render Remotion agora passa por `scripts/rodar-pesado.sh` (um render por vez no PC todo, 6 GB de teto,
+  temporários em /dev/shm, espera até 1 h na fila); concorrência do boletim 8 → 3 (`~/.opencorp/remotion-shorts/renderizar.mjs`, fora deste repo).
+  O render do longo do Fundão (`produzir_longo.mjs`, Playwright) NÃO passa pela fila ainda.
+  (2) Pausar workspace: campo `pausado` em workspaces.json; o scheduler pula todos os fluxos dele (fluxos seguem ligados; execução manual continua).
+  UI: menu do seletor de workspace → "Pausar este workspace"; API `POST /workspaces/:id/pausa {pausado}`; SDK `workspaces.definirPausado`.
+  Daemon estava desligado pelo dono; religar só quando ele pedir (`systemctl --user start opencorp-daemon`; precisa reiniciar para pegar o build).
+
 - 2026-10-21 — pastas do Workspace IDE vazias: o teto de 15 mil nós da árvore era gasto por `.opencorp` (busca em profundidade) e as demais pastas vinham sem filhos.
   `construirArvore` (`src/server/routes/files.ts`) agora lista nível por nível; o teto só corta níveis fundos. Teste: `tests/files-arvore.test.ts`. Corrigido, sem commit.
 

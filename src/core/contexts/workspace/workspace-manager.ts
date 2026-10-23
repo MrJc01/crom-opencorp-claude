@@ -21,6 +21,8 @@ export interface RegistroWorkspace {
   path?: string;
   /** Nome de exibição na interface (o id continua sendo a chave de pastas, fluxos e scripts) */
   nome?: string;
+  /** Pausa: o agendador não dispara nenhum fluxo deste workspace, mesmo com os fluxos ligados. */
+  pausado?: boolean;
 }
 
 export interface EstadoWorkspaces {
@@ -53,7 +55,7 @@ const estadoSchema = z.union([
     version: z.number().int().default(1),
     ativo: z.string().nullable().default(null),
     workspaces: z
-      .array(z.object({ id: z.string().min(1), criado_em: z.string().min(1), path: z.string().optional(), nome: z.string().optional() }))
+      .array(z.object({ id: z.string().min(1), criado_em: z.string().min(1), path: z.string().optional(), nome: z.string().optional(), pausado: z.boolean().optional() }))
       .default([]),
   }),
   z.array(
@@ -63,6 +65,7 @@ const estadoSchema = z.union([
       path: z.string().optional(),
       padrao: z.boolean().optional(),
       nome: z.string().optional(),
+      pausado: z.boolean().optional(),
     })
   ).transform((arr) => {
     const padrao = arr.find((a) => a.padrao)?.id ?? arr[0]?.id ?? null;
@@ -74,6 +77,7 @@ const estadoSchema = z.union([
         criado_em: a.criado_em ?? new Date().toISOString(),
         path: a.path,
         nome: a.nome,
+        pausado: a.pausado,
       })),
     };
   }),
@@ -486,6 +490,19 @@ export class WorkspaceManager {
     }
     await this.gravarEstado({ ...estado, ativo: id });
     return this.infoDe({ ...estado, ativo: id }, registro, path);
+  }
+
+  /** Liga/desliga a pausa do workspace (campo `pausado` de workspaces.json); não mexe nos fluxos. */
+  async definirPausado(id: string, pausado: boolean): Promise<InfoWorkspace> {
+    const estado = await this.lerEstado();
+    const registro = estado.workspaces.find((w) => w.id === id);
+    if (!registro) {
+      throw new WorkspaceError(`workspace "${id}" não encontrado — veja "opencorp workspace list"`);
+    }
+    if (pausado) registro.pausado = true;
+    else delete registro.pausado;
+    await this.gravarEstado(estado);
+    return this.infoDe(estado, registro, this.pathDe(await this.raiz(), registro));
   }
 
   async listarAgentes(id?: string): Promise<AgenteResumo[]> {

@@ -130,6 +130,20 @@ export async function handleWorkspaceRoutes(ctx: RouteContext): Promise<boolean>
     return true;
   }
 
+  // ── 5b. POST /workspaces/:id/pausa — pausa/retoma o workspace (agendador não dispara fluxos) ──
+  const mPausa = /^\/workspaces\/([^/]+)\/pausa$/.exec(rota);
+  if (mPausa && req.method === "POST") {
+    const id = decodeURIComponent(mPausa[1]!);
+    const corpo = (await lerCorpo(req)) as { pausado?: boolean };
+    if (typeof corpo.pausado !== "boolean") {
+      enviar(res, 400, { erro: "campo 'pausado' (booleano) é obrigatório" });
+      return true;
+    }
+    const info = await workspaces.definirPausado(id, corpo.pausado);
+    enviar(res, 200, { ok: true, id: info.id, pausado: info.pausado === true });
+    return true;
+  }
+
   // ── 6. Rotas por ID: GET /workspaces/:id e DELETE /workspaces/:id ──
   const mWs = /^\/workspaces\/([^/]+)$/.exec(rota);
   if (mWs) {

@@ -15,6 +15,8 @@ import {
   Check,
   LoaderCircle,
   X,
+  Pause,
+  Play,
 } from "lucide-react";
 import type { WorkspaceResumo } from "@opencorp/sdk";
 import { useOpenCorp } from "../../providers/OpenCorpProvider.js";
@@ -153,6 +155,18 @@ export const WorkspaceSwitcher: FC = () => {
     });
   }, [busca, workspacesOrdenados]);
 
+  const atualPausado = workspaces.find((w) => w.id === workspaceId)?.pausado === true;
+
+  const alternarPausa = async () => {
+    if (!workspaceId) return;
+    try {
+      await client.workspaces.definirPausado(workspaceId, !atualPausado);
+      await carregarWorkspaces();
+    } catch (erro: unknown) {
+      tratarErro(erro, "Falha ao pausar/retomar o workspace");
+    }
+  };
+
   const alternarAberto = () => {
     const proximo = !aberto;
     setAberto(proximo);
@@ -189,6 +203,11 @@ export const WorkspaceSwitcher: FC = () => {
         <span className="font-semibold text-zinc-200 max-w-[140px] sm:max-w-[200px] truncate">
           {nomeWorkspace || "Selecionar workspace"}
         </span>
+        {atualPausado && (
+          <span className="text-[10px] px-1.5 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40 shrink-0">
+            pausado
+          </span>
+        )}
         <ChevronDown
           size={12}
           className={`text-zinc-500 transition-transform duration-200 shrink-0 ${
@@ -273,6 +292,9 @@ export const WorkspaceSwitcher: FC = () => {
                         )}
                       </div>
                     </div>
+                    {ws.pausado === true && (
+                      <Pause size={12} className="text-amber-400 shrink-0" aria-label="pausado" />
+                    )}
                     {ativo && (
                       <Check size={14} className="text-emerald-400 shrink-0" />
                     )}
@@ -283,7 +305,22 @@ export const WorkspaceSwitcher: FC = () => {
           </div>
 
           {/* Divisor e Botão Fixo no Rodapé: + Novo Workspace */}
-          <div className="border-t border-zinc-800 p-1.5 bg-zinc-950/50">
+          <div className="border-t border-zinc-800 p-1.5 bg-zinc-950/50 space-y-1">
+            {workspaceId && (
+              <button
+                type="button"
+                onClick={() => void alternarPausa()}
+                title="Pausado: nenhum fluxo deste workspace dispara, mesmo com os fluxos ligados"
+                className={`w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-transparent transition-all cursor-pointer ${
+                  atualPausado
+                    ? "text-emerald-400 hover:bg-emerald-950/40 hover:border-emerald-800/40"
+                    : "text-amber-400 hover:bg-amber-950/40 hover:border-amber-800/40"
+                }`}
+              >
+                {atualPausado ? <Play size={13} /> : <Pause size={13} />}
+                <span>{atualPausado ? "Retomar este workspace" : "Pausar este workspace"}</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {

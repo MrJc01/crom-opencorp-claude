@@ -45,6 +45,32 @@ describe("Scheduler — validação de args", () => {
   });
 });
 
+describe("Scheduler — workspace pausado", () => {
+  it("não dispara fluxos de workspace pausado e volta ao retomar", async () => {
+    const { WorkspaceManager } = await import("../src/core/contexts/workspace/workspace-manager.js");
+    const wm = new WorkspaceManager({ homeDir: home });
+    await wm.criar("canal-pausa");
+    const executados: string[] = [];
+    const s = new Scheduler({
+      homeDir: home,
+      agora: () => new Date(relogio),
+      executar: async (job) => {
+        executados.push(job.id);
+        return "ok";
+      },
+    });
+    await s.criar({ nome: "p1", workspace: "canal-pausa", agenda: { tipo: "intervalo_min", valor: 1 }, args: ["task", "list"] });
+    relogio += 2 * 60_000;
+    await wm.definirPausado("canal-pausa", true);
+    expect((await wm.listar())[0]?.pausado).toBe(true);
+    expect((await s.tick()).executados.length).toBe(0);
+    await wm.definirPausado("canal-pausa", false);
+    expect((await wm.listar())[0]?.pausado).toBeUndefined();
+    expect((await s.tick()).executados.length).toBe(1);
+    expect(executados.length).toBe(1);
+  });
+});
+
 describe("Scheduler — claim atômico e job_runs", () => {
   it("tick executa o job vencido e registra run", async () => {
     const executados: string[] = [];

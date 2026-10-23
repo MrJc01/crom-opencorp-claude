@@ -12,6 +12,8 @@ export interface WorkspaceResumo {
   id: string;
   /** Nome de exibição; sem ele a interface mostra o id. */
   nome?: string;
+  /** Workspace em pausa: o agendador não dispara seus fluxos. */
+  pausado?: boolean;
   path: string;
   ativo?: boolean;
   criado_em?: string;
@@ -52,6 +54,11 @@ export class WorkspacesResource {
   /** POST /workspaces/ativo — define o workspace ativo. */
   async definirAtivo(id: string, opts?: RequestOptions): Promise<{ ok: boolean; id: string }> {
     return this.http.post<{ ok: boolean; id: string }>("/workspaces/ativo", { id }, opts);
+  }
+
+  /** POST /workspaces/:id/pausa — pausa ou retoma o workspace (fluxos continuam ligados, mas não disparam). */
+  async definirPausado(id: string, pausado: boolean, opts?: RequestOptions): Promise<{ ok: boolean; id: string; pausado: boolean }> {
+    return this.http.post<{ ok: boolean; id: string; pausado: boolean }>(`/workspaces/${encodeURIComponent(id)}/pausa`, { pausado }, opts);
   }
 
   /** POST /workspaces — cria um novo workspace. */
