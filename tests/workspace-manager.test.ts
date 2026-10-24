@@ -258,3 +258,28 @@ describe("opencorpHome", () => {
     }
   });
 });
+
+describe("WorkspaceManager — pausa registra o horário", () => {
+  it("grava pausado_em ao pausar, mantém o instante ao repausar e apaga ao retomar", async () => {
+    const home = await tmpDir();
+    const m = managerEm(home);
+    await m.criar("canal-hora");
+
+    const antes = Date.now();
+    const pausado = await m.definirPausado("canal-hora", true);
+    expect(pausado.pausado).toBe(true);
+    expect(pausado.pausado_em).toBeTruthy();
+    expect(new Date(pausado.pausado_em!).getTime()).toBeGreaterThanOrEqual(antes);
+
+    const repausado = await m.definirPausado("canal-hora", true);
+    expect(repausado.pausado_em).toBe(pausado.pausado_em);
+
+    // sobrevive a reler o workspaces.json do disco
+    const relido = (await managerEm(home).listar()).find((w) => w.id === "canal-hora");
+    expect(relido?.pausado_em).toBe(pausado.pausado_em);
+
+    const retomado = await m.definirPausado("canal-hora", false);
+    expect(retomado.pausado).toBeUndefined();
+    expect(retomado.pausado_em).toBeUndefined();
+  });
+});

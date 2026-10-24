@@ -14,6 +14,8 @@ export interface WorkspaceResumo {
   nome?: string;
   /** Workspace em pausa: o agendador não dispara seus fluxos. */
   pausado?: boolean;
+  /** ISO de quando a pausa começou (presente só enquanto pausado). */
+  pausado_em?: string;
   path: string;
   ativo?: boolean;
   criado_em?: string;

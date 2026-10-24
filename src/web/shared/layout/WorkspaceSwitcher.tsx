@@ -21,6 +21,7 @@ import {
 import type { WorkspaceResumo } from "@opencorp/sdk";
 import { useOpenCorp } from "../../providers/OpenCorpProvider.js";
 import { workspacePath } from "../../lib/routes.js";
+import { formatarDataHoraCompleta, tempoDesde } from "../../lib/format.js";
 import { useNomeWorkspace } from "./useNomeWorkspace.js";
 import { NovoWorkspaceModal } from "../../features/home/components/NovoWorkspaceModal.js";
 
@@ -156,6 +157,7 @@ export const WorkspaceSwitcher: FC = () => {
   }, [busca, workspacesOrdenados]);
 
   const atualPausado = workspaces.find((w) => w.id === workspaceId)?.pausado === true;
+  const pausadoEm = workspaces.find((w) => w.id === workspaceId)?.pausado_em;
 
   const alternarPausa = async () => {
     if (!workspaceId) return;
@@ -204,8 +206,15 @@ export const WorkspaceSwitcher: FC = () => {
           {nomeWorkspace || "Selecionar workspace"}
         </span>
         {atualPausado && (
-          <span className="text-[10px] px-1.5 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40 shrink-0">
-            pausado
+          <span
+            title={
+              pausadoEm
+                ? `Pausado em ${formatarDataHoraCompleta(pausadoEm)}`
+                : "Pausado (horário não registrado)"
+            }
+            className="text-[10px] px-1.5 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40 shrink-0"
+          >
+            {pausadoEm ? `pausado ${tempoDesde(pausadoEm)}` : "pausado"}
           </span>
         )}
         <ChevronDown

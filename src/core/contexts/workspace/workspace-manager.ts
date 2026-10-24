@@ -23,6 +23,8 @@ export interface RegistroWorkspace {
   nome?: string;
   /** Pausa: o agendador não dispara nenhum fluxo deste workspace, mesmo com os fluxos ligados. */
   pausado?: boolean;
+  /** ISO de quando a pausa foi ligada (some ao retomar). */
+  pausado_em?: string;
 }
 
 export interface EstadoWorkspaces {
@@ -55,7 +57,7 @@ const estadoSchema = z.union([
     version: z.number().int().default(1),
     ativo: z.string().nullable().default(null),
     workspaces: z
-      .array(z.object({ id: z.string().min(1), criado_em: z.string().min(1), path: z.string().optional(), nome: z.string().optional(), pausado: z.boolean().optional() }))
+      .array(z.object({ id: z.string().min(1), criado_em: z.string().min(1), path: z.string().optional(), nome: z.string().optional(), pausado: z.boolean().optional(), pausado_em: z.string().optional() }))
       .default([]),
   }),
   z.array(
@@ -66,6 +68,7 @@ const estadoSchema = z.union([
       padrao: z.boolean().optional(),
       nome: z.string().optional(),
       pausado: z.boolean().optional(),
+      pausado_em: z.string().optional(),
     })
   ).transform((arr) => {
     const padrao = arr.find((a) => a.padrao)?.id ?? arr[0]?.id ?? null;
@@ -78,6 +81,7 @@ const estadoSchema = z.union([
         path: a.path,
         nome: a.nome,
         pausado: a.pausado,
+        pausado_em: a.pausado_em,
       })),
     };
   }),
@@ -499,8 +503,14 @@ export class WorkspaceManager {
     if (!registro) {
       throw new WorkspaceError(`workspace "${id}" não encontrado — veja "opencorp workspace list"`);
     }
-    if (pausado) registro.pausado = true;
-    else delete registro.pausado;
+    if (pausado) {
+      // Repausar não zera o relógio: guarda o instante em que a pausa começou.
+      registro.pausado_em = registro.pausado === true && registro.pausado_em ? registro.pausado_em : new Date().toISOString();
+      registro.pausado = true;
+    } else {
+      delete registro.pausado;
+      delete registro.pausado_em;
+    }
     await this.gravarEstado(estado);
     return this.infoDe(estado, registro, this.pathDe(await this.raiz(), registro));
   }

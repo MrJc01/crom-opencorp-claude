@@ -1,4 +1,4 @@
-import React, { useState, useMemo, type FC } from "react";
+import React, { useState, useMemo, useEffect, type FC } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FolderPlus,
@@ -16,10 +16,15 @@ import {
   KeyRound,
   Shield,
   Layers,
+  Activity,
+  Pause,
+  Play,
 } from "lucide-react";
 import { NovoWorkspaceModal } from "./NovoWorkspaceModal.js";
 import type { WorkspaceResumo } from "@opencorp/sdk";
+import { useOpenCorp } from "../../../providers/OpenCorpProvider.js";
 import { workspacePath } from "../../../lib/routes.js";
+import { formatarDataHoraCompleta, tempoDesde } from "../../../lib/format.js";
 
 export interface HomeZeroStateProps {
   workspaces: WorkspaceResumo[];
@@ -40,9 +45,17 @@ export const HomeZeroState: FC<HomeZeroStateProps> = ({
   aoAtualizarWorkspaces,
 }) => {
   const navigate = useNavigate();
+  const { client, tratarErro } = useOpenCorp();
   const [modalNovoWs, setModalNovoWs] = useState(false);
   const [modalAjuda, setModalAjuda] = useState(false);
   const [busca, setBusca] = useState("");
+  // Relógio para o "pausado há X" andar sem recarregar a página.
+  const [agora, setAgora] = useState(() => Date.now());
+  useEffect(() => {
+    if (!workspaces.some((w) => w.pausado === true)) return;
+    const timer = setInterval(() => setAgora(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, [workspaces]);
 
   // Catálogo de pesquisa rápida
   const catalogoPesquisa = useMemo<ItemPesquisa[]>(
@@ -58,7 +71,7 @@ export const HomeZeroState: FC<HomeZeroStateProps> = ({
         tipo: "doc",
         titulo: "Manual do Secretário Executivo",
         subtitulo: "Governança, despacho autônomo e hot-swap",
-        link: "/secretario",
+        link: "/docs",
         icone: Bot,
       },
       {
@@ -116,6 +129,15 @@ export const HomeZeroState: FC<HomeZeroStateProps> = ({
 
   const selecionarWorkspace = (id: string) => {
     navigate(workspacePath(id));
+  };
+
+  const alternarPausa = async (w: WorkspaceResumo) => {
+    try {
+      await client.workspaces.definirPausado(w.id, w.pausado !== true);
+      aoAtualizarWorkspaces?.();
+    } catch (erro: unknown) {
+      tratarErro(erro, "Falha ao pausar/retomar o workspace");
+    }
   };
 
   return (
@@ -212,7 +234,7 @@ export const HomeZeroState: FC<HomeZeroStateProps> = ({
           <div className="pt-4 border-t border-zinc-800/60 space-y-1">
             <button
               type="button"
-              onClick={() => navigate("/config")}
+              onClick={() => navigate("/config/global")}
               className="w-full flex items-center justify-start text-left gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-all cursor-pointer"
             >
               <Settings size={14} className="text-zinc-500 shrink-0" />
@@ -338,32 +360,58 @@ export const HomeZeroState: FC<HomeZeroStateProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-56 overflow-y-auto p-1 scrollbar-thin">
                   {workspaces.map((w) => (
-                    <button
-                      key={w.id}
-                      type="button"
-                      onClick={() => selecionarWorkspace(w.id)}
-                      className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:border-emerald-500/50 hover:bg-zinc-850 text-left transition-all cursor-pointer group shadow-xs"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-300 group-hover:border-emerald-500/50 group-hover:text-emerald-400 shrink-0 font-mono">
-                          {w.id.slice(0, 1).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <span className="text-xs font-semibold text-zinc-200 group-hover:text-emerald-300 truncate block font-mono">
-                            {w.id}
-                          </span>
-                          {w.path && (
-                            <span className="text-[10px] text-zinc-500 truncate block">
-                              {w.path}
+                    <div key={w.id} className="relative group">
+                      <button
+                        type="button"
+                        onClick={() => selecionarWorkspace(w.id)}
+                        className="w-full flex items-center justify-between p-3 pr-10 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:border-emerald-500/50 hover:bg-zinc-850 text-left transition-all cursor-pointer shadow-xs"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-300 group-hover:border-emerald-500/50 group-hover:text-emerald-400 shrink-0 font-mono">
+                            {w.id.slice(0, 1).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-xs font-semibold text-zinc-200 group-hover:text-emerald-300 truncate flex items-center gap-1.5 font-mono">
+                              {w.id}
+                              {w.pausado === true && (
+                                <span
+                                  title={
+                                    w.pausado_em
+                                      ? `Pausado em ${formatarDataHoraCompleta(w.pausado_em)}`
+                                      : "Pausado (horário não registrado)"
+                                  }
+                                  className="text-[10px] px-1.5 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40 shrink-0 font-normal"
+                                >
+                                  {w.pausado_em ? `pausado ${tempoDesde(w.pausado_em, agora)}` : "pausado"}
+                                </span>
+                              )}
                             </span>
-                          )}
+                            {w.path && (
+                              <span className="text-[10px] text-zinc-500 truncate block">
+                                {w.path}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <ArrowRight
-                        size={13}
-                        className="text-zinc-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all shrink-0"
-                      />
-                    </button>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void alternarPausa(w)}
+                        title={
+                          w.pausado === true
+                            ? "Retomar: os fluxos deste workspace voltam a disparar"
+                            : "Pausar: nenhum fluxo deste workspace dispara, mesmo com os fluxos ligados"
+                        }
+                        aria-label={w.pausado === true ? `Retomar ${w.id}` : `Pausar ${w.id}`}
+                        className={`absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center border border-transparent transition-all cursor-pointer ${
+                          w.pausado === true
+                            ? "text-emerald-400 hover:bg-emerald-950/40 hover:border-emerald-800/40"
+                            : "text-amber-400 hover:bg-amber-950/40 hover:border-amber-800/40"
+                        }`}
+                      >
+                        {w.pausado === true ? <Play size={13} /> : <Pause size={13} />}
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -406,7 +454,7 @@ export const HomeZeroState: FC<HomeZeroStateProps> = ({
 
               {/* Card Configurações */}
               <div
-                onClick={() => navigate("/config")}
+                onClick={() => navigate("/config/global")}
                 className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-850/80 transition-all cursor-pointer group flex flex-col justify-between gap-3"
               >
                 <div>
@@ -426,24 +474,24 @@ export const HomeZeroState: FC<HomeZeroStateProps> = ({
                 </div>
               </div>
 
-              {/* Card Secretário Executivo */}
+              {/* Card Analytics (visão de todos os projetos) */}
               <div
-                onClick={() => navigate("/secretario")}
+                onClick={() => navigate("/analytics")}
                 className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-850/80 transition-all cursor-pointer group flex flex-col justify-between gap-3"
               >
                 <div>
                   <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-2">
-                    <Bot size={14} />
+                    <Activity size={14} />
                   </div>
                   <h3 className="text-xs font-bold text-zinc-200 group-hover:text-zinc-100">
-                    Secretário Executivo
+                    Analytics
                   </h3>
                   <p className="text-[11px] text-zinc-400 mt-0.5 leading-snug">
-                    Orquestração central e governança.
+                    Todos os projetos e serviços, ao vivo.
                   </p>
                 </div>
                 <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
-                  <span>Abrir Chat</span>
+                  <span>Ver analytics</span>
                   <ArrowRight size={11} />
                 </div>
               </div>
@@ -454,7 +502,7 @@ export const HomeZeroState: FC<HomeZeroStateProps> = ({
           <nav className="flex md:hidden items-center justify-around pt-3 border-t border-zinc-800/80 shrink-0">
             <button
               type="button"
-              onClick={() => navigate("/config")}
+              onClick={() => navigate("/config/global")}
               className="flex flex-col items-center gap-1 py-1 px-3 rounded-lg text-zinc-400 hover:text-zinc-100 transition-colors"
             >
               <Settings size={15} />
@@ -515,7 +563,7 @@ export const HomeZeroState: FC<HomeZeroStateProps> = ({
                 <strong>2. Configure seus Modelos:</strong> Acesse <em>Configurações</em> para gerenciar chaves de provedores e rotação de LLMs.
               </p>
               <p>
-                <strong>3. Orquestre com o Secretário:</strong> Converse com o Secretário Executivo a qualquer momento via <code>Ctrl+J</code> ou acesse o quadro de tarefas Kanban.
+                <strong>3. Acompanhe e abra um projeto:</strong> Veja todos os projetos juntos em <em>Analytics</em>. Ao abrir um projeto, o Secretário Executivo (<code>Ctrl+J</code>) e o quadro de tarefas ficam disponíveis.
               </p>
             </div>
             <div className="flex justify-end pt-2 border-t border-zinc-800">
