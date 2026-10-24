@@ -841,11 +841,16 @@ export async function handleSystemRoutes(ctx: RouteContext): Promise<boolean> {
 export function iniciarPollExecucoes(
   workspaces: import("../../core/contexts/workspace/workspace-manager.js").WorkspaceManager,
   registros: RegistryStore,
-  intervaloMs = 2000,
+  intervaloMs = 5000,
 ): NodeJS.Timeout {
   const vistos = new Map<string, string>();
   let semeado = false;
+  // Sem esta trava, uma varredura lenta (16 mil execuções, disco lento) ainda estava rodando quando a próxima
+  // começava; as varreduras se empilhavam, o heap estourava e o servidor caía em laço de reinício.
+  let varrendo = false;
   return setInterval(() => {
+    if (varrendo) return;
+    varrendo = true;
     void (async () => {
       try {
         const ws = await workspaces.resolver(undefined);
@@ -869,7 +874,10 @@ export function iniciarPollExecucoes(
           }
         }
         semeado = true;
-      } catch {}
+      } catch {
+      } finally {
+        varrendo = false;
+      }
     })();
   }, intervaloMs);
 }

@@ -59,7 +59,8 @@ fi
 echo "[rodar-pesado] limite de memória ${LIMITE_MEM}, prioridade baixa, temporários em ${TMPDIR:-/tmp}: $*" >&2
 if systemd-run --user --scope -q -p MemoryMax=1G -p MemorySwapMax=0 true 2>/dev/null; then
   nice -n 10 ionice -c2 -n7 systemd-run --user --scope -q \
-    -p "MemoryMax=${LIMITE_MEM}" -p MemorySwapMax=0 -p CPUWeight=50 -p IOWeight=50 -- "$@"
+    -p "MemoryMax=${LIMITE_MEM}" -p MemorySwapMax=0 -p CPUWeight=50 -p IOWeight=50 \
+    -p "IOWriteBandwidthMax=/dev/sda ${OPENCORP_PESADO_ESCRITA_MAX:-10M}" -- "$@"
   exit $?
 fi
 echo "[rodar-pesado] AVISO: cgroup de usuário indisponível; rodando só com nice/ionice, SEM limite de memória." >&2
