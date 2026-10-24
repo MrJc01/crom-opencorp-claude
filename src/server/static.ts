@@ -5,7 +5,7 @@ import { projectRoot } from "../utils/paths.js";
 
 const DEFAULT_WEB_DIST = join(projectRoot(), "web-dist");
 
-const ROTA_SPA_RE = /^\/(?:w(?:\/.*)?|home|workspaces|tasks|agentes|secretario|workspace|agenda|fluxos|hooks|apps|ativos|secrets|reunioes|historico|notificacoes|docs|config|app)(?:\/.*)?$/;
+const ROTA_SPA_RE = /^\/(?:w(?:\/.*)?|home|workspaces|tasks|agentes|secretario|workspace|agenda|fluxos|hooks|apps|ativos|secrets|reunioes|historico|notificacoes|analytics|docs|config|app)(?:\/.*)?$/;
 
 const TIPOS_TEXTO: Record<string, string> = {
   html: "text/html; charset=utf-8",

@@ -1,4 +1,4 @@
-export const ROTAS_GLOBAIS = ["/", "/workspaces", "/config/global", "/docs"] as const;
+export const ROTAS_GLOBAIS = ["/", "/workspaces", "/analytics", "/config/global", "/docs"] as const;
 
 /**
  * Monta a URL canônica de um módulo pertencente a um workspace.

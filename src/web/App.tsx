@@ -30,6 +30,7 @@ import { HistoricoView } from "./features/history/views/HistoricoView.js";
 import { AtivosView } from "./features/assets/views/AtivosView.js";
 import { NotificacoesView } from "./features/notifications/views/NotificacoesView.js";
 import { DocsView } from "./features/docs/views/DocsView.js";
+import { AnalyticsView } from "./features/analytics/views/AnalyticsView.js";
 import { HomeZeroState } from "./features/home/components/HomeZeroState.js";
 
 const ROTAS_LEGADAS: ReadonlyArray<{
@@ -184,6 +185,7 @@ export const App: FC = () => {
           <Route element={<AppLayout />}>
             <Route path="/" element={<RedirectWorkspace raiz />} />
             <Route path="/workspaces" element={<WorkspacesRoute />} />
+            <Route path="/analytics" element={<AnalyticsView />} />
             <Route path="/config/global" element={<ConfigView />} />
             <Route path="/docs" element={<DocsView />} />
 
@@ -209,6 +211,7 @@ export const App: FC = () => {
             <Route path="fluxos" element={<FluxosView />} />
             <Route path="reunioes" element={<ReunioesView />} />
             <Route path="historico" element={<HistoricoView />} />
+            <Route path="analytics" element={<AnalyticsView />} />
             <Route path="apps" element={<AppsView />} />
             <Route path="ativos" element={<AtivosView />} />
             <Route path="notificacoes" element={<NotificacoesView />} />

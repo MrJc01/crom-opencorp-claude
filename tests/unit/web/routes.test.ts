@@ -7,7 +7,7 @@ import {
 
 describe("rotas web por workspace", () => {
   it("mantém o catálogo de rotas globais", () => {
-    expect(ROTAS_GLOBAIS).toEqual(["/", "/workspaces", "/config/global", "/docs"]);
+    expect(ROTAS_GLOBAIS).toEqual(["/", "/workspaces", "/analytics", "/config/global", "/docs"]);
   });
 
   it("monta caminhos canônicos sem barras duplicadas", () => {

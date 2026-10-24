@@ -30,6 +30,7 @@ import { FlowsResource } from "./resources/flows.js";
 import { WorkspacesResource } from "./resources/workspaces.js";
 import { AgentsResource } from "./resources/agents.js";
 import { TeamsResource } from "./resources/teams.js";
+import { AnalyticsResource } from "./resources/analytics.js";
 
 // ── Re-exports ──────────────────────────────────────────────────────
 
@@ -90,6 +91,15 @@ export {
   type TeamOptions,
 } from "./resources/teams.js";
 
+export {
+  AnalyticsResource,
+  type AnalyticsResposta,
+  type AnalyticsWorkspace,
+  type AnalyticsEvento,
+  type AnalyticsServicos,
+  type JanelaAnalytics,
+} from "./resources/analytics.js";
+
 // ── Classe principal ────────────────────────────────────────────────
 
 /**
@@ -124,6 +134,9 @@ export class OpenCorpClient {
   /** Endpoints de equipes autônomas multi-agente. */
   readonly teams: TeamsResource;
 
+  /** Analytics unificado de todos os workspaces. */
+  readonly analytics: AnalyticsResource;
+
   constructor(opts: HttpClientOptions = {}) {
     this.http = new HttpClient(opts);
     this.system = new SystemResource(this.http);
@@ -133,5 +146,6 @@ export class OpenCorpClient {
     this.workspaces = new WorkspacesResource(this.http);
     this.agents = new AgentsResource(this.http);
     this.teams = new TeamsResource(this.http);
+    this.analytics = new AnalyticsResource(this.http);
   }
 }

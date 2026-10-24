@@ -53,6 +53,7 @@ import {
   handleSystemRoutes,
   handleTaskRoutes,
   handleNotificationRoutes,
+  handleAnalyticsRoutes,
   handleMeetingRoutes,
   handleWorkspaceRoutes,
   handleFlowRoutes,
@@ -293,6 +294,7 @@ export function createApiServer(opcoes: ApiServerOptions = {}): {
         };
 
         if (await handleSystemRoutes(routeCtx)) return;
+        if (await handleAnalyticsRoutes(routeCtx)) return;
         if (await handleTaskRoutes(routeCtx)) return;
         if (await handleNotificationRoutes(routeCtx)) return;
         if (await handleMeetingRoutes(routeCtx)) return;

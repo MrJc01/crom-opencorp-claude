@@ -12,4 +12,5 @@ export * from "./docs.js";
 export * from "./secretario/index.js";
 export * from "./legacy.js";
 export * from "./system.js";
+export * from "./analytics.js";
 export * from "./files.js";
