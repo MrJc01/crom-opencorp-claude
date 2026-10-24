@@ -19,6 +19,8 @@ import {
   ChevronRight,
   Shield,
   Activity,
+  FolderOpen,
+  Globe,
   X,
 } from "lucide-react";
 import { useOpenCorp } from "../../providers/OpenCorpProvider.js";
@@ -43,6 +45,7 @@ const GRUPOS_NAV: GrupoNav[] = [
     titulo: "OPERACIONAL",
     itens: [
       { to: "/home", rotulo: "Home Dashboard", icone: LayoutDashboard },
+      { to: "/analytics", rotulo: "Analytics", icone: Activity },
       { to: "/tasks", rotulo: "Tarefas & Kanban", icone: Kanban },
       { to: "/secretario", rotulo: "Secretário Executivo", icone: Bot, badge: "IA", badgeCor: "bg-emerald-950 border-emerald-800 text-emerald-400" },
       { to: "/fluxos", rotulo: "Fluxos de Automação", icone: Workflow },
@@ -70,6 +73,24 @@ const GRUPOS_NAV: GrupoNav[] = [
   },
 ];
 
+/** Fora de um workspace só existe o que não depende dele (nada de Secretário, Tarefas, Agentes...). */
+const GRUPOS_GLOBAIS: GrupoNav[] = [
+  {
+    titulo: "VISÃO GERAL",
+    itens: [
+      { to: "/workspaces", rotulo: "Projetos", icone: FolderOpen },
+      { to: "/analytics", rotulo: "Analytics", icone: Activity },
+    ],
+  },
+  {
+    titulo: "SISTEMA",
+    itens: [
+      { to: "/config/global", rotulo: "Configurações globais", icone: Globe },
+      { to: "/docs", rotulo: "Documentação", icone: BookOpen },
+    ],
+  },
+];
+
 export interface SidebarProps {
   mobileAberta: boolean;
   aoFecharMobile: () => void;
@@ -81,7 +102,7 @@ export const Sidebar: FC<SidebarProps> = ({ mobileAberta, aoFecharMobile }) => {
   // Dentro de um workspace os links apontam direto para /w/<ws>/<módulo>
   // (sem passar pelo redirecionamento legado), e o item ativo fica destacado.
   const destino = (to: string): string => {
-    if (!workspaceId || to === "/docs") return to;
+    if (!workspaceId || to === "/docs" || to === "/workspaces" || to === "/config/global") return to;
     if (to === "/home") return workspacePath(workspaceId);
     if (to === "/secrets") return workspacePath(workspaceId, "config", { tab: "chaves" });
     return workspacePath(workspaceId, to.slice(1));
@@ -147,7 +168,7 @@ export const Sidebar: FC<SidebarProps> = ({ mobileAberta, aoFecharMobile }) => {
 
       {/* Navegação por Grupos */}
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-4 scrollbar-thin">
-        {GRUPOS_NAV.map((grupo) => (
+        {(workspaceId ? GRUPOS_NAV : GRUPOS_GLOBAIS).map((grupo) => (
           <div key={grupo.titulo} className="space-y-1">
             <span
               className={`px-3 text-[10px] font-bold text-zinc-400 tracking-wider uppercase block ${
@@ -165,7 +186,7 @@ export const Sidebar: FC<SidebarProps> = ({ mobileAberta, aoFecharMobile }) => {
                   <NavLink
                     key={item.to}
                     to={destino(item.to)}
-                    end={item.to === "/home"}
+                    end={item.to === "/home" || item.to === "/workspaces"}
                     onClick={aoFecharMobile}
                     className={({ isActive }) =>
                       `flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all group relative ${
@@ -226,7 +247,7 @@ export const Sidebar: FC<SidebarProps> = ({ mobileAberta, aoFecharMobile }) => {
         >
           <div className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>{nomeWorkspace || "daemon"}</span>
+            <span>{nomeWorkspace || "todos os projetos"}</span>
           </div>
           <Activity size={12} className="text-zinc-600" />
         </div>

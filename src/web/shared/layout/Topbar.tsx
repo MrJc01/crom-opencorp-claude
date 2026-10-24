@@ -15,7 +15,9 @@ export const Topbar: FC<TopbarProps> = ({
   aoAlternarSecretario,
   secretarioAberto = false,
 }) => {
-  const { notificacoesNaoLidas, sseConectado } = useOpenCorp();
+  const { notificacoesNaoLidas, sseConectado, workspaceId } = useOpenCorp();
+  // Sem workspace aberto não há Secretário, notificações nem stream do workspace: esconde o que não se aplica.
+  const temWorkspace = Boolean(workspaceId);
   const location = useLocation();
   const estaNaRotaNotificacoes = /\/notificacoes\/?$/.test(location.pathname);
 
@@ -38,12 +40,14 @@ export const Topbar: FC<TopbarProps> = ({
         <span className="hidden sm:inline-block text-xs text-zinc-600">|</span>
         <span className="hidden sm:flex items-center gap-1.5 text-xs text-zinc-400">
           <Terminal size={12} className="text-zinc-500" />
-          <span>Sessão Operacional OpenCorp</span>
+          <span>{temWorkspace ? "Sessão Operacional OpenCorp" : "Visão geral dos projetos"}</span>
         </span>
       </div>
 
       {/* Lado Direito: Status SSE + Central de Notificações com Badge + Botão / Badge do Secretário & Atalho Ctrl+J */}
       <div className="flex items-center gap-2.5">
+        {temWorkspace && (
+          <>
         {/* Indicador de Conexão SSE */}
         <div
           className={`hidden md:flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg border transition-all select-none ${
@@ -119,6 +123,8 @@ export const Topbar: FC<TopbarProps> = ({
         >
           <span>Ctrl+J</span>
         </kbd>
+          </>
+        )}
       </div>
     </header>
   );

@@ -6,11 +6,15 @@ import { ToastContainer } from "../ui/Toast.js";
 import { RouteSkeleton } from "../ui/RouteSkeleton.js";
 import { SecretarioDock } from "../../features/chat/components/SecretarioDock.js";
 import { Bot } from "lucide-react";
+import { useOpenCorp } from "../../providers/OpenCorpProvider.js";
 
 export const AppLayout: FC = () => {
   const [dockAberto, setDockAberto] = useState(false);
   const [sidebarMobileAberta, setSidebarMobileAberta] = useState(false);
   const { pathname } = useLocation();
+  const { workspaceId } = useOpenCorp();
+  // O Secretário pertence a um workspace: sem workspace aberto, nem dock, nem botão, nem Ctrl+J.
+  const secretarioDisponivel = Boolean(workspaceId);
   // Na página do Secretário o chat já ocupa a tela: sem dock nem botão flutuante.
   const naPaginaSecretario = /\/secretario\/?$/.test(pathname);
 
@@ -21,7 +25,7 @@ export const AppLayout: FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Atalho Ctrl+J ou Cmd+J para alternar o dock
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "j") {
+      if (secretarioDisponivel && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "j") {
         e.preventDefault();
         setDockAberto((prev) => !prev);
       }
@@ -36,7 +40,7 @@ export const AppLayout: FC = () => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [dockAberto, sidebarMobileAberta]);
+  }, [dockAberto, sidebarMobileAberta, secretarioDisponivel]);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-zinc-950 text-zinc-100 antialiased font-sans">
@@ -62,8 +66,8 @@ export const AppLayout: FC = () => {
       </div>
 
       {/* Dock Lateral Flutuante do Secretário */}
-      {!naPaginaSecretario && <SecretarioDock aberto={dockAberto} aoFechar={() => setDockAberto(false)} />}
-      {!naPaginaSecretario && !dockAberto && (
+      {secretarioDisponivel && !naPaginaSecretario && <SecretarioDock aberto={dockAberto} aoFechar={() => setDockAberto(false)} />}
+      {secretarioDisponivel && !naPaginaSecretario && !dockAberto && (
         <button
           type="button"
           data-testid="secretario-fab"
