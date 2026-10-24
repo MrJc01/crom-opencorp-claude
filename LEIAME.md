@@ -85,6 +85,19 @@ Estado: `node scripts/estado_pauta.mjs --resumo` no workspace; boletim: `node sc
 
 ## Registro de pedidos (mais recente primeiro)
 
+- 2026-10-24 — (a) PC travando: causa era o SSD genérico sem TRIM (escrita de 4 KB levava segundos); fstrim, BFQ, noatime/commit=60,
+  swappiness 10, serviço do daemon com CPUWeight/IOWeight/MemoryMax e prioridade de I/O 7, teto de escrita 10 MB/s (exige `Delegate=io`
+  em `/etc/systemd/system/user@.service.d/`), render com concorrência 2 (feito; detalhes na memória pc-ssd-lento-trim). Se travar de novo: trocar o SSD.
+  (b) Vídeos não saíam: o revisor reprovava a promo Crom automática; revisor e checador agora a aceitam (skill, agente, CLAUDE.md e dossiê
+  `scripts/folha_revisao.mjs` dos dois workspaces) e 205 pautas reprovadas desde 22/10 foram reabertas (feito).
+  (c) Varredura de execuções do servidor (`iniciarPollExecucoes`) agora tem trava e 5 s; execuções com mais de 7 dias arquivadas em
+  `~/.opencorp/arquivo-execucoes/` (feito). (d) Botão de pausar/retomar em cada cartão de /workspaces, com "pausado há X" e horário
+  completo no title (`pausado_em` em workspaces.json) (feito). (e) Página de Analytics unificada em `/analytics` (e `/w/<ws>/analytics`):
+  vários projetos juntos ou escolhidos, serviços, execuções, fluxos, erros e linha do tempo ao vivo (SSE + 10 s); API `GET /analytics/resumo`
+  (`src/core/contexts/analytics/analytics-service.ts`, lê o `opencorp.db` de cada workspace em modo leitura) (feito). (f) Menu sem workspace:
+  em /workspaces o menu lateral, a barra do topo e o botão do Secretário só mostram o que é global (feito). E2E `nav` e `secretario-dock`: 14 passaram (Chromium 1234 do
+  Playwright reinstalado; ele tinha sido apagado do cache junto com os outros).
+
 - 2026-10-23 — PC travando: (1) render Remotion agora passa por `scripts/rodar-pesado.sh` (um render por vez no PC todo, 6 GB de teto,
   temporários em /dev/shm, espera até 1 h na fila); concorrência do boletim 8 → 3 (`~/.opencorp/remotion-shorts/renderizar.mjs`, fora deste repo).
   O render do longo do Fundão (`produzir_longo.mjs`, Playwright) NÃO passa pela fila ainda.
