@@ -85,6 +85,10 @@ Estado: `node scripts/estado_pauta.mjs --resumo` no workspace; boletim: `node sc
 
 ## Registro de pedidos (mais recente primeiro)
 
+- 2026-10-29 — esteira nova: 1 fluxo por canal (`yt-hora`), de hora em hora, só notícia recente (≤ 36 h Bit Proibido / ≤ 24 h Fundão),
+  publicando na hora (não agenda). Frequência: `node scripts/frequencia.mjs <min|Nh|"cron">` no workspace. Publicação real só liga com
+  `registries/config_esteira.json` → `publicar_agora: true` (começou em false). Detalhes e como reativar os fluxos antigos: `docs/PLANO-PROVEDOR-GRATIS.md`.
+
 - 2026-10-29 — erro de login: NÃO era login. As duas contas (`~/.opencorp/claude-conta` e `~/.claude`) respondem
   "Your organization has disabled Claude subscription access for Claude Code" (desde ~12:48), então agentes do Fundão/Bit Proibido falham com
   exit 1 em 2 s. É bloqueio do lado da Anthropic/organização: código não resolve a assinatura. Saídas: pedir ao admin da org para

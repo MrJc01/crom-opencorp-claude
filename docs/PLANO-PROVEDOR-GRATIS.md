@@ -32,3 +32,14 @@ Saber, com medição, se a esteira roda sozinha sem publicar conteúdo ruim; só
 - Modelo grátis é mais lento e irregular que o Haiku; a esteira só repete no ciclo seguinte (15 min).
 - A chave do OpenRouter está em `~/.opencorp/secrets/openrouter.env` (permissão 600) e foi exposta uma vez na conversa: trocar.
 - O vídeo `vid-mvtpwrnw` (Bit Proibido) já estava agendado no YouTube para 18h do dia 29/10 antes da pausa.
+
+## Fluxo único `yt-hora` (pedido de 2026-10-29: postar na hora, só notícia recente, 1 fluxo por canal)
+Fora deste repo, em `~/.opencorp/workspaces/<ws>`: todos os fluxos antigos foram pausados (lista em `registries/fluxos_desativados.json`,
+reativar com `opencorp -t <ws> flow activate <id>`). Ativo só `yt-hora` (Bit Proibido no minuto 0, Fundão no minuto 30):
+`expirar-velhas → pautar (a notícia mais quente das últimas 12 h) → sanitizar → roteiro → fatos → imagens → vídeo → revisão → publicar-agora`.
+- **Frequência**: `node scripts/frequencia.mjs 60` (ou `30`, `2h`, ou cron entre aspas) no workspace; sem argumento mostra a atual.
+- **Frescor**: `registries/config_esteira.json` → `max_idade_noticia_horas` (Bit 36, Fundão 24). `esteira.mjs` descarta pauta velha e
+  produz primeiro a pauta mais nova. `pautador_sob_demanda: false` impede o pautador antigo de ser acionado por fora do fluxo.
+- **Publicação imediata**: `publicar_youtube.py --agora` (Fundão: `publicar_youtube_api.py --agora`) sobe como público o Short aprovado mais
+  recente (≤ 180 min). Chave de segurança: `config_esteira.json` → `"publicar_agora": false` = só simula; mude para `true` para valer.
+- Boletim longo, blog e monitor ficam desativados por enquanto.
