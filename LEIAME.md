@@ -85,6 +85,15 @@ Estado: `node scripts/estado_pauta.mjs --resumo` no workspace; boletim: `node sc
 
 ## Registro de pedidos (mais recente primeiro)
 
+- 2026-10-29 — erro de login: NÃO era login. As duas contas (`~/.opencorp/claude-conta` e `~/.claude`) respondem
+  "Your organization has disabled Claude subscription access for Claude Code" (desde ~12:48), então agentes do Fundão/Bit Proibido falham com
+  exit 1 em 2 s. É bloqueio do lado da Anthropic/organização: código não resolve a assinatura. Saídas: pedir ao admin da org para
+  reabilitar, ou trocar de provedor (feito abaixo). Branch `feat/provedores-e-modelos` (main intacta).
+  Provedores: `~/.opencorp/provedores.json` (`src/core/engines/provedor-claude.ts`), CLI `opencorp provedor listar|usar|adicionar|modelo|remover`.
+  Tipos: `assinatura` (padrão, como antes), `api` (ANTHROPIC_API_KEY) e `compativel` (baseUrl + token: OpenRouter, GLM, DeepSeek, Kimi, Ollama...).
+  Modelos: mapa por id/família/`padrao`; `OPENCORP_PROVEDOR=<id>` vale só no processo. Testado de ponta a ponta com servidor falso
+  (URL base, Bearer e modelo traduzido chegam à requisição). NÃO testado com chave real. Reinicie o daemon para valer.
+
 - 2026-10-24 — (a) PC travando: causa era o SSD genérico sem TRIM (escrita de 4 KB levava segundos); fstrim, BFQ, noatime/commit=60,
   swappiness 10, serviço do daemon com CPUWeight/IOWeight/MemoryMax e prioridade de I/O 7, teto de escrita 10 MB/s (exige `Delegate=io`
   em `/etc/systemd/system/user@.service.d/`), render com concorrência 2 (feito; detalhes na memória pc-ssd-lento-trim). Se travar de novo: trocar o SSD.

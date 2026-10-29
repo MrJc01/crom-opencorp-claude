@@ -35,6 +35,11 @@ Publicado (público) em https://github.com/MrJc01/crom-opencorp-claude como repo
   manifest do motor; `GET /api/motores` expõe o manifest; adaptador `openheinerss` registrado (opcional). Packs de domínio
   (ex.: YouTube Shorts) são dados, não código do núcleo. Ver `docs/CHECKLIST.md` e `.claude/notes/`.
 
+## Provedor e modelos do claude-sdk
+
+`~/.opencorp/provedores.json` + `opencorp provedor ...` escolhem de onde vêm autenticação e modelos (assinatura, API da Anthropic ou endpoint
+compatível). Código: `src/core/engines/provedor-claude.ts`, usado por `claude-sdk-driver.ts` e `claude-sdk-adapter.ts`. Sem arquivo = assinatura.
+
 ## Onde o encaixe acontece
 
 - `src/core/engines/ports.ts` — contrato `EngineAdapter` (`installer`, `authenticator`, `runner`, `conversationRuntime?`, `modelCatalog?`).

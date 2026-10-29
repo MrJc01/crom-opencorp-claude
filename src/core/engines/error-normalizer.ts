@@ -52,7 +52,9 @@ export function normalizeEngineError(raw: unknown, options: ErrorNormalizationOp
     lowerMessage.includes("autenticação") ||
     lowerMessage.includes("auth required") ||
     lowerMessage.includes("api key missing") ||
-    lowerMessage.includes("invalid token")
+    lowerMessage.includes("invalid token") ||
+    // Conta sem acesso por assinatura ao Claude Code: só resolve com outro provedor (opencorp provedor usar ...).
+    lowerMessage.includes("disabled claude subscription access")
   ) {
     return new EngineAuthRequiredError(engineId, {
       cause: raw,

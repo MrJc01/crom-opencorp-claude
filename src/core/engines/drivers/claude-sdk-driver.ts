@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { pathComCliLocal, projectRoot } from "../../../utils/paths.js";
-import { claudeConfigDirOpencorp } from "./claude-config-dir.js";
+import { resolverProvedorClaude } from "../provedor-claude.js";
 import { resolveEngineSpawnEnv } from "../../credentials/credentials-store.js";
 import { PreflightBinaryMissingError } from "../errors.js";
 import type { EngineDriver, EngineExecutionOptions } from "../types.js";
@@ -65,7 +65,9 @@ export class ClaudeSdkDriver implements EngineDriver {
     const pacoteSdk = dirname(createRequire(import.meta.url).resolve("@anthropic-ai/claude-agent-sdk"));
     const leitura = [dirname(claudeReal), pacoteSdk, join(projectRoot(), "package.json")];
     // Login do Claude Code gravável no sandbox: conta própria do OpenCorp tem prioridade sobre o login padrão do dono.
-    const contaPropria = claudeConfigDirOpencorp();
+    // Provedor ativo (provedores.json): assinatura, API da Anthropic ou endpoint compatível, com mapa de modelos.
+    const provedor = resolverProvedorClaude(opts.homeDir);
+    const contaPropria = provedor.configDir;
     const homeClaude = process.env.HOME || "";
     const escrita = contaPropria ? [contaPropria] : homeClaude ? [join(homeClaude, ".claude"), join(homeClaude, ".claude.json")] : [];
 
@@ -78,7 +80,8 @@ export class ClaudeSdkDriver implements EngineDriver {
         ...(opts.envOverrides || {}),
         OPENCORP_SANDBOX_RW_BIND: escrita.join(":"),
         // conta própria do OpenCorp, se configurada e logada (o sandbox monta esta pasta no lugar do ~/.claude)
-        ...(claudeConfigDirOpencorp() ? { CLAUDE_CONFIG_DIR: claudeConfigDirOpencorp() as string } : {}),
+        ...provedor.env,
+        ...(contaPropria ? { CLAUDE_CONFIG_DIR: contaPropria } : {}),
         OPENCORP_SANDBOX_RO_BIND: leitura.join(":"),
       },
       // Login local: a ANTHROPIC_API_KEY do shell não entra (chaves do OpenCorp continuam valendo).
@@ -86,7 +89,7 @@ export class ClaudeSdkDriver implements EngineDriver {
     );
 
     const runner = fileURLToPath(new URL("../runners/claude-sdk-cli.js", import.meta.url));
-    const modelo = opts.model && opts.model !== "default" ? opts.model : undefined;
+    const modelo = provedor.modelo(opts.model);
     // O session-manager grava o agente montado (corpo + skills + contexto) antes de preparar a execução.
     const arquivoAgente = opts.agentId ? join(opts.workspacePath, ".opencorp", "opencode", "agent", `${opts.agentId}.md`) : undefined;
     const agente = arquivoAgente && existsSync(arquivoAgente) ? ["--agente", arquivoAgente] : [];

@@ -43,6 +43,7 @@ import { registerSecretsCommand } from "./commands/secrets.js";
 import { registerTokensCommand } from "./commands/tokens.js";
 import { registerMotoresCommand } from "./commands/motores.js";
 import { registerModelosCommand } from "./commands/modelos.js";
+import { registerProvedorCommand } from "./commands/provedor.js";
 import { registerMigrateConfigsCommand } from "./commands/migrate-configs.js";
 import { notImplementedAction } from "./placeholder.js";
 import { instalarTriggers, pendentesTriggers } from "../core/contexts/scheduling/trigger-runner.js";
@@ -116,6 +117,7 @@ export function buildProgram(isOc: boolean = isModoOc()): Command {
   registerTokensCommand(program);
   registerMotoresCommand(program);
   registerModelosCommand(program);
+  registerProvedorCommand(program);
   registerMigrateConfigsCommand(program);
   registerStatusCommand(program);
   registerContextCommand(program);

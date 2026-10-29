@@ -8,7 +8,7 @@ import {
   type SDKResultMessage,
 } from "@anthropic-ai/claude-agent-sdk";
 import { opencorpHome, pathComCliLocal } from "../../../utils/paths.js";
-import { claudeConfigDirOpencorp } from "../drivers/claude-config-dir.js";
+import { configDirClaudeAtivo, resolverProvedorClaude } from "../provedor-claude.js";
 import { resolveEngineSpawnEnv } from "../../credentials/credentials-store.js";
 import { LegacyDriverAdapter } from "../adapter-compat.js";
 import { ClaudeCodeDriver } from "../drivers/claude-code-driver.js";
@@ -322,14 +322,17 @@ async function* executarTurno(opts: OpcoesTurno): AsyncGenerator<AgentEvent> {
     try {
       // Mesmo env do ClaudeCodeDriver, com uma diferença: a ANTHROPIC_API_KEY do shell/host
       // não entra, para manter o login local do claude.ai (CLAUDE.md). Chaves configuradas
-      // no OpenCorp (conta, segredo, chave gerida) continuam valendo.
+      // no OpenCorp (conta, segredo, chave gerida) continuam valendo. O provedor ativo
+      // (provedores.json: assinatura, API ou endpoint compatível) acrescenta autenticação e modelos.
+      const provedor = resolverProvedorClaude(opts.homeDir);
       const env = await resolveEngineSpawnEnv(
         CREDENTIALS_ENGINE_ID,
         { homeDir: opts.homeDir, workspaceId: opts.workspaceId, workspacePath: opts.workspacePath, accountId: opts.accountId },
         {
           ANTHROPIC_DISABLE_TELEMETRY: "1",
           PATH: pathComCliLocal(),
-          ...(claudeConfigDirOpencorp() ? { CLAUDE_CONFIG_DIR: claudeConfigDirOpencorp() as string } : {}),
+          ...provedor.env,
+          ...(provedor.configDir ? { CLAUDE_CONFIG_DIR: provedor.configDir } : {}),
           ...opts.envOverrides,
         },
         { ...process.env, ANTHROPIC_API_KEY: undefined }
@@ -340,7 +343,7 @@ async function* executarTurno(opts: OpcoesTurno): AsyncGenerator<AgentEvent> {
         prompt: opts.prompt,
         options: {
           cwd: opts.workspacePath,
-          ...(opts.model ? { model: opts.model } : {}),
+          ...(provedor.modelo(opts.model) ? { model: provedor.modelo(opts.model) } : {}),
           permissionMode: "acceptEdits",
           // Secretário e conversas: CLAUDE.md e skills do workspace, sem as configurações do usuário.
           ...OPCOES_WORKSPACE_SDK,
@@ -492,7 +495,7 @@ export class ClaudeSdkAdapter implements EngineAdapter {
 
   /** Lê a transcrição que o SDK guarda na pasta de login do OpenCorp (a mesma usada pelo runner). */
   private async historicoDaTranscricao(ref: ConversationRef) {
-    const dir = claudeConfigDirOpencorp();
+    const dir = configDirClaudeAtivo(this.homeDir);
     const anterior = process.env.CLAUDE_CONFIG_DIR;
     if (dir) process.env.CLAUDE_CONFIG_DIR = dir;
     try {
