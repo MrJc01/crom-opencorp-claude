@@ -43,6 +43,18 @@ describe("provedor do claude-sdk", () => {
     expect((await stat(r.configDir as string)).isDirectory()).toBe(true);
   });
 
+  it("assinatura com pasta de outra conta: usa a pasta; sem login nela, erro claro", async () => {
+    const h = await home();
+    const conta = join(h, "conta2");
+    await mkdir(conta, { recursive: true });
+    await gravarConfigProvedores(h, { ativo: "conta2", provedores: { conta2: { tipo: "assinatura", configDir: conta } } });
+    expect(() => resolverProvedorClaude(h, {})).toThrow(/não tem login/);
+    await writeFile(join(conta, ".credentials.json"), "{}");
+    const r = resolverProvedorClaude(h, {});
+    expect(r.configDir).toBe(conta);
+    expect(r.env).toEqual({});
+  });
+
   it("api sem chave falha cedo, dizendo qual variável falta", async () => {
     const h = await home();
     await gravarConfigProvedores(h, { ativo: "x", provedores: { x: { tipo: "api", chaveEnv: "FALTA_ESTA" } } });

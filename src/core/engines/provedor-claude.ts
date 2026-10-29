@@ -1,6 +1,7 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { writeFileAtomic } from "../../utils/fs-safe.js";
+import { expandTilde } from "../../utils/paths.js";
 import { claudeConfigDirOpencorp } from "./drivers/claude-config-dir.js";
 
 /**
@@ -19,6 +20,11 @@ export type TipoProvedor = "assinatura" | "api" | "compativel";
 export interface ProvedorClaude {
   nome?: string;
   tipo: TipoProvedor;
+  /**
+   * Só para `assinatura`: pasta de login (CLAUDE_CONFIG_DIR) de outra conta do Claude Code, ex.: ~/.claude-conta2.
+   * Sem ela vale OPENCORP_CLAUDE_CONFIG_DIR (conta própria do OpenCorp) ou o ~/.claude padrão.
+   */
+  configDir?: string;
   /** Só para `compativel`: URL base do endpoint (sem /v1/messages). */
   baseUrl?: string;
   /** Chave direta no arquivo (o arquivo é gravado com permissão 600). Prefira `chaveEnv`. */
@@ -78,6 +84,7 @@ function provedorValido(bruto: unknown): ProvedorClaude | undefined {
   return {
     tipo: p.tipo,
     ...(texto(p.nome) ? { nome: texto(p.nome) } : {}),
+    ...(texto(p.configDir) ? { configDir: texto(p.configDir) } : {}),
     ...(texto(p.baseUrl) ? { baseUrl: texto(p.baseUrl) } : {}),
     ...(texto(p.chave) ? { chave: texto(p.chave) } : {}),
     ...(texto(p.chaveEnv) ? { chaveEnv: texto(p.chaveEnv) } : {}),
@@ -139,7 +146,11 @@ export function resolverProvedorClaude(homeDir: string, hostEnv: NodeJS.ProcessE
   const env: Record<string, string> = {};
   let configDir: string | undefined;
   if (p.tipo === "assinatura") {
-    configDir = claudeConfigDirOpencorp();
+    const propria = p.configDir ? expandTilde(p.configDir, homeDir) : undefined;
+    if (propria && !existsSync(join(propria, ".credentials.json"))) {
+      throw new ProvedorError(`provedor "${id}": a pasta ${propria} não tem login do Claude Code (.credentials.json); faça /login nela.`);
+    }
+    configDir = propria ?? claudeConfigDirOpencorp();
   } else {
     // Pasta própria: não mistura sessões nem o login da assinatura com este provedor.
     configDir = join(homeDir, ".opencorp", `claude-provedor-${id}`);

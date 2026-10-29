@@ -53,11 +53,12 @@ export function registerProvedorCommand(program: Command): void {
     .description("cria ou atualiza um provedor")
     .requiredOption("--tipo <tipo>", "assinatura | api | compativel")
     .option("--nome <nome>", "nome de exibição")
+    .option("--config-dir <pasta>", "assinatura: pasta de login de outra conta do Claude Code (ex.: ~/.claude-conta2)")
     .option("--base-url <url>", "URL base (compativel)")
     .option("--chave-env <variavel>", "variável de ambiente com a chave")
     .option("--chave <chave>", "chave gravada em provedores.json (permissão 600); prefira --chave-env")
     .option("--modelo <par...>", "tradução de modelo chave=valor (haiku=..., sonnet=..., opus=..., padrao=...)")
-    .action(async (id: string, o: { tipo: string; nome?: string; baseUrl?: string; chaveEnv?: string; chave?: string; modelo?: string[] }) => {
+    .action(async (id: string, o: { tipo: string; nome?: string; configDir?: string; baseUrl?: string; chaveEnv?: string; chave?: string; modelo?: string[] }) => {
       if (!["assinatura", "api", "compativel"].includes(o.tipo)) throw new Error("tipo deve ser assinatura, api ou compativel");
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) throw new Error("id em kebab-case (ex.: openrouter)");
       const home = opencorpHome();
@@ -66,6 +67,7 @@ export function registerProvedorCommand(program: Command): void {
       const novo: ProvedorClaude = {
         tipo: o.tipo as TipoProvedor,
         ...(o.nome ? { nome: o.nome } : {}),
+        ...(o.configDir ? { configDir: o.configDir } : {}),
         ...(o.baseUrl ? { baseUrl: o.baseUrl } : {}),
         ...(o.chaveEnv ? { chaveEnv: o.chaveEnv } : {}),
         ...(o.chave ? { chave: o.chave } : {}),
