@@ -40,6 +40,11 @@ export function lerInstrucoesAgente(conteudo: string): string {
 export interface SaidasRunnerCli {
   stdout: (texto: string) => void;
   stderr: (texto: string) => void;
+  /**
+   * Sinal de vida a cada ferramenta que o agente aciona (vai para o stderr no processo real). Um agente que lê
+   * arquivos e roda comandos por minutos sem escrever texto não pode parecer "travado" ao session-manager (180 s).
+   */
+  atividade?: (texto: string) => void;
 }
 
 type Consulta = typeof query;
@@ -87,6 +92,7 @@ export async function executarAgenteCli(
       // após 60 s sem saída, e um agente pesquisando fica longos trechos sem terminar.
       if (msg.type === "assistant") {
         for (const bloco of msg.message?.content ?? []) {
+          if (bloco.type === "tool_use") saidas.atividade?.(`· ${bloco.name}\n`);
           if (bloco.type !== "text" || !bloco.text) continue;
           saidas.stdout(`${bloco.text}\n`);
           escreveu = true;
@@ -113,6 +119,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const codigo = await executarAgenteCli(opts, {
     stdout: (t) => process.stdout.write(t),
     stderr: (t) => process.stderr.write(t),
+    atividade: (t) => process.stderr.write(t),
   });
   process.exitCode = codigo;
 }

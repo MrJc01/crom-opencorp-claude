@@ -34,6 +34,31 @@ describe("lerArgumentosCli", () => {
   });
 });
 
+describe("executarAgenteCli — sinal de vida", () => {
+  it("avisa a cada ferramenta usada, sem sujar stdout nem stderr de erro", async () => {
+    let out = "";
+    let err = "";
+    let vida = "";
+    const mensagem = (...blocos: unknown[]) => ({ type: "assistant", message: { content: blocos } });
+    const codigo = await executarAgenteCli(
+      { cwd: "/ws", prompt: "oi" },
+      { stdout: (t) => (out += t), stderr: (t) => (err += t), atividade: (t) => (vida += t) },
+      consultaFalsa(
+        [
+          mensagem({ type: "tool_use", name: "Read" }),
+          mensagem({ type: "tool_use", name: "Bash" }, { type: "text", text: "olhando" }),
+          sucesso("fim"),
+        ],
+        {},
+      ) as any,
+    );
+    expect(codigo).toBe(0);
+    expect(vida).toBe("· Read\n· Bash\n");
+    expect(out).toBe("olhando\n");
+    expect(err).toBe("");
+  });
+});
+
 describe("executarAgenteCli", () => {
   it("usa query() com acceptEdits e as ferramentas dos agentes, e imprime a resposta final", async () => {
     const capturadas: { opcoes?: any } = {};
