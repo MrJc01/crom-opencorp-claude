@@ -85,6 +85,8 @@ Estado: `node scripts/estado_pauta.mjs --resumo` no workspace; boletim: `node sc
 
 ## Registro de pedidos (mais recente primeiro)
 
+- 2026-10-30 — decisão do dono: TUDO grátis (OpenRouter, inclusive o revisor) e publicação real LIGADA nos dois canais (`publicar_agora: true` em `registries/config_esteira.json`). Antes disso, calibração do revisor grátis contra o veredito do Haiku em 4 vídeos: inkling 0/4 (2 timeouts), nemotron 2/4 (aprovou 2 vídeos com imagem ruim). O dono escolheu assumir o risco; para desligar: `publicar_agora: false` nos dois canais. Haiku/conta2 ficou só como alternativa.
+
 - 2026-10-29 — esteira nova: 1 fluxo por canal (`yt-hora`), de hora em hora, só notícia recente (≤ 36 h Bit Proibido / ≤ 24 h Fundão),
   publicando na hora (não agenda). Frequência: `node scripts/frequencia.mjs <min|Nh|"cron">` no workspace. Publicação real só liga com
   `registries/config_esteira.json` → `publicar_agora: true` (começou em false). Detalhes e como reativar os fluxos antigos: `docs/PLANO-PROVEDOR-GRATIS.md`.
