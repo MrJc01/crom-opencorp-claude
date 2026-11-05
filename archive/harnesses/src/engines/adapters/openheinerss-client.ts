@@ -93,6 +93,12 @@ export class OpenheinerssClient {
     });
   }
 
+  /** Ids que o servidor conhece: harnesses embutidos e instâncias de conta configuradas (ex.: codex-conta2). */
+  async listHarnessIds(): Promise<string[]> {
+    const r = await this.connection.request<{ harnesses?: Array<{ id?: string }> }>("harness.listar", {});
+    return (r.harnesses ?? []).map((h) => h.id).filter((id): id is string => typeof id === "string" && id.length > 0);
+  }
+
   resumeSession(sessionId: string, cwd: string): Promise<OpenheinerssSessionInfo> {
     return this.connection.request<OpenheinerssSessionInfo>("session.resume", { sessionId, cwd });
   }

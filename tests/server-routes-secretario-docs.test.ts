@@ -214,22 +214,7 @@ describe("Rotas Modulares de Secretário e Documentos/Registries (Micro-Passo 14
   });
 
   describe("Endpoints do Secretário (secretario.ts)", () => {
-    it("GET /secretario/status retorna informações do daemon", async () => {
-      const res = await fetchApi("/secretario/status");
-      expect(res.status).toBe(200);
-      expect(res.json.rodando).toBe(true);
-      expect(res.json.pid).toBe(9999);
-    });
 
-    it("POST /secretario/start e POST /secretario/stop controlam o ciclo de vida", async () => {
-      const startRes = await fetchApi("/secretario/start", { method: "POST" });
-      expect(startRes.status).toBe(200);
-      expect(startRes.json.pid).toBe(9999);
-
-      const stopRes = await fetchApi("/secretario/stop", { method: "POST" });
-      expect(stopRes.status).toBe(200);
-      expect(stopRes.json.ok).toBe(true);
-    });
 
     it("GET /secretario/contexto retorna resumo do workspace e sistema", async () => {
       const res = await fetchApi("/secretario/contexto");

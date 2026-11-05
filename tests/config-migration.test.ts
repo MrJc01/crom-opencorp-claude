@@ -89,7 +89,7 @@ describe("ETAPA 14 — configuração de execução e migração", () => {
   });
 
   it("precedência: settings novo > runner.json legado > padrão; aviso só para o legado, uma vez por campo", async () => {
-    expect(readRunEngineConfig(home)).toMatchObject({ engine: "opencode", source: "default", fallbackEngines: [] });
+    expect(readRunEngineConfig(home)).toMatchObject({ engine: "claude-sdk", source: "default", fallbackEngines: [] });
     expect(logs).toEqual([]);
 
     await writeRunner();

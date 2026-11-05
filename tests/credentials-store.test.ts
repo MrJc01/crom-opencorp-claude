@@ -22,7 +22,6 @@ import {
 } from "../src/core/engines/credentials-bridge.js";
 import { normalizeEngineError } from "../src/core/engines/error-normalizer.js";
 import { SecretsStore } from "../src/core/contexts/storage/secrets-store.js";
-import { CodexDriver } from "../src/core/engines/drivers/codex-driver.js";
 
 const THIRD_PARTY_SENTINEL = "sk-terceiro-NAO-PODE-VAZAR-123456";
 
@@ -86,19 +85,6 @@ describe("ETAPA 9 — CredentialsStore e injeção efêmera", () => {
     expect(implicit.env.OPENAI_API_KEY).toBe(hostEnv.OPENAI_API_KEY);
     expect(implicit.sources[0]?.origin).toBe("host-env");
     await expect(store().resolveForSpawn({ engineId: "codex", workspaceId: "ws-b", accountId: conta.id })).rejects.toBeInstanceOf(CredentialScopeError);
-  });
-
-  it("o driver falha antes de montar o comando quando a conta não é autorizada", async () => {
-    const accounts = new EngineAccountStore({ homeDir: home });
-    const conta = await accounts.adicionarConta("codex", { nome: "Só A", provider: "openai", tokenOuChave: "sk-conta-a-111111", workspaces: ["ws-a"] });
-    const fakeBin = join(home, "bin", "codex");
-    await mkdir(join(home, "bin"), { recursive: true });
-    await writeFile(fakeBin, "#!/bin/sh\necho codex 0.0.0\n", { mode: 0o755 });
-    await writeFile(join(home, ".opencorp", "settings.json"), JSON.stringify({ engines: { codex: { binary_path: fakeBin } } }));
-    const driver = new CodexDriver();
-    await expect(driver.prepareExecution({
-      workspaceId: "ws-b", workspacePath: wsB, sessionId: "s", agentId: "a", model: "default", prompt: "x", homeDir: home, accountId: conta.id,
-    })).rejects.toMatchObject({ code: "CREDENTIAL_SCOPE_DENIED" });
   });
 
   it("cada motor recebe só as variáveis da sua política e o host não vaza as demais", async () => {

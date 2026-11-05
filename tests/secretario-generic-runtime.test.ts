@@ -292,7 +292,7 @@ describe("ETAPA 7 — Secretário com Runtime Genérico e Multimotor", () => {
     await writeFile(
       join(home, "workspaces", "ws-incompativel", ".opencorp", "config.json"),
       JSON.stringify({
-        conversationEngineOverride: "aider",
+        conversationEngineOverride: "claude-code",
       })
     );
 

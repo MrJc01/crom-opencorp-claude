@@ -1,23 +1,9 @@
 import type { EngineDriver, EngineInstallStatus, EngineHealth, EngineTokenUsage } from "./types.js";
-import { AcpAdapter } from "./acp/acp-adapter.js";
-import { COPILOT_ACP, MIMO_ACP } from "./acp/vendors.js";
-import { OpencodeDriver } from "./drivers/opencode-driver.js";
-import { CromAgenteDriver } from "./drivers/crom-agente-driver.js";
 import { ClaudeCodeDriver } from "./drivers/claude-code-driver.js";
 import { ClaudeSdkDriver } from "./drivers/claude-sdk-driver.js";
-import { OpenheinerssDriver } from "./drivers/openheinerss-driver.js";
-import { AntigravityDriver } from "./drivers/antigravity-driver.js";
-import { CursorDriver } from "./drivers/cursor-driver.js";
-import { CopilotDriver } from "./drivers/copilot-driver.js";
-import { CodexDriver } from "./drivers/codex-driver.js";
-import { AiderDriver } from "./drivers/aider-driver.js";
-import { MimoDriver } from "./drivers/mimo-driver.js";
 import { EngineNotFoundError } from "./errors.js";
 import { LegacyDriverAdapter } from "./adapter-compat.js";
-import { OpenCodeAdapter } from "./adapters/opencode-adapter.js";
-import { CodexAdapter } from "./adapters/codex-adapter.js";
 import { ClaudeSdkAdapter } from "./adapters/claude-sdk-adapter.js";
-import { OpenheinerssAdapter } from "./adapters/openheinerss-adapter.js";
 import type { EngineAdapter } from "./ports.js";
 import { registerEngineCredentialPolicy } from "../credentials/credentials-store.js";
 import {
@@ -50,30 +36,11 @@ export class EngineRegistry {
   private adapters = new Map<string, EngineAdapter>();
 
   private constructor() {
-    this.register(new OpencodeDriver());
-    this.register(new CromAgenteDriver());
+    // Só o Claude: os demais harnesses estão arquivados em archive/harnesses/ (ver README de lá).
     this.register(new ClaudeCodeDriver());
-    // Motor claude-sdk: driver só para aparecer na lista; a execução é do ClaudeSdkAdapter (abaixo).
+    // Driver só para aparecer na lista; a execução é do ClaudeSdkAdapter.
     this.register(new ClaudeSdkDriver());
-    // Open Harness: driver só para aparecer na lista; a execução é do OpenheinerssAdapter (abaixo).
-    this.register(new OpenheinerssDriver());
-    this.register(new AntigravityDriver());
-    this.register(new CursorDriver());
-    this.register(new CopilotDriver());
-    this.register(new CodexDriver());
-    this.register(new AiderDriver());
-    this.register(new MimoDriver());
-
-    // Registra adaptadores canônicos com AgentRunner e ConversationRuntime
-    this.registerAdapter(new OpenCodeAdapter());
-    this.registerAdapter(new CodexAdapter());
-    // Claude Agent SDK (id "claude-sdk"): motor paralelo ao "claude-code"; não é o padrão.
     this.registerAdapter(new ClaudeSdkAdapter());
-    // Copilot e MiMo via ACP (D5): mesma infraestrutura, diferença só na configuração.
-    this.registerAdapter(new AcpAdapter({ vendor: COPILOT_ACP, driver: this.get("copilot")! }));
-    this.registerAdapter(new AcpAdapter({ vendor: MIMO_ACP, driver: this.get("mimo")! }));
-    // Open Harness (openheinerss): motor opcional por JSON-RPC/STDIO; binário ausente = motor indisponível, não erro global.
-    this.registerAdapter(new OpenheinerssAdapter());
   }
 
   public static getInstance(): EngineRegistry {
@@ -129,41 +96,24 @@ export class EngineRegistry {
   }
 
   public resolveDriver(harness?: string): EngineDriver {
-    const id = (harness || "opencode").trim().toLowerCase();
+    const id = (harness || "claude-sdk").trim().toLowerCase();
     const driver = this.drivers.get(id);
     if (driver) return driver;
 
-    // Aliases amigáveis
-    if (id === "crom" || id === "cromagente") {
-      const c = this.drivers.get("crom-agente");
-      if (c) return c;
-    }
     if (id === "claude" || id === "claudecode") {
       const cl = this.drivers.get("claude-code");
       if (cl) return cl;
     }
-    if (id === "agy") {
-      const ag = this.drivers.get("antigravity");
-      if (ag) return ag;
-    }
-    if (id === "cursor-agent" || id === "cursorcli") {
-      const cur = this.drivers.get("cursor");
-      if (cur) return cur;
-    }
-    if (id === "github-copilot" || id === "gh-copilot" || id === "copilot-cli") {
-      const cop = this.drivers.get("copilot");
-      if (cop) return cop;
-    }
-    if (id === "openai-codex" || id === "openai") {
-      const cd = this.drivers.get("codex");
-      if (cd) return cd;
+    if (id === "sdk" || id === "claudesdk") {
+      const sdk = this.drivers.get("claude-sdk");
+      if (sdk) return sdk;
     }
 
     throw new EngineNotFoundError(id);
   }
 
   public resolveAdapter(harness?: string): EngineAdapter {
-    const id = (harness || "opencode").trim().toLowerCase();
+    const id = (harness || "claude-sdk").trim().toLowerCase();
     const direct = this.adapters.get(id);
     if (direct) return direct;
 

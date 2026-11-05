@@ -36,6 +36,16 @@ async function caminhosDeWorkspaces(homeDir: string): Promise<string[]> {
 import { collectCatalog, curatedSource, engineHintSource, ModelProbeStore, openCodeLiveSource, settingsSource } from "../../core/models/index.js";
 import type { EngineAccount } from "../../core/engines/engine-account-store.js";
 import { listarProvedoresStatus, testarModeloDirect, completarChatDirect } from "../../core/contexts/execution/llm-client.js";
+import { ProvedorError } from "../../core/engines/provedor-claude.js";
+import {
+  definirAtivoGratis,
+  listarGratis,
+  removerPoolGratis,
+  removerProvedorGratis,
+  salvarPoolGratis,
+  salvarProvedorGratis,
+  type ProvedorGratisEntrada,
+} from "../../core/engines/provedores-gratis.js";
 import type { SecretOrigem } from "../../core/contexts/storage/secrets-store.js";
 import type { RouteContext } from "./types.js";
 
@@ -676,6 +686,50 @@ export async function handleConfigRoutes(ctx: RouteContext): Promise<boolean> {
     const atualizados = await accts.obterLimitesMotores();
     enviar(res, 200, { ok: true, limites: atualizados });
     return true;
+  }
+
+  // Provedores grátis do claude-sdk (Configurações > Motores). Só compatível e pool; só modelo :free/-free.
+  if (rota.startsWith("/api/provedores-gratis")) {
+    try {
+      if (rota === "/api/provedores-gratis" && req.method === "GET") {
+        enviar(res, 200, { ok: true, ...listarGratis(home) });
+        return true;
+      }
+      if (rota === "/api/provedores-gratis/provedor" && req.method === "POST") {
+        await salvarProvedorGratis(home, (await lerCorpo(req)) as ProvedorGratisEntrada);
+        enviar(res, 200, { ok: true, ...listarGratis(home) });
+        return true;
+      }
+      const mProvedor = /^\/api\/provedores-gratis\/provedor\/([^/]+)$/.exec(rota);
+      if (mProvedor && req.method === "DELETE") {
+        await removerProvedorGratis(home, decodeURIComponent(mProvedor[1]!));
+        enviar(res, 200, { ok: true, ...listarGratis(home) });
+        return true;
+      }
+      if (rota === "/api/provedores-gratis/pool" && req.method === "POST") {
+        await salvarPoolGratis(home, (await lerCorpo(req)) as { id: string; nome: string; membros: string[] });
+        enviar(res, 200, { ok: true, ...listarGratis(home) });
+        return true;
+      }
+      const mPool = /^\/api\/provedores-gratis\/pool\/([^/]+)$/.exec(rota);
+      if (mPool && req.method === "DELETE") {
+        await removerPoolGratis(home, decodeURIComponent(mPool[1]!));
+        enviar(res, 200, { ok: true, ...listarGratis(home) });
+        return true;
+      }
+      if (rota === "/api/provedores-gratis/ativo" && req.method === "POST") {
+        const corpo = (await lerCorpo(req)) as { id?: unknown };
+        await definirAtivoGratis(home, typeof corpo.id === "string" ? corpo.id : "");
+        enviar(res, 200, { ok: true, ...listarGratis(home) });
+        return true;
+      }
+    } catch (erro) {
+      if (erro instanceof ProvedorError) {
+        enviar(res, 400, { erro: erro.message });
+        return true;
+      }
+      throw erro;
+    }
   }
 
   // GET e POST /api/motores/:id/contas

@@ -121,7 +121,7 @@ export function checkConfiguredEngines(
     usos.set(key, [...(usos.get(key) ?? []), uso]);
   };
   add(readRunEngineConfig(homeDir, { emitNotice: false }).engine, "execuções");
-  add(opts.conversationEngine ?? "opencode", "Secretário");
+  add(opts.conversationEngine ?? "claude-sdk", "Secretário");
   if (opts.workspacePath) {
     try {
       const cfg = JSON.parse(readFileSyncSafe(join(opts.workspacePath, ".opencorp", "config.json")) ?? "{}") as { conversationEngineOverride?: string };

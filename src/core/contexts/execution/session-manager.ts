@@ -905,8 +905,10 @@ export class SessionManager {
     // modelo (D1). O prefixo só escolhe o motor quando não há motor explícito
     // (compatibilidade com o formato legado `codex/<modelo>`), sobre o padrão.
     const motorExplicito = opcoes.engine || opcoes.harness || ag.frontmatter.harness || (ag.frontmatter as any).engine;
-    let harnessEscolhido = motorExplicito || runnerConfigEngine || "opencode";
-    const motorDoPrefixo = explicitEngineOfModel(modelo);
+    let harnessEscolhido = motorExplicito || runnerConfigEngine || "claude-sdk";
+    const prefixoBruto = explicitEngineOfModel(modelo);
+    // Prefixo de harness arquivado (ex.: "opencode/…") não escolhe motor: vale o motor explícito ou o claude-sdk.
+    const motorDoPrefixo = prefixoBruto && engineRegistry.getAdapter(prefixoBruto) ? prefixoBruto : undefined;
     if (motorDoPrefixo) {
       const explicitoCanonico = motorExplicito ? engineRegistry.resolveDriver(motorExplicito).id : undefined;
       if (explicitoCanonico && explicitoCanonico !== motorDoPrefixo) {
@@ -1087,7 +1089,7 @@ export class SessionManager {
       await this.admitirExecucaoHost(id);
 
       // Token Bucket Rate Limiter: amortecimento preventivo de rajadas por motor
-      const motorNome = (ag.frontmatter as { engine?: string } | undefined)?.engine || "opencode";
+      const motorNome = (ag.frontmatter as { engine?: string } | undefined)?.engine || "claude-sdk";
       await tokenBucketGlobal.adquirirToken(motorNome).catch(() => {});
 
       segredosRun = Object.entries(envEfetivo)
@@ -1506,7 +1508,7 @@ export class SessionManager {
         return prefixo === "crom/" ? "crom-agente" : prefixo.slice(0, -1);
       }
     }
-    return "opencode";
+    return "claude-sdk";
   }
 
   /** Transcript da sessão: chats/<id> (transcript) → logs/<id>.log → vazio. */
@@ -1593,7 +1595,7 @@ export class SessionManager {
 
     // Motor que executou (nunca inferido do prefixo do modelo — `openrouter/*`
     // não implica OpenCode). Registros antigos sem o campo usam o motor do agente.
-    const motorId = String((registro as any).motor || opcoes.engine || opcoes.harness || "opencode");
+    const motorId = String((registro as any).motor || opcoes.engine || opcoes.harness || "claude-sdk");
     const falhaCreditos = PADRAO_ERRO_CREDITOS.test(textoValidar);
     const failure = falhaCreditos ? "credits" : classifyFailure(textoValidar, { inactivity: ehInatividadeModelo });
 

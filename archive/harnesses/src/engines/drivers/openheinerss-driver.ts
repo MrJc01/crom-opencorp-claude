@@ -23,7 +23,11 @@ export function openheinerssDefaultHarness(env: NodeJS.ProcessEnv = process.env)
  * `mock` (nome de harness conhecido) → só harness; qualquer outro valor é modelo do harness padrão.
  * `default`/vazio = harness padrão e modelo do próprio harness.
  */
-export function parseOpenheinerssModel(model: string | undefined, env: NodeJS.ProcessEnv = process.env): { harness: string; model?: string } {
+export function parseOpenheinerssModel(
+  model: string | undefined,
+  env: NodeJS.ProcessEnv = process.env,
+  instancias: readonly string[] = [],
+): { harness: string; model?: string } {
   const raw = (model ?? "").trim();
   if (!raw || raw === "default") return { harness: openheinerssDefaultHarness(env) };
   const colon = raw.indexOf(":");
@@ -33,6 +37,8 @@ export function parseOpenheinerssModel(model: string | undefined, env: NodeJS.Pr
     return { harness, ...(rest ? { model: rest } : {}) };
   }
   if ((OPENHEINERSS_HARNESSES as readonly string[]).includes(raw)) return { harness: raw };
+  // Instância de conta configurada no openheinerss (ex.: codex-conta2) é harness, não modelo.
+  if (instancias.includes(raw)) return { harness: raw };
   return { harness: openheinerssDefaultHarness(env), model: raw };
 }
 

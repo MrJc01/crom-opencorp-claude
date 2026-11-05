@@ -36,9 +36,9 @@ describe("RuntimeConfig", () => {
 });
 
 describe("configuração de runtimes", () => {
-  it("mantém OpenCode como default explícito do runtime conversacional", () => {
+  it("usa claude-sdk como default explícito do runtime conversacional", () => {
     const settings = settingsSchema.parse({});
-    expect(settings.default_conversation_engine).toBe("opencode");
+    expect(settings.default_conversation_engine).toBe("claude-sdk");
     expect(settings.engines).toEqual({});
     expect(settings.conversationEngineOverride).toBeUndefined();
   });

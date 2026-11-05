@@ -55,15 +55,7 @@ export async function obterRuntimeSecretario(
     throw new SecretarioError(`Falha ao resolver motor conversacional do Secretário: ${msg}`, { status: 409 });
   }
 
-  let legacyOpenCodeGerenciado = false;
-  if (resolution.engineId === "opencode" && ctx.opencodeServer) {
-    try {
-      legacyOpenCodeGerenciado = Boolean((await ctx.opencodeServer.status()).rodando);
-    } catch {
-      legacyOpenCodeGerenciado = false;
-    }
-  }
-  if (strict && !resolution.preflight.ok && !legacyOpenCodeGerenciado) {
+  if (strict && !resolution.preflight.ok) {
     if (!resolution.preflight.supportsConversation) {
       throw new SecretarioError(
         `O motor "${resolution.engineId}" não oferece runtime conversacional.`,
@@ -181,29 +173,17 @@ export async function statusRuntimeSecretario(
     erroResolucao = err instanceof Error ? err.message : String(err);
   }
 
-  const engineId = resolution?.engineId ?? "opencode";
+  const engineId = resolution?.engineId ?? "claude-sdk";
   const processKey = wsId ? formatProcessKey({ engineId, workspaceId: wsId }) : null;
   const proc = processKey ? ProcessRegistry.getInstance().get(processKey) : undefined;
 
-  let rodando = Boolean(proc && proc.state !== "stopped" && proc.state !== "crashed");
-  let pid: number | null = proc?.pid ?? null;
-  let porta: number | null = proc?.port ?? null;
-
-  // Fallback para servidor OpenCode legado caso o motor resolvido seja OpenCode e opencodeServer esteja ativo
-  if (!rodando && ctx.opencodeServer && engineId === "opencode") {
-    try {
-      const st = await ctx.opencodeServer.status();
-      if (st.rodando) {
-        rodando = true;
-        pid = st.pid ?? null;
-        porta = st.porta ?? null;
-      }
-    } catch {}
-  }
+  const rodando = Boolean(proc && proc.state !== "stopped" && proc.state !== "crashed");
+  const pid: number | null = proc?.pid ?? null;
+  const porta: number | null = proc?.port ?? null;
 
   return {
     rodando,
-    configurado: resolution ? resolution.preflight.ok || (resolution.engineId === "opencode" && rodando) : false,
+    configurado: resolution ? resolution.preflight.ok : false,
     porta,
     pid,
     motor: resolution

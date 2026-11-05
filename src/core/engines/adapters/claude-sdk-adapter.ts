@@ -9,6 +9,7 @@ import {
 } from "@anthropic-ai/claude-agent-sdk";
 import { opencorpHome, pathComCliLocal } from "../../../utils/paths.js";
 import { configDirClaudeAtivo, resolverProvedorClaude } from "../provedor-claude.js";
+import { checkEngineAuthStatusAsync } from "../credentials-bridge.js";
 import { resolveEngineSpawnEnv } from "../../credentials/credentials-store.js";
 import { LegacyDriverAdapter } from "../adapter-compat.js";
 import { ClaudeCodeDriver } from "../drivers/claude-code-driver.js";
@@ -474,7 +475,22 @@ export class ClaudeSdkAdapter implements EngineAdapter {
     const legacy = new LegacyDriverAdapter(new ClaudeCodeDriver());
     // Reaproveita as funções do driver; o engineId exposto passa a ser o deste adaptador.
     this.installer = { ...legacy.installer, engineId: CLAUDE_SDK_ENGINE_ID };
-    this.authenticator = { ...legacy.authenticator, engineId: CLAUDE_SDK_ENGINE_ID };
+    this.authenticator = {
+      ...legacy.authenticator,
+      engineId: CLAUDE_SDK_ENGINE_ID,
+      // Provedor ativo que não é a assinatura (api, endpoint compatível, pool): a credencial é a dele, não o login do claude.ai.
+      status: async (home) => {
+        try {
+          const prov = resolverProvedorClaude(home);
+          if (prov.tipo !== "assinatura") {
+            return { authenticated: true, method: `Provedor ${prov.id} (${prov.tipo})`, details: "Credencial do provedor configurado em provedores.json" };
+          }
+        } catch (err) {
+          return { authenticated: false, method: "Provedor inválido", details: err instanceof Error ? err.message : String(err) };
+        }
+        return checkEngineAuthStatusAsync(CLAUDE_SDK_ENGINE_ID, home);
+      },
+    };
 
     this.modelCatalog = {
       engineId: CLAUDE_SDK_ENGINE_ID,

@@ -7,6 +7,7 @@ import { eventBus } from "../../shared/event-bus.js";
 import { SessionManager, type OpcoesRun, type ResultadoRun } from "../execution/session-manager.js";
 import { mkdirRecursive, writeFileAtomic } from "../../../utils/fs-safe.js";
 import { opencorpHome, pathComCliLocal } from "../../../utils/paths.js";
+import { donoDeTravaVivo } from "../../../utils/processo.js";
 import { PromptStore } from "../agents/prompt-store.js";
 import { grauEntradaJoin } from "../../domain/flow/dag.js";
 
@@ -63,6 +64,11 @@ export const flowSchema = z.object({
   // Mantido no schema apenas para retrocompatibilidade de leitura de JSONs legados.
   auto_agendar: z.boolean().default(false).optional(),
   ativo: z.boolean().default(true),
+  // Comando rodado quando a execução falha (ex.: publicar o que já está aprovado na fila). Não muda o status "falhou".
+  ao_falhar: z.object({
+    comando: z.string().min(1),
+    timeout_ms: z.number().int().positive().optional(),
+  }).optional(),
 });
 
 export type NoFlow = z.infer<typeof nosFlowSchema>;
@@ -774,8 +780,7 @@ export class FlowStore {
   emExecucao(wsPath: string, flowId: string): { pid: number; inicio?: string } | null {
     try {
       const dono = JSON.parse(readFileSync(join(wsPath, ".opencorp", "locks", `executando-${flowId}.json`), "utf8")) as { pid?: number; inicio?: string };
-      if (!dono.pid) return null;
-      process.kill(dono.pid, 0);
+      if (!dono.pid || !donoDeTravaVivo(dono.pid, dono.inicio)) return null;
       return { pid: dono.pid, inicio: dono.inicio };
     } catch {
       return null;
@@ -799,14 +804,7 @@ export class FlowStore {
       try {
         dono = JSON.parse(readFileSync(trava, "utf8"));
       } catch {}
-      let vivo = false;
-      try {
-        if (dono.pid) {
-          process.kill(dono.pid, 0);
-          vivo = true;
-        }
-      } catch {}
-      if (vivo) {
+      if (dono.pid && donoDeTravaVivo(dono.pid, dono.inicio)) {
         throw new FlowError(`flow "${flowId}" já está em execução (pid ${dono.pid}, desde ${dono.inicio ?? "?"})`);
       }
       writeFileSync(trava, conteudo);
@@ -1621,6 +1619,8 @@ ${rotulos.map((r) => `- ${r}`).join("\n")}`;
             componente_id?: string;
             runtime?: "bash" | "node" | "python";
             timeout_ms?: number;
+            tentativas?: number;
+            espera_tentativa_ms?: number;
           };
           const { execFile, exec } = await import("node:child_process");
           const { promisify } = await import("node:util");
@@ -1690,20 +1690,31 @@ ${rotulos.map((r) => `- ${r}`).join("\n")}`;
               saidaScript = (res.stdout || res.stderr || "").trim();
             } else if (config.comando) {
               const comandoInterpolado = config.comando.replaceAll("{{entrada}}", contexto).replaceAll("{{$input}}", contexto);
-              const res = await execAsync(comandoInterpolado, {
-                cwd: wsPath,
-                timeout,
-                env: {
-                  ...process.env,
-                  OPENCORP_ENTRADA: contexto,
-                  OPENCORP_INPUT: contexto,
-                  OPENCORP_FLOW_ID: flowId,
-                  OPENCORP_NODE_ID: no.id,
-                  OPENCORP_WORKSPACE_DIR: wsPath,
-                  PATH: pathComCliLocal(),
-                },
-              });
-              saidaScript = (res.stdout || res.stderr || "").trim();
+              // `tentativas` cobre falha passageira (PC sobrecarregado); só faz sentido em comando idempotente.
+              const tentativas = Math.max(1, config.tentativas ?? 1);
+              for (let tentativa = 1; ; tentativa++) {
+                try {
+                  const res = await execAsync(comandoInterpolado, {
+                    cwd: wsPath,
+                    timeout,
+                    env: {
+                      ...process.env,
+                      OPENCORP_ENTRADA: contexto,
+                      OPENCORP_INPUT: contexto,
+                      OPENCORP_FLOW_ID: flowId,
+                      OPENCORP_NODE_ID: no.id,
+                      OPENCORP_WORKSPACE_DIR: wsPath,
+                      PATH: pathComCliLocal(),
+                    },
+                  });
+                  saidaScript = (res.stdout || res.stderr || "").trim();
+                  break;
+                } catch (erroTentativa) {
+                  if (tentativa >= tentativas || (await foiCancelado())) throw erroTentativa;
+                  eventBus.emit("flow-no", { flow: flowId, no: no.id, status: "repetindo", tentativa, erro: msg(erroTentativa) });
+                  await new Promise((r) => setTimeout(r, config.espera_tentativa_ms ?? 15_000));
+                }
+              }
             } else {
               throw new FlowError(`Nó ${no.tipo} "${no.id}" requer 'componente_id', 'codigo', 'arquivo' ou 'comando' configurado`);
             }
@@ -1867,6 +1878,30 @@ ${rotulos.map((r) => `- ${r}`).join("\n")}`;
       if (erro instanceof FlowError) noFalha = null;
     }
 
+    let aoFalhar: { ok: boolean; saida: string } | null = null;
+    if (status === "falhou" && flow.ao_falhar) {
+      const { exec } = await import("node:child_process");
+      const { promisify } = await import("node:util");
+      try {
+        const res = await promisify(exec)(flow.ao_falhar.comando, {
+          cwd: wsPath,
+          timeout: Math.min(flow.ao_falhar.timeout_ms ?? 600_000, 7_200_000),
+          env: {
+            ...process.env,
+            OPENCORP_ENTRADA: contexto,
+            OPENCORP_INPUT: contexto,
+            OPENCORP_FLOW_ID: flowId,
+            OPENCORP_NODE_ID: "ao_falhar",
+            OPENCORP_WORKSPACE_DIR: wsPath,
+            PATH: pathComCliLocal(),
+          },
+        });
+        aoFalhar = { ok: true, saida: (res.stdout || res.stderr || "").trim().slice(-2000) };
+      } catch (erro) {
+        aoFalhar = { ok: false, saida: msg(erro).slice(-2000) };
+      }
+    }
+
     if (motivo !== null) {
       const meta = await this.registros.lerMeta(wsPath, "execucoes", execId);
       const extras = (meta.extras ?? {}) as Record<string, unknown>;
@@ -1875,6 +1910,7 @@ ${rotulos.map((r) => `- ${r}`).join("\n")}`;
       extras.contexto_final = contexto;
       extras.motivo = motivo;
       extras.no_falha = noFalha;
+      if (aoFalhar) extras.ao_falhar = aoFalhar;
       meta.extras = extras;
       await this.registros.salvarMeta(wsPath, "execucoes", execId, meta);
     } else {

@@ -1,3 +1,4 @@
+import { processoOpencorpVivo } from "../../../utils/processo.js";
 import { existsSync, openSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -123,12 +124,7 @@ export async function lerPidfile(wsPath: string): Promise<PidInfo | null> {
 }
 
 export async function pidVivo(pid: number): Promise<boolean> {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
+  return processoOpencorpVivo(pid);
 }
 
 export async function estaRodando(wsPath: string): Promise<boolean> {

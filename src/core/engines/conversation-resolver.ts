@@ -147,7 +147,7 @@ export class ConversationRuntimeResolver {
       issues.push(
         `O motor "${engineId}" não possui capacidade conversacional interativa declarada no manifesto.`
       );
-      recommendation = `Selecione um motor conversacional compatível (como 'opencode' ou 'codex').`;
+      recommendation = `Selecione um motor conversacional compatível (como 'claude-sdk').`;
       if (strict) {
         throw new EngineCapabilityUnavailableError(engineId, "conversation", {
           details: {

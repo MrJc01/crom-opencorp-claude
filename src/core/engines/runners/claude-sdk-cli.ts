@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { query, type Options, type SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import { traduzirModelo, type MembroPoolResolvido } from "../provedor-claude.js";
+import { classificarFalha, escolherMembro, gravarEstadoRotacao, lerEstadoRotacao, limparBloqueiosVencidos, registrarBloqueio, registrarUso } from "../rotacao-provedores.js";
 
 /**
  * Runner de agente do motor "claude-sdk". Roda como processo filho (o session-manager
@@ -24,6 +26,8 @@ export interface OpcoesRunnerCli {
   claudePath?: string;
   /** Arquivo do agente montado pelo OpenCorp (.opencorp/opencode/agent/<id>.md): papel, regras e skills. */
   agentePath?: string;
+  /** Pool de provedores: uma conta por tentativa, com troca automática quando uma esgota a cota. */
+  pool?: { id: string; home: string; modeloPedido?: string; membros: MembroPoolResolvido[] };
 }
 
 /** Corpo do arquivo do agente, sem o frontmatter YAML. */
@@ -59,8 +63,104 @@ export function lerArgumentosCli(argv: string[]): OpcoesRunnerCli {
     return i === -1 ? undefined : opcoes[i + 1];
   };
   const cwd = valor("--cwd");
-  if (!cwd) throw new Error("uso: claude-sdk-cli --cwd <dir> [--model <id>] [--claude-path <bin>] [--agente <arquivo.md>] -- <prompt>");
-  return { cwd, prompt, model: valor("--model"), claudePath: valor("--claude-path"), agentePath: valor("--agente") };
+  if (!cwd) throw new Error("uso: claude-sdk-cli --cwd <dir> [--model <id>] [--pool <id> --home <dir>] [--claude-path <bin>] [--agente <arquivo.md>] -- <prompt>");
+  const poolId = valor("--pool");
+  const home = valor("--home");
+  // Os membros (com credenciais) chegam por OPENCORP_POOL_MEMBROS; main() preenche. Aqui fica só o pedido.
+  const pool = poolId && home ? { id: poolId, home, modeloPedido: valor("--model-pedido"), membros: [] } : undefined;
+  return { cwd, prompt, model: valor("--model"), claudePath: valor("--claude-path"), agentePath: valor("--agente"), pool };
+}
+
+/** Variáveis que definem a conta do provedor: são trocadas a cada tentativa do pool. */
+const VARIAVEIS_CONTA = [
+  "ANTHROPIC_BASE_URL",
+  "ANTHROPIC_AUTH_TOKEN",
+  "ANTHROPIC_API_KEY",
+  "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+  "ANTHROPIC_DEFAULT_SONNET_MODEL",
+  "ANTHROPIC_DEFAULT_OPUS_MODEL",
+  "ANTHROPIC_SMALL_FAST_MODEL",
+  "CLAUDE_CONFIG_DIR",
+];
+
+export function aplicarContaDoMembro(membro: MembroPoolResolvido, alvo: NodeJS.ProcessEnv = process.env): void {
+  for (const v of VARIAVEIS_CONTA) delete alvo[v];
+  Object.assign(alvo, membro.env);
+  if (membro.configDir) alvo.CLAUDE_CONFIG_DIR = membro.configDir;
+}
+
+/**
+ * Roda o agente com rodízio entre as contas do pool: uma tentativa por membro. Cota esgotada (429, 402, cota diária)
+ * ou modelo indisponível (403) põe o membro em cooldown e a tentativa segue para outro. Erro de rede tenta outro sem
+ * bloquear. Erro que não depende da conta (prompt, ferramenta) para na hora.
+ */
+export async function executarComRotacao(
+  opts: OpcoesRunnerCli,
+  saidas: SaidasRunnerCli,
+  consulta: Consulta = query,
+  agora: () => Date = () => new Date(),
+): Promise<number> {
+  const pool = opts.pool;
+  if (!pool) return executarAgenteCli(opts, saidas, consulta);
+  const excluir: string[] = [];
+  for (let tentativa = 0; tentativa < pool.membros.length; tentativa++) {
+    const estado = lerEstadoRotacao(pool.home);
+    limparBloqueiosVencidos(estado, agora());
+    const { id, bloqueados } = escolherMembro(
+      pool.membros.map((m) => m.id),
+      estado,
+      agora(),
+      excluir,
+    );
+    gravarEstadoRotacao(pool.home, estado);
+    if (!id) {
+      const motivos = bloqueados.map((b) => `${b.id} (${b.motivo}, volta ${b.ate})`).join("; ");
+      saidas.stderr(`pool "${pool.id}" sem membro disponível: ${motivos || "todos os membros já falharam nesta chamada"}\n`);
+      return 1;
+    }
+    const membro = pool.membros.find((m) => m.id === id)!;
+    aplicarContaDoMembro(membro);
+    // Saída da tentativa fica guardada até saber se ela deu certo: a mensagem de cota de uma conta não pode virar
+    // resposta do agente. Só a atividade (ferramentas usadas, no stderr) segue em tempo real para o watchdog.
+    let erro = "";
+    let texto = "";
+    const codigo = await executarAgenteCli(
+      { ...opts, model: traduzirModelo(membro.modelos, pool.modeloPedido) },
+      { stdout: (t) => (texto += t), stderr: (t) => (erro += t), atividade: saidas.atividade },
+      consulta,
+    );
+    const depois = lerEstadoRotacao(pool.home);
+    if (codigo === 0) {
+      saidas.stdout(texto);
+      registrarUso(depois, id);
+      gravarEstadoRotacao(pool.home, depois);
+      return 0;
+    }
+    const falha = classificarFalha(erro, agora());
+    if (falha.classe === "outra") {
+      saidas.stdout(texto);
+      saidas.stderr(erro);
+      return codigo;
+    }
+    if (falha.ate) registrarBloqueio(depois, id, falha.ate, falha.motivo);
+    gravarEstadoRotacao(pool.home, depois);
+    const fim = falha.ate ? `, fora até ${falha.ate.toISOString()}` : "";
+    saidas.stderr(`[rotação] ${id}: ${falha.motivo}${fim}; tentando outro membro\n`);
+    excluir.push(id);
+  }
+  saidas.stderr(`pool "${pool.id}": todos os membros falharam nesta chamada\n`);
+  return 1;
+}
+
+/** Membros do pool, com credenciais, vindos do ambiente (passado pelo driver). */
+export function membrosDoAmbiente(bruto: string | undefined): MembroPoolResolvido[] {
+  if (!bruto) return [];
+  try {
+    const lista = JSON.parse(bruto) as MembroPoolResolvido[];
+    return Array.isArray(lista) ? lista : [];
+  } catch {
+    return [];
+  }
 }
 
 /** Executa o agente e devolve o código de saída. A saída final vai para stdout, como no `claude -p`. */
@@ -116,7 +216,8 @@ export async function executarAgenteCli(
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const opts = lerArgumentosCli(process.argv.slice(2));
-  const codigo = await executarAgenteCli(opts, {
+  if (opts.pool) opts.pool.membros = membrosDoAmbiente(process.env.OPENCORP_POOL_MEMBROS);
+  const codigo = await executarComRotacao(opts, {
     stdout: (t) => process.stdout.write(t),
     stderr: (t) => process.stderr.write(t),
     atividade: (t) => process.stderr.write(t),

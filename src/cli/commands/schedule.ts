@@ -5,6 +5,7 @@ import {
   validarCron,
 } from "../../core/contexts/scheduling/scheduler.js";
 import { spawnDaemon, pidVivo } from "../../core/contexts/platform/supervisor.js";
+import { processoOpencorpVivo } from "../../utils/processo.js";
 import { readFile, unlink, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { opencorpHome } from "../../utils/paths.js";
@@ -106,7 +107,7 @@ export function registerScheduleCommands(program: Command): void {
         const home = opencorpHome();
         const pidfile = pidPathScheduler();
         const anterior = await lerPid();
-        if (anterior && (await pidVivo(anterior.pid))) {
+        if (anterior && anterior.pid !== process.pid && processoOpencorpVivo(anterior.pid, "scheduler")) {
           console.log(`erro: scheduler já está rodando (pid ${anterior.pid}) — pare com "opencorp scheduler stop"`);
           process.exitCode = 1;
           return;

@@ -54,6 +54,6 @@ Você é um agente especialista em testes.`;
   });
 
   it("HarnessRegistry permite registrar e obter motores", () => {
-    expect(harnessRegistry.obterPadrao()).toBe("opencode");
+    expect(harnessRegistry.obterPadrao()).toBe("claude-sdk");
   });
 });

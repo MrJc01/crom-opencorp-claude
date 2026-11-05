@@ -8,6 +8,7 @@ import { join, dirname } from "node:path";
 import { spawn } from "node:child_process";
 import { readFile, rm } from "node:fs/promises";
 import { openSync } from "node:fs";
+import { processoOpencorpVivo } from "../../utils/processo.js";
 
 const PIDFILE = "api.pid";
 
@@ -34,12 +35,7 @@ async function lerPidfile(home: string): Promise<ApiPidInfo | null> {
 }
 
 async function pidVivo(pid: number): Promise<boolean> {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
+  return processoOpencorpVivo(pid);
 }
 
 async function gravarPidfile(home: string, info: ApiPidInfo): Promise<void> {

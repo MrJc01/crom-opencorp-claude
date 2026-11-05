@@ -104,7 +104,15 @@ export function createFakeOpenheinerss(): FakeOpenheinerssProcess {
     proc.received.push({ method: msg.method, params: msg.params });
     const { id, method, params } = msg;
     switch (method) {
+      case "harness.listar": {
+        reply(id, { harnesses: [{ id: "mock" }, { id: "claude-code" }, { id: "codex-conta2" }, { id: "sem-sistema" }] });
+        break;
+      }
       case "session.create": {
+        // harness "sem-sistema" recusa instrução de sistema, como o openheinerss faz com harness que não a repassa
+        if (params.options?.systemPrompt && params.harness === "sem-sistema") {
+          return fail(id, 4020, "harness sem-sistema (modo cli) não aceita instrução de sistema: não repassado pelo teste");
+        }
         const sessionId = `sess_${++sessionCounter}_${proc.pid}`;
         sessions.set(sessionId, { harness: params.harness, cwd: params.cwd });
         reply(id, { sessionId, harness: params.harness, mode: "mock", cwd: params.cwd, status: "ready" });

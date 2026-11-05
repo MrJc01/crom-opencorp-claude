@@ -143,8 +143,8 @@ describe("runDoctor (integração, tudo injetado)", () => {
   it("ambiente saudável → exitCode 0, com alerta de segredos", async () => {
     const home = await tmpDir();
     const bin = await tmpDir();
-    await writeFile(join(bin, "opencode"), "#!/bin/sh\n");
-    await chmod(join(bin, "opencode"), 0o755);
+    await writeFile(join(bin, "claude"), "#!/bin/sh\n");
+    await chmod(join(bin, "claude"), 0o755);
     const settingsDir = join(home, ".opencorp");
     await mkdir(settingsDir, { recursive: true });
     await writeFile(join(settingsDir, "settings.json"), JSON.stringify({ version: 1 }));

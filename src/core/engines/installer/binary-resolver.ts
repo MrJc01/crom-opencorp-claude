@@ -28,6 +28,7 @@ export const ENGINE_BINARY_NAMES: Readonly<Record<string, readonly string[]>> = 
   opencode: ["opencode"],
   codex: ["codex"],
   "claude-code": ["claude"],
+  "claude-sdk": ["claude"],
   cursor: ["agent", "cursor-agent"],
   copilot: ["copilot"],
   antigravity: ["agy"],

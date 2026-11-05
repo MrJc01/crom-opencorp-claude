@@ -3,7 +3,10 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { pathComCliLocal, projectRoot } from "../../../utils/paths.js";
-import { resolverProvedorClaude } from "../provedor-claude.js";
+import { opencorpHome } from "../../../utils/paths.js";
+import { provedorAtivoTraduzModelos, configDirsDoPool, membrosPoolResolvidos, poolAtivo, resolverProvedorClaude } from "../provedor-claude.js";
+import { pastaEstadoRotacao } from "../rotacao-provedores.js";
+import { mkdirSync } from "node:fs";
 import { resolveEngineSpawnEnv } from "../../credentials/credentials-store.js";
 import { PreflightBinaryMissingError } from "../errors.js";
 import type { EngineDriver, EngineExecutionOptions } from "../types.js";
@@ -26,7 +29,10 @@ export class ClaudeSdkDriver implements EngineDriver {
   supportedModelsHint = ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"];
   // Uma pesquisa com ferramentas (ex.: boletim) fica longos trechos sem saída: limites maiores que o padrão.
   timeoutDefaults = { tetoMs: 1_800_000, inatividadeMs: 300_000 };
-  modelPrefixes = ["claude-"];
+  /** Com provedor compatível/pool qualquer modelo é aceito (traduzido pelo provedor); senão só claude-*. */
+  get modelPrefixes(): string[] | undefined {
+    return provedorAtivoTraduzModelos(opencorpHome()) ? undefined : ["claude-"];
+  }
 
   private readonly claudeCode = new ClaudeCodeDriver();
 
@@ -63,13 +69,26 @@ export class ClaudeSdkDriver implements EngineDriver {
     if (!status.installed || !status.path) throw new PreflightBinaryMissingError(this.id);
     const claudeReal = realpathSync(status.path);
     const pacoteSdk = dirname(createRequire(import.meta.url).resolve("@anthropic-ai/claude-agent-sdk"));
-    const leitura = [dirname(claudeReal), pacoteSdk, join(projectRoot(), "package.json")];
+    // dist: o runner importa módulos do próprio projeto (provedor, rodízio); sem isso a sandbox não os encontra.
+    const leitura = [dirname(claudeReal), pacoteSdk, join(projectRoot(), "package.json"), join(projectRoot(), "dist")];
     // Login do Claude Code gravável no sandbox: conta própria do OpenCorp tem prioridade sobre o login padrão do dono.
     // Provedor ativo (provedores.json): assinatura, API da Anthropic ou endpoint compatível, com mapa de modelos.
-    const provedor = resolverProvedorClaude(opts.homeDir);
-    const contaPropria = provedor.configDir;
+    // Pool: a conta é escolhida pelo runner a cada tentativa (rodízio com cooldown), então aqui só se libera as pastas de
+    // todos os membros. Resolver um membro agora gastaria uma posição do rodízio.
+    const poolId = poolAtivo(opts.homeDir);
+    if (poolId) mkdirSync(pastaEstadoRotacao(opts.homeDir), { recursive: true });
+    // Credenciais de todos os membros vão pelo ambiente do processo (a sandbox não enxerga ~/.opencorp).
+    const membrosPool = poolId ? JSON.stringify(membrosPoolResolvidos(opts.homeDir, poolId)) : undefined;
+    const provedor = poolId ? undefined : resolverProvedorClaude(opts.homeDir);
+    const contaPropria = provedor?.configDir;
     const homeClaude = process.env.HOME || "";
-    const escrita = contaPropria ? [contaPropria] : homeClaude ? [join(homeClaude, ".claude"), join(homeClaude, ".claude.json")] : [];
+    const escrita = poolId
+      ? [pastaEstadoRotacao(opts.homeDir), ...configDirsDoPool(opts.homeDir, poolId)]
+      : contaPropria
+        ? [contaPropria]
+        : homeClaude
+          ? [join(homeClaude, ".claude"), join(homeClaude, ".claude.json")]
+          : [];
 
     const env = await resolveEngineSpawnEnv(
       CREDENTIALS_ENGINE_ID,
@@ -80,7 +99,8 @@ export class ClaudeSdkDriver implements EngineDriver {
         ...(opts.envOverrides || {}),
         OPENCORP_SANDBOX_RW_BIND: escrita.join(":"),
         // conta própria do OpenCorp, se configurada e logada (o sandbox monta esta pasta no lugar do ~/.claude)
-        ...provedor.env,
+        ...(provedor?.env ?? {}),
+        ...(membrosPool ? { OPENCORP_POOL_MEMBROS: membrosPool } : {}),
         ...(contaPropria ? { CLAUDE_CONFIG_DIR: contaPropria } : {}),
         OPENCORP_SANDBOX_RO_BIND: leitura.join(":"),
       },
@@ -89,13 +109,14 @@ export class ClaudeSdkDriver implements EngineDriver {
     );
 
     const runner = fileURLToPath(new URL("../runners/claude-sdk-cli.js", import.meta.url));
-    const modelo = provedor.modelo(opts.model);
+    const modelo = provedor?.modelo(opts.model);
+    const modoPool = poolId ? ["--pool", poolId, "--home", opts.homeDir, ...(opts.model && opts.model !== "default" ? ["--model-pedido", opts.model] : [])] : [];
     // O session-manager grava o agente montado (corpo + skills + contexto) antes de preparar a execução.
     const arquivoAgente = opts.agentId ? join(opts.workspacePath, ".opencorp", "opencode", "agent", `${opts.agentId}.md`) : undefined;
     const agente = arquivoAgente && existsSync(arquivoAgente) ? ["--agente", arquivoAgente] : [];
     return {
       binary: process.execPath,
-      args: [runner, "--cwd", opts.workspacePath, ...(modelo ? ["--model", modelo] : []), "--claude-path", claudeReal, ...agente, "--", opts.prompt],
+      args: [runner, "--cwd", opts.workspacePath, ...(modelo ? ["--model", modelo] : []), ...modoPool, "--claude-path", claudeReal, ...agente, "--", opts.prompt],
       env,
       cwd: opts.workspacePath,
     };

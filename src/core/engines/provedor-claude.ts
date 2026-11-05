@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { writeFileAtomic } from "../../utils/fs-safe.js";
 import { expandTilde } from "../../utils/paths.js";
 import { claudeConfigDirOpencorp } from "./drivers/claude-config-dir.js";
+import { escolherMembro, gravarEstadoRotacao, lerEstadoRotacao, limparBloqueiosVencidos } from "./rotacao-provedores.js";
 
 /**
  * Provedor do motor "claude-sdk": de onde vêm a autenticação e os modelos que o Claude Agent SDK usa.
@@ -15,7 +16,7 @@ import { claudeConfigDirOpencorp } from "./drivers/claude-config-dir.js";
  * A escolha mora em `<home>/.opencorp/provedores.json`; `OPENCORP_PROVEDOR=<id>` vence o arquivo (útil em um processo só).
  * Trocar de provedor ou de modelo é editar esse arquivo, ou `opencorp provedor ...`; nenhum código muda.
  */
-export type TipoProvedor = "assinatura" | "api" | "compativel";
+export type TipoProvedor = "assinatura" | "api" | "compativel" | "pool";
 
 export interface ProvedorClaude {
   nome?: string;
@@ -36,6 +37,8 @@ export interface ProvedorClaude {
    * ou "padrao" (usado quando nenhum modelo é pedido). O valor é o id real no provedor.
    */
   modelos?: Record<string, string>;
+  /** Só para `pool`: ids de provedores `compativel`/`api` que se revezam quando uma conta esgota a cota. */
+  membros?: string[];
 }
 
 export interface ConfigProvedores {
@@ -52,6 +55,8 @@ export interface ResolucaoProvedor {
   configDir: string | undefined;
   /** Traduz o modelo pedido pelo agente/Secretário para o id do provedor; undefined = padrão do SDK. */
   modelo: (pedido: string | undefined) => string | undefined;
+  /** Só em pool: o membro escolhido (o `id` é o do pool). */
+  membro?: string;
 }
 
 export class ProvedorError extends Error {
@@ -75,20 +80,22 @@ export function caminhoConfigProvedores(homeDir: string): string {
 function provedorValido(bruto: unknown): ProvedorClaude | undefined {
   if (!bruto || typeof bruto !== "object") return undefined;
   const p = bruto as Record<string, unknown>;
-  if (p.tipo !== "assinatura" && p.tipo !== "api" && p.tipo !== "compativel") return undefined;
+  if (p.tipo !== "assinatura" && p.tipo !== "api" && p.tipo !== "compativel" && p.tipo !== "pool") return undefined;
+  const membros = Array.isArray(p.membros) ? p.membros.filter((m): m is string => typeof m === "string" && m.trim() !== "") : undefined;
   const texto = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
   const modelos: Record<string, string> = {};
   if (p.modelos && typeof p.modelos === "object") {
     for (const [k, v] of Object.entries(p.modelos as Record<string, unknown>)) if (texto(v)) modelos[k] = texto(v) as string;
   }
   return {
-    tipo: p.tipo,
+    tipo: p.tipo as TipoProvedor,
     ...(texto(p.nome) ? { nome: texto(p.nome) } : {}),
     ...(texto(p.configDir) ? { configDir: texto(p.configDir) } : {}),
     ...(texto(p.baseUrl) ? { baseUrl: texto(p.baseUrl) } : {}),
     ...(texto(p.chave) ? { chave: texto(p.chave) } : {}),
     ...(texto(p.chaveEnv) ? { chaveEnv: texto(p.chaveEnv) } : {}),
     ...(Object.keys(modelos).length ? { modelos } : {}),
+    ...(membros?.length ? { membros } : {}),
   };
 }
 
@@ -118,6 +125,19 @@ export async function gravarConfigProvedores(homeDir: string, config: ConfigProv
   chmodSync(caminho, 0o600);
 }
 
+/** Traduz o modelo pedido pelo mapa do provedor (id, família ou padrão). Sem pedido, usa o padrão do mapa. */
+export function traduzirModelo(mapa: Record<string, string>, pedido: string | undefined): string | undefined {
+  const sem = !pedido || pedido === "default";
+  if (sem) return mapa.padrao;
+  if (mapa[pedido]) return mapa[pedido];
+  // Ids de outros harnesses (arquivados) não existem no provedor: usam o modelo padrão do provedor.
+  if (/^(opencode|opencode-go|codex|crom-agente|crom|antigravity|cursor|copilot|aider)\//i.test(pedido)) return mapa.padrao;
+  // "openrouter/<modelo>" é a forma do harness antigo; o endpoint do OpenRouter recebe só "<modelo>".
+  if (/^openrouter\//i.test(pedido)) return pedido.replace(/^openrouter\//i, "");
+  const familia = familiaDe(pedido);
+  return mapa[pedido] ?? (familia ? mapa[familia] : undefined) ?? pedido;
+}
+
 /** Id de um modelo → família ("claude-haiku-5-5" → "haiku"). */
 function familiaDe(modelo: string): string | undefined {
   const m = modelo.toLowerCase();
@@ -142,7 +162,24 @@ export function resolverProvedorClaude(homeDir: string, hostEnv: NodeJS.ProcessE
   if (!p) {
     throw new ProvedorError(`provedor "${id}" não existe em provedores.json (disponíveis: ${Object.keys(config.provedores).join(", ")}).`);
   }
+  if (p.tipo === "pool") return resolverMembroPool(homeDir, id, [], hostEnv);
+  return resolverDireto(homeDir, id, p, hostEnv);
+}
 
+/** O provedor ativo traduz qualquer modelo (endpoint compatível ou pool)? Então o motor não restringe a claude-*. */
+export function provedorAtivoTraduzModelos(homeDir: string, hostEnv: NodeJS.ProcessEnv = process.env): boolean {
+  try {
+    const config = lerConfigProvedores(homeDir);
+    const id = hostEnv.OPENCORP_PROVEDOR?.trim() || config.ativo;
+    const tipo = config.provedores[id]?.tipo;
+    return tipo === "compativel" || tipo === "pool";
+  } catch {
+    return false;
+  }
+}
+
+/** Resolve um provedor que não é pool: ambiente, pasta de configuração e tradução de modelos. */
+export function resolverDireto(homeDir: string, id: string, p: ProvedorClaude, hostEnv: NodeJS.ProcessEnv = process.env): ResolucaoProvedor {
   const env: Record<string, string> = {};
   let configDir: string | undefined;
   if (p.tipo === "assinatura") {
@@ -174,14 +211,7 @@ export function resolverProvedorClaude(homeDir: string, hostEnv: NodeJS.ProcessE
   const rapido = mapa.haiku ?? mapa.padrao;
   if (p.tipo === "compativel" && rapido) env.ANTHROPIC_SMALL_FAST_MODEL = rapido;
 
-  const modelo = (pedido: string | undefined): string | undefined => {
-    const sem = !pedido || pedido === "default";
-    if (sem) return mapa.padrao;
-    const familia = familiaDe(pedido);
-    return mapa[pedido] ?? (familia ? mapa[familia] : undefined) ?? pedido;
-  };
-
-  return { id, tipo: p.tipo, env, configDir, modelo };
+  return { id, tipo: p.tipo, env, configDir, modelo: (pedido) => traduzirModelo(mapa, pedido) };
 }
 
 /** Pasta de configuração do Claude Code em uso (para ler histórico de sessões do mesmo lugar onde elas são gravadas). */
@@ -192,3 +222,127 @@ export function configDirClaudeAtivo(homeDir: string, hostEnv: NodeJS.ProcessEnv
     return claudeConfigDirOpencorp();
   }
 }
+
+/** Pasta de configuração que um provedor `compativel`/`api` usa (CLAUDE_CONFIG_DIR próprio, sem misturar logins). */
+export function configDirDeProvedor(homeDir: string, id: string): string {
+  return join(homeDir, ".opencorp", `claude-provedor-${id}`);
+}
+
+function membrosValidos(config: ConfigProvedores, poolId: string): string[] {
+  const pool = config.provedores[poolId];
+  return (pool?.membros ?? []).filter((m) => {
+    const p = config.provedores[m];
+    return p !== undefined && (p.tipo === "compativel" || p.tipo === "api");
+  });
+}
+
+/** Pastas que o pool pode usar (para o sandbox liberar escrita). */
+export function configDirsDoPool(homeDir: string, poolId: string): string[] {
+  const dirs = membrosPoolResolvidos(homeDir, poolId).map((m) => m.configDir).filter((d): d is string => !!d);
+  for (const d of dirs) mkdirSync(d, { recursive: true });
+  return dirs;
+}
+
+/** Id do pool ativo (ou de OPENCORP_PROVEDOR), se o provedor escolhido for um pool; senão undefined. Não consome o rodízio. */
+export function poolAtivo(homeDir: string, hostEnv: NodeJS.ProcessEnv = process.env): string | undefined {
+  const config = lerConfigProvedores(homeDir);
+  const id = hostEnv.OPENCORP_PROVEDOR?.trim() || config.ativo;
+  return config.provedores[id]?.tipo === "pool" ? id : undefined;
+}
+
+/** Membro de um pool já resolvido: o que o runner precisa para usar a conta, sem ler provedores.json lá dentro. */
+export interface MembroPoolResolvido {
+  id: string;
+  env: Record<string, string>;
+  configDir?: string;
+  modelos: Record<string, string>;
+}
+
+/** Resolve todos os membros válidos do pool (não consome o rodízio). */
+export function membrosPoolResolvidos(homeDir: string, poolId: string, hostEnv: NodeJS.ProcessEnv = process.env): MembroPoolResolvido[] {
+  const config = lerConfigProvedores(homeDir);
+  // Membro que não resolve (ex.: variável de chave ausente) fica de fora; os outros continuam no rodízio.
+  const prontos: MembroPoolResolvido[] = [];
+  for (const m of membrosValidos(config, poolId)) {
+    try {
+      const r = resolverDireto(homeDir, m, config.provedores[m]!, hostEnv);
+      prontos.push({ id: m, env: r.env, configDir: r.configDir, modelos: config.provedores[m]!.modelos ?? {} });
+    } catch {
+      /* conta sem chave ou sem URL: não entra no rodízio até ser corrigida */
+    }
+  }
+  return prontos;
+}
+
+/**
+ * Escolhe o próximo membro livre do pool e resolve esse membro (uso no processo principal, p.ex. Secretário).
+ * O runner de agentes faz o mesmo a cada tentativa, com retry: ver runners/claude-sdk-cli.ts.
+ */
+export function resolverMembroPool(
+  homeDir: string,
+  poolId: string,
+  excluir: string[] = [],
+  hostEnv: NodeJS.ProcessEnv = process.env,
+): ResolucaoProvedor {
+  if (lerConfigProvedores(homeDir).provedores[poolId]?.tipo !== "pool") throw new ProvedorError(`"${poolId}" não é um pool de provedores.`);
+  const membros = membrosPoolResolvidos(homeDir, poolId, hostEnv);
+  if (membros.length === 0) throw new ProvedorError(`pool "${poolId}" não tem membros válidos (compativel ou api) em provedores.json.`);
+
+  const agora = new Date();
+  const estado = lerEstadoRotacao(homeDir);
+  limparBloqueiosVencidos(estado, agora);
+  const { id, bloqueados } = escolherMembro(
+    membros.map((m) => m.id),
+    estado,
+    agora,
+    excluir,
+  );
+  gravarEstadoRotacao(homeDir, estado);
+  if (!id) {
+    const motivos = bloqueados.map((b) => `${b.id} (${b.motivo}, volta ${b.ate})`).join("; ");
+    throw new ProvedorError(`pool "${poolId}" sem membro disponível: ${motivos || "todos os membros já falharam nesta chamada"}.`);
+  }
+  const m = membros.find((x) => x.id === id)!;
+  return {
+    id: poolId,
+    tipo: "compativel",
+    env: m.env,
+    configDir: m.configDir,
+    modelo: (pedido) => traduzirModelo(m.modelos, pedido),
+    membro: id,
+  };
+}
+
+/** Provedores predefinidos: `opencorp provedor conta <predefinido> <id> --chave ...` cria uma conta com URL e modelos prontos. */
+export interface PredefinidoProvedor {
+  nome: string;
+  baseUrl: string;
+  /** Onde pegar a chave (ou a conta) do provedor. */
+  onde: string;
+  modelos: Record<string, string>;
+}
+
+export const PREDEFINIDOS: Record<string, PredefinidoProvedor> = {
+  "openrouter-free": {
+    nome: "OpenRouter (grátis, 1000 chamadas/dia por chave)",
+    baseUrl: "https://openrouter.ai/api",
+    onde: "https://openrouter.ai/keys",
+    modelos: {
+      padrao: "nvidia/nemotron-3.5-super-vl:free",
+      haiku: "nvidia/nemotron-3.5-super-vl:free",
+      sonnet: "nvidia/nemotron-3.5-super-vl:free",
+      opus: "nvidia/nemotron-3-ultra-550b-a55b:free",
+    },
+  },
+  "opencode-zen-free": {
+    nome: "opencode zen (modelos grátis, cota própria)",
+    baseUrl: "https://opencode.ai/zen",
+    onde: "https://opencode.ai/auth (chave; sem chave o endpoint responde com a cota anônima)",
+    modelos: {
+      padrao: "deepseek-v4.1-flash-free",
+      haiku: "deepseek-v4.1-flash-free",
+      sonnet: "glm-5.3-flash-free",
+      opus: "nemotron-3.5-super-vl-free",
+    },
+  },
+};

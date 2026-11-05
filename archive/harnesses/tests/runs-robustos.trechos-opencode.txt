@@ -1,0 +1,74 @@
+// Trechos de tests/runs-robustos.test.ts presos ao CLI do opencode (execa mockado)
+
+  it("falha de cota/conexão → 1 retry com o próximo modelo da cadeia explícita, no mesmo motor", async () => {
+    const { ws, sessoes } = await ambiente();
+    await rotacaoWorkspace(ws.path, ["openrouter/nvidia/nemotron-3-ultra-550b-a55b:free"]);
+    execaMock.mockImplementationOnce(() =>
+      fakeChild(["AI_APICallError: Weekly usage limit reached\n"], 1),
+    );
+    execaMock.mockImplementationOnce(() => fakeChild(["trabalho feito\n"], 0));
+    const r = await sessoes.rodar({
+      agente: "executor-padrao",
+      ordem: "roda com quota instável",
+      gatilho: { tipo: "cron", origem: "sch-ciclo-1" },
+    });
+    expect(execaMock).toHaveBeenCalledTimes(2);
+    expect(r.status).toBe("concluido");
+    expect(r.modelo).toBe("openrouter/nvidia/nemotron-3-ultra-550b-a55b:free");
+    const [, args2] = execaMock.mock.calls[1]!;
+    expect(args2).toContain("openrouter/nvidia/nemotron-3-ultra-550b-a55b:free");
+
+    const registros = new RegistryStore();
+    const metas = await registros.listar(ws.path, "execucoes");
+    expect(metas).toHaveLength(2);
+    const metaRetry = metas.find((m) => Boolean((m.extras as any)?.retry))!;
+    const metaOriginal = metas.find((m) => !(m.extras as any)?.retry)!;
+    expect(metaRetry.extras!.retry).toEqual({
+      de_modelo: "opencode-go/glm-5.3-flash",
+      de_exec: metaOriginal.id,
+    });
+    expect(metaRetry.tags).toContain("retry");
+    expect((metaRetry.extras!.gatilho as any).origem).toBe(
+      "sch-ciclo-1 · retry:openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
+    );
+    const journal = await lerJournal(ws.path, metaOriginal.id);
+    expect(journal).toContain("retry_modelo");
+    // Motivo auditável da decisão.
+    expect(journal).toContain('no motor \\"opencode\\"');
+
+    const db = new CorpDb(join(ws.path, ".opencorp", "corp.db"));
+    const linhas = db.listarExecucoes({ gatilho_tipo: "cron" });
+    expect(linhas).toHaveLength(2);
+    const linhaRetry = linhas.find((l) => l.gatilho_origem.includes("retry"))!;
+    expect(linhaRetry.gatilho_origem).toBe(
+      "sch-ciclo-1 · retry:openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
+    );
+    expect(linhaRetry.status).toBe("concluido");
+    db.fechar();
+  });
+
+  it("usa settings.tests.rotation quando configurada (falho fora da lista → lista[0])", async () => {
+    const { home, sessoes } = await ambiente();
+    await mkdir(join(home, ".opencorp"), { recursive: true });
+    await writeFile(
+      join(home, ".opencorp", "settings.json"),
+      JSON.stringify({ version: 1, tests: { rotation: ["openrouter/qwen/qwen3.8-27b:free", "openrouter/z-ai/glm-5.2:free"] } }),
+      "utf8",
+    );
+    execaMock.mockImplementationOnce(() => fakeChild(["Cannot connect to API\n"], 1));
+    execaMock.mockImplementationOnce(() => fakeChild(["ok\n"], 0));
+    const r = await sessoes.rodar({ agente: "executor-padrao", ordem: "roda" });
+    expect(execaMock).toHaveBeenCalledTimes(2);
+    expect(r.modelo).toBe("openrouter/qwen/qwen3.8-27b:free");
+    const [, args2] = execaMock.mock.calls[1]!;
+    expect(args2).toContain("openrouter/qwen/qwen3.8-27b:free");
+  });
+
+  it("motor explícito não é trocado pelo prefixo do modelo: falha antes do spawn", async () => {
+    const { sessoes } = await ambiente();
+    execaMock.mockImplementation(() => fakeChild(["não deveria rodar\n"], 0));
+    await expect(
+      sessoes.rodar({ agente: "executor-padrao", ordem: "conflito", engine: "opencode", model: "codex/gpt-x" }),
+    ).rejects.toThrow(/não é compatível com o motor "opencode"/);
+    expect(execaMock).not.toHaveBeenCalled();
+  });

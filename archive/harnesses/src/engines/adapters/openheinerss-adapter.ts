@@ -38,7 +38,7 @@ import type {
   ModelDescriptor,
 } from "../ports.js";
 import type { EngineInstallStatus } from "../types.js";
-import { OpenheinerssClient } from "./openheinerss-client.js";
+import { OpenheinerssClient, type OpenheinerssSessionInfo, type OpenheinerssSessionOptions } from "./openheinerss-client.js";
 
 export { OPENHEINERSS_ENGINE_ID };
 
@@ -88,6 +88,28 @@ interface HarnessSession {
   model: string;
   updatedAt: string;
   active: boolean;
+}
+
+/** Recusa do servidor para instrução de sistema que o harness não repassa (contrato R6 do openheinerss). */
+const RECUSA_SISTEMA = /não aceita instrução de sistema/i;
+
+/**
+ * Cria a sessão com a instrução de sistema (systemPrompt). Se o harness recusar, a mesma instrução segue no começo
+ * do prompt do turno (`prefixo`), para o agente ler antes de agir. Quem decide é a resposta do servidor, não uma
+ * lista de harnesses no OpenCorp.
+ */
+export async function criarSessaoComSistema(
+  client: Pick<OpenheinerssClient, "createSession">,
+  opts: OpenheinerssSessionOptions,
+  sistema: string | undefined,
+): Promise<{ info: OpenheinerssSessionInfo; prefixo?: string }> {
+  if (!sistema) return { info: await client.createSession(opts) };
+  try {
+    return { info: await client.createSession({ ...opts, systemPrompt: sistema }) };
+  } catch (erro) {
+    if (!RECUSA_SISTEMA.test(erro instanceof Error ? erro.message : String(erro))) throw erro;
+    return { info: await client.createSession(opts), prefixo: sistema };
+  }
 }
 
 export class OpenheinerssAdapter implements EngineAdapter {
@@ -315,13 +337,20 @@ export class OpenheinerssAdapter implements EngineAdapter {
     let client: OpenheinerssClient | undefined;
     try {
       client = (await this.launch(input.workspaceId, input.workspacePath, input.homeDir, input.accountId)).client;
-      const { harness, model } = parseOpenheinerssModel(input.model);
+      const instancias = await client.listHarnessIds().catch(() => [] as string[]);
+      const { harness, model } = parseOpenheinerssModel(input.model, process.env, instancias);
       const permissionMode = input.toolPolicy?.mode === "allow-all" ? "always_allow" : "ask";
-      const info = input.resumeSessionId
-        ? await client.resumeSession(input.resumeSessionId, input.workspacePath)
-        : await client.createSession({ harness, model, cwd: input.workspacePath, permissionMode, systemPrompt: input.systemPromptAppend });
+      let promptDoTurno = input.prompt;
+      let info: OpenheinerssSessionInfo;
+      if (input.resumeSessionId) {
+        info = await client.resumeSession(input.resumeSessionId, input.workspacePath);
+      } else {
+        const criada = await criarSessaoComSistema(client, { harness, model, cwd: input.workspacePath, permissionMode }, input.systemPromptAppend);
+        info = criada.info;
+        if (criada.prefixo) promptDoTurno = `${criada.prefixo}\n\n${input.prompt}`;
+      }
       yield { type: "session.updated", runId, nativeSessionId: info.sessionId, resumed: !!input.resumeSessionId, timestamp: now() };
-      for await (const event of client.runTurn(info.sessionId, input.prompt, runId, combined)) {
+      for await (const event of client.runTurn(info.sessionId, promptDoTurno, runId, combined)) {
         yield event;
         if (event.type === "approval.requested") await client.respondApproval(event.approval.id, "reject", input.workspaceId);
       }

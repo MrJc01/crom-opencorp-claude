@@ -65,6 +65,9 @@ describe("openheinerss — registro e modelo", () => {
     expect(parseOpenheinerssModel("gpt-5", env)).toEqual({ harness: "codex", model: "gpt-5" });
     expect(parseOpenheinerssModel("default", env)).toEqual({ harness: "codex" });
     expect(parseOpenheinerssModel("openrouter:anthropic/x", env)).toEqual({ harness: "openrouter", model: "anthropic/x" });
+    // nome de instância conhecido pelo servidor é harness, mesmo fora da lista embutida
+    expect(parseOpenheinerssModel("codex-conta2", env, ["codex-conta2"])).toEqual({ harness: "codex-conta2" });
+    expect(parseOpenheinerssModel("codex-conta2", env)).toEqual({ harness: "codex", model: "codex-conta2" });
   });
 });
 
@@ -131,6 +134,33 @@ describe("openheinerss — protocolo (servidor falso)", () => {
     expect(create.params).toMatchObject({ harness: "claude-code", model: "claude-sonnet-5-5", options: { permissionMode: "ask", systemPrompt: "seja breve" } });
     // one-shot encerra o processo
     expect(procs[0].alive).toBe(false);
+  });
+
+  it("one-shot: harness que recusa instrução de sistema recebe a instrução no começo do prompt", async () => {
+    const w = await wsDir("a");
+    const events = await collect(adapter.runner.run({
+      runId: "r-sis", sessionId: "s-sis", agentId: "a1", model: "sem-sistema", prompt: "MARCADOR-SIS",
+      workspaceId: w.id, workspacePath: w.path, homeDir: home, systemPromptAppend: "papel-do-agente",
+    }));
+    const deltas = events.filter((e) => e.type === "message.delta").map((e: any) => e.text).join("");
+    expect(deltas).toContain("papel-do-agente");
+    expect(deltas).toContain("MARCADOR-SIS");
+    expect(events.at(-1)).toMatchObject({ type: "run.completed" });
+    const criacoes = procs[0].received.filter((r) => r.method === "session.create");
+    expect(criacoes).toHaveLength(2);
+    expect(criacoes[0].params.options).toMatchObject({ systemPrompt: "papel-do-agente" });
+    expect(criacoes[1].params.options?.systemPrompt).toBeUndefined();
+  });
+
+  it("one-shot: nome de instância do harness (ex.: codex-conta2) vira harness, não modelo", async () => {
+    const w = await wsDir("a");
+    await collect(adapter.runner.run({
+      runId: "r-inst", sessionId: "s-inst", agentId: "a1", model: "codex-conta2", prompt: "oi",
+      workspaceId: w.id, workspacePath: w.path, homeDir: home,
+    }));
+    const create = procs[0].received.find((r) => r.method === "session.create")!;
+    expect(create.params).toMatchObject({ harness: "codex-conta2" });
+    expect(create.params.model).toBeUndefined();
   });
 
   it("one-shot: aprovação sem canal é negada; allow-all liga always_allow", async () => {

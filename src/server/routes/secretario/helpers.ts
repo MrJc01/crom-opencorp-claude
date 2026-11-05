@@ -9,7 +9,6 @@ import {
   extrairPassosMensagens,
   type MensagemOc,
 } from "../../../core/contexts/execution/opencode-server.js";
-import { formatProcessKey, ProcessRegistry } from "../../../core/runtime/index.js";
 import { resolverCadeiaModelosAgente } from "../../../core/contexts/agents/model-resolver.js";
 import type { RouteContext } from "../types.js";
 
@@ -93,33 +92,15 @@ export async function resolverCaminhoLocal(wsPath: string, pathParam: string): P
   return alvo;
 }
 
-export async function obterPorta(ctx: RouteContext, autoIniciar = false, wsId?: string): Promise<number> {
-  const { portaOpencodeOuErro, opencodeServer } = ctx;
-  if (portaOpencodeOuErro) return portaOpencodeOuErro(autoIniciar);
-
-  if (wsId) {
-    const key = formatProcessKey({ engineId: "opencode", workspaceId: wsId });
-    const proc = ProcessRegistry.getInstance().get(key);
-    if (proc && proc.port && proc.state !== "stopped" && proc.state !== "crashed") {
-      return proc.port;
-    }
-  }
-
-  if (!opencodeServer) throw new SecretarioError("servidor do motor de IA não configurado", { status: 500 });
-  let st = await opencodeServer.status();
-  if (autoIniciar && (!st.rodando || !st.porta)) {
-    try {
-      const res = await opencodeServer.iniciar();
-      if (res.porta) return res.porta;
-      st = await opencodeServer.status();
-    } catch (err) {
-      console.error("[secretario] falha ao auto-iniciar opencode server:", err);
-    }
-  }
-  if (!st.rodando || !st.porta) {
-    throw new SecretarioError("motor do secretário não iniciado — execute POST /secretario/start", { status: 409 });
-  }
-  return st.porta;
+/**
+ * O servidor OpenCode foi arquivado (archive/harnesses). O Secretário só conversa por motores com
+ * ConversationRuntime (claude-sdk); este caminho legado não deve mais ser alcançado.
+ */
+export async function obterPorta(_ctx: RouteContext, _autoIniciar = false, _wsId?: string): Promise<number> {
+  throw new SecretarioError(
+    "O motor OpenCode está arquivado neste fork; use o motor claude-sdk (default_conversation_engine).",
+    { status: 409 }
+  );
 }
 
 export async function sincronizarCorp(ctx: RouteContext, porta: number, sessaoId: string): Promise<void> {

@@ -4,7 +4,7 @@ import { ROTACAO_AGENTES_RECOMENDADA } from "../core/contexts/agents/recommended
 export const settingsSchema = z.object({
   version: z.number().int().default(1),
   default_model: z.string().min(1).default("opencode/nemotron-3-ultra-free"),
-  default_conversation_engine: z.string().trim().min(1).default("opencode"),
+  default_conversation_engine: z.string().trim().min(1).default("claude-sdk"),
   conversationEngineOverride: z.string().trim().min(1).optional(),
   engines: z
     .record(

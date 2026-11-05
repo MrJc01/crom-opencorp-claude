@@ -1,0 +1,92 @@
+// de tests/reuniao-guard.test.ts
+  it("reunião com participantes level-1 roda até o consenso — prompt vai ao chat, guard não bloqueia", async () => {
+    const reunioes = new MeetingManager({ homeDir: home, cwd: home, sessoes });
+    const pauta = "como executar o backup sem travar o bash do deploy";
+    const sala = await reunioes.iniciar({ pauta, agentes: "secretario,analista", workspaceDir: wsPath });
+
+    expect(sala.status).toBe("encerrada");
+    expect(sala.motivo_fim).toContain("consenso");
+    expect(sala.motivo_fim ?? "").not.toContain("SecurityGuard");
+    expect(sala.turno).toBe(2);
+
+    // turnos de PARTICIPANTES (gerarAta roda à parte com ceo-documentos semeado)
+    const chamadasParticipantes = execaMock.mock.calls.filter((c) => {
+      const args = c[1] as unknown[];
+      const agente = args[args.indexOf("--agent") + 1];
+      return agente === "secretario" || agente === "analista";
+    });
+    expect(chamadasParticipantes).toHaveLength(2);
+
+    const agentesChamados = chamadasParticipantes.map((c) => {
+      const args = c[1] as unknown[];
+      return args[args.indexOf("--agent") + 1];
+    });
+    expect(agentesChamados).toEqual(["secretario", "analista"]);
+
+    for (const call of chamadasParticipantes) {
+      expect(call[0]).toMatch(/(?:^|\/)opencode$/);
+      const args = call[1] as unknown[];
+      expect(args).toContain("--auto");
+      const ordem = args[args.length - 1] as string;
+      // turno chega ao agente como MENSAGEM de chat (ordem completa, não comando)
+      expect(ordem.startsWith("Você está participando de uma REUNIÃO do workspace como")).toBe(true);
+      expect(ordem).toContain(pauta);
+      expect(ordem).toContain("=== SUA FALA ===");
+    }
+  });
+
+// de tests/template-subcorp.test.ts
+  it("spawn com --dir no subcorp e execução registrada só nele", async () => {
+    const env = await ambiente();
+    const wsFilho = await env.manager.criar("corp-filho-run");
+    await env.subcorps.adicionar(env.wsBase.path, { fonte: wsFilho.path, id: "financeiro", perm: "ask" });
+    const sessoes = new SessionManager({ homeDir: env.home, cwd: env.home });
+    execaMock.mockImplementation(() => {
+      const { Readable } = require("node:stream") as typeof import("node:stream");
+      const base = Promise.resolve({ exitCode: 0, killed: false });
+      const child = base as Promise<{ exitCode: number; killed: boolean }> & {
+        stdout: import("node:stream").Readable;
+        stderr: import("node:stream").Readable;
+        pid?: number;
+        killed: boolean;
+      };
+      child.stdout = Readable.from(["feito no filho\n"]);
+      child.stderr = Readable.from([]);
+      child.pid = 4242;
+      child.killed = false;
+      return child;
+    });
+    const r = await sessoes.rodar({
+      agente: "executor-padrao",
+      ordem: "escreva subcorp ok",
+      workspaceDir: wsFilho.path,
+    });
+    const [, args] = execaMock.mock.calls[0]!;
+    expect(args).toContain("--dir");
+    expect(args[args.indexOf("--dir") + 1]).toBe(wsFilho.path);
+    expect(r.log).toContain("logs/");
+    expect(existsSync(join(wsFilho.path, r.log))).toBe(true);
+    expect(existsSync(join(env.wsBase.path, "logs", r.id + ".log"))).toBe(false);
+    expect(existsSync(join(wsFilho.path, ".opencorp", "registries", "execucoes", r.id, "meta.json"))).toBe(true);
+    expect(existsSync(join(wsFilho.path, ".opencorp", "registries", "chats", r.id, "conteudo.md"))).toBe(true);
+    expect(existsSync(join(env.wsBase.path, ".opencorp", "registries", "execucoes", r.id))).toBe(false);
+  });
+
+// de tests/server-routes-secretario-docs.test.ts
+    it("POST /secretario/start e POST /secretario/stop controlam o ciclo de vida", async () => {
+      const startRes = await fetchApi("/secretario/start", { method: "POST" });
+      expect(startRes.status).toBe(200);
+      expect(startRes.json.pid).toBe(9999);
+
+      const stopRes = await fetchApi("/secretario/stop", { method: "POST" });
+      expect(stopRes.status).toBe(200);
+      expect(stopRes.json.ok).toBe(true);
+    });
+
+// de tests/server-routes-secretario-docs.test.ts
+    it("GET /secretario/status retorna informações do daemon", async () => {
+      const res = await fetchApi("/secretario/status");
+      expect(res.status).toBe(200);
+      expect(res.json.rodando).toBe(true);
+      expect(res.json.pid).toBe(9999);
+    });

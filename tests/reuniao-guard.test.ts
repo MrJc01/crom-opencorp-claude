@@ -165,41 +165,6 @@ ${corpo}
     await Promise.all(raizes.map((r) => rm(r, { recursive: true, force: true })));
   });
 
-  it("reunião com participantes level-1 roda até o consenso — prompt vai ao chat, guard não bloqueia", async () => {
-    const reunioes = new MeetingManager({ homeDir: home, cwd: home, sessoes });
-    const pauta = "como executar o backup sem travar o bash do deploy";
-    const sala = await reunioes.iniciar({ pauta, agentes: "secretario,analista", workspaceDir: wsPath });
-
-    expect(sala.status).toBe("encerrada");
-    expect(sala.motivo_fim).toContain("consenso");
-    expect(sala.motivo_fim ?? "").not.toContain("SecurityGuard");
-    expect(sala.turno).toBe(2);
-
-    // turnos de PARTICIPANTES (gerarAta roda à parte com ceo-documentos semeado)
-    const chamadasParticipantes = execaMock.mock.calls.filter((c) => {
-      const args = c[1] as unknown[];
-      const agente = args[args.indexOf("--agent") + 1];
-      return agente === "secretario" || agente === "analista";
-    });
-    expect(chamadasParticipantes).toHaveLength(2);
-
-    const agentesChamados = chamadasParticipantes.map((c) => {
-      const args = c[1] as unknown[];
-      return args[args.indexOf("--agent") + 1];
-    });
-    expect(agentesChamados).toEqual(["secretario", "analista"]);
-
-    for (const call of chamadasParticipantes) {
-      expect(call[0]).toMatch(/(?:^|\/)opencode$/);
-      const args = call[1] as unknown[];
-      expect(args).toContain("--auto");
-      const ordem = args[args.length - 1] as string;
-      // turno chega ao agente como MENSAGEM de chat (ordem completa, não comando)
-      expect(ordem.startsWith("Você está participando de uma REUNIÃO do workspace como")).toBe(true);
-      expect(ordem).toContain(pauta);
-      expect(ordem).toContain("=== SUA FALA ===");
-    }
-  });
 
   it("level-1 tentando bash real continua bloqueado (exit 3, sem spawn)", async () => {
     const antes = execaMock.mock.calls.length;

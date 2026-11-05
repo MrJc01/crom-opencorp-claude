@@ -13,7 +13,6 @@ import {
   CLAUDE_SDK_MANIFEST,
   EngineError,
   engineRegistry,
-  OpenCodeAdapter,
   traduzirMensagemSdk,
   validateEngineCapabilityManifest,
   type AgentEvent,
@@ -174,10 +173,10 @@ describe("ClaudeSdkAdapter — identidade e registro", () => {
     expect(typeof adapter.authenticator.status).toBe("function");
   });
 
-  it("fica registrado no EngineRegistry sem mudar o motor padrão nem os demais", () => {
+  it("fica registrado no EngineRegistry e é o motor padrão", () => {
     expect(engineRegistry.getAdapter("claude-sdk")).toBeInstanceOf(ClaudeSdkAdapter);
     expect(engineRegistry.resolveAdapter("claude-sdk")).toBeInstanceOf(ClaudeSdkAdapter);
-    expect(engineRegistry.resolveAdapter()).toBeInstanceOf(OpenCodeAdapter);
+    expect(engineRegistry.resolveAdapter()).toBeInstanceOf(ClaudeSdkAdapter);
     expect(engineRegistry.resolveAdapter("claude-code").engineId).toBe("claude-code");
     // Diferente da etapa anterior: o driver delegador entra na lista de motores (UI), por isso aparece aqui.
     expect(engineRegistry.list().map((d) => d.id)).toContain("claude-sdk");

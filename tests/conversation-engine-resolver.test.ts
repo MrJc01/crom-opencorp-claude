@@ -32,10 +32,10 @@ describe("ETAPA 5 — Resolução do Runtime Conversacional", () => {
   });
 
   it("herança global: resolve settings.default_conversation_engine quando o workspace não possui override", async () => {
-    // Configura global como codex
+    // Configura global como claude-sdk
     await writeFile(
       join(tempHome, ".opencorp", "settings.json"),
-      JSON.stringify({ default_conversation_engine: "codex" }, null, 2),
+      JSON.stringify({ default_conversation_engine: "claude-sdk" }, null, 2),
       "utf8"
     );
 
@@ -50,25 +50,25 @@ describe("ETAPA 5 — Resolução do Runtime Conversacional", () => {
       strict: false,
     });
 
-    expect(result.engineId).toBe("codex");
+    expect(result.engineId).toBe("claude-sdk");
     expect(result.source).toBe("global_default");
     expect(result.adapter).toBeDefined();
-    expect(result.adapter.engineId).toBe("codex");
-    expect(result.manifest.engineId).toBe("codex");
+    expect(result.adapter.engineId).toBe("claude-sdk");
+    expect(result.manifest.engineId).toBe("claude-sdk");
   });
 
   it("override por workspace: conversationEngineOverride tem precedência sobre o padrão global", async () => {
     // Global é opencode
     await writeFile(
       join(tempHome, ".opencorp", "settings.json"),
-      JSON.stringify({ default_conversation_engine: "opencode" }, null, 2),
+      JSON.stringify({ default_conversation_engine: "claude-code" }, null, 2),
       "utf8"
     );
 
-    // Workspace define override como codex
+    // Workspace define override como claude-sdk
     await writeFile(
       join(workspaceDir, ".opencorp", "config.json"),
-      JSON.stringify({ conversationEngineOverride: "codex" }, null, 2),
+      JSON.stringify({ conversationEngineOverride: "claude-sdk" }, null, 2),
       "utf8"
     );
 
@@ -83,15 +83,15 @@ describe("ETAPA 5 — Resolução do Runtime Conversacional", () => {
       strict: false,
     });
 
-    expect(result.engineId).toBe("codex");
+    expect(result.engineId).toBe("claude-sdk");
     expect(result.source).toBe("workspace_override");
-    expect(result.adapter.engineId).toBe("codex");
+    expect(result.adapter.engineId).toBe("claude-sdk");
   });
 
   it("override pontual via opções tem precedência imediata", async () => {
     await writeFile(
       join(tempHome, ".opencorp", "settings.json"),
-      JSON.stringify({ default_conversation_engine: "opencode" }, null, 2),
+      JSON.stringify({ default_conversation_engine: "claude-code" }, null, 2),
       "utf8"
     );
 
@@ -133,10 +133,10 @@ describe("ETAPA 5 — Resolução do Runtime Conversacional", () => {
     }
   });
 
-  it("motor sem suporte conversacional (ex: aider): rejeita em modo strict com EngineCapabilityUnavailableError", async () => {
+  it("motor sem suporte conversacional (ex: claude-code): rejeita em modo strict com EngineCapabilityUnavailableError", async () => {
     await writeFile(
       join(workspaceDir, ".opencorp", "config.json"),
-      JSON.stringify({ conversationEngineOverride: "aider" }, null, 2),
+      JSON.stringify({ conversationEngineOverride: "claude-code" }, null, 2),
       "utf8"
     );
 
@@ -153,11 +153,11 @@ describe("ETAPA 5 — Resolução do Runtime Conversacional", () => {
 
     // Em modo não estrito, retorna diagnóstico estruturado sem trocar para opencode
     const result = await resolver.resolve({ workspaceDir, strict: false });
-    expect(result.engineId).toBe("aider");
+    expect(result.engineId).toBe("claude-code");
     expect(result.preflight.supportsConversation).toBe(false);
     expect(result.preflight.ok).toBe(false);
     expect(result.preflight.issues.some((i) => i.includes("capacidade conversacional"))).toBe(true);
-    expect(result.adapter.engineId).toBe("aider"); // PROIBIDO fallback silencioso
+    expect(result.adapter.engineId).toBe("claude-code"); // PROIBIDO fallback silencioso
   });
 
   it("motor customizado sem suporte a conversa registrado dinamicamente", async () => {
@@ -336,11 +336,11 @@ describe("ETAPA 5 — Resolução do Runtime Conversacional", () => {
   it("função helper resolveConversationRuntime funciona equivalentemente à classe", async () => {
     const res = await resolveConversationRuntime({
       homeDir: tempHome,
-      engineOverride: "opencode",
+      engineOverride: "claude-sdk",
       strict: false,
     });
 
-    expect(res.engineId).toBe("opencode");
+    expect(res.engineId).toBe("claude-sdk");
     expect(res.source).toBe("workspace_override");
     expect(res.adapter).toBeDefined();
     expect(res.manifest.features.continuation.level).toBe("integrated");

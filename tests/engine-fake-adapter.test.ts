@@ -136,9 +136,12 @@ describe("núcleo sem nomes de motor Claude", () => {
     expect(readFileSync(new URL("core/contexts/execution/session-manager.ts", raiz), "utf8")).not.toMatch(/driver\.id === "claude/);
   });
   it("manifest do claude-sdk e limites do driver coincidem", () => {
+    const anterior = process.env.OPENCORP_PROVEDOR;
+    process.env.OPENCORP_PROVEDOR = "assinatura";
     const m = engineRegistry.getManifest("claude-sdk")!;
     const d = engineRegistry.resolveDriver("claude-sdk");
     expect(d.timeoutDefaults).toEqual(m.limits);
     expect(d.modelPrefixes).toEqual(m.modelPrefixes);
+    if (anterior === undefined) delete process.env.OPENCORP_PROVEDOR; else process.env.OPENCORP_PROVEDOR = anterior;
   });
 });

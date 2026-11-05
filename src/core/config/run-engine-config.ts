@@ -176,7 +176,7 @@ export function readRunEngineConfig(homeDir: string, opts: { emitNotice?: boolea
       if (cfg.binary_path && !binaryPaths[id]) binaryPaths[id] = cfg.binary_path;
     }
     return {
-      engine: settingsPatch.run_engine?.default ?? "opencode",
+      engine: settingsPatch.run_engine?.default ?? "claude-sdk",
       timeoutMin: settingsPatch.run_engine?.timeout_min,
       fallbackEngines: settingsPatch.run_engine?.fallback ?? [],
       limits,
@@ -184,7 +184,7 @@ export function readRunEngineConfig(homeDir: string, opts: { emitNotice?: boolea
       source: "runner.json",
     };
   }
-  return { engine: "opencode", fallbackEngines: [], limits, binaryPaths, source: "default" };
+  return { engine: "claude-sdk", fallbackEngines: [], limits, binaryPaths, source: "default" };
 }
 
 /** Grava campos de execução no formato novo (nunca em `runner.json`). */
@@ -209,7 +209,7 @@ export async function writeRunEngineConfig(
     settingsPatch.engines = Object.fromEntries(Object.entries(patch.limits).map(([id, l]) => [canonicalEngineId(id), { limits: l }]));
   }
   const next = mergeSettings(current, settingsPatch);
-  if (!next.run_engine?.default) next.run_engine = { ...(next.run_engine ?? {}), default: "opencode" };
+  if (!next.run_engine?.default) next.run_engine = { ...(next.run_engine ?? {}), default: "claude-sdk" };
   mkdirSync(dirname(path), { recursive: true });
   await writeFileAtomic(path, `${JSON.stringify(next, null, 2)}\n`);
 }

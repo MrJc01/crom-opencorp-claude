@@ -8,7 +8,7 @@ import {
 } from "./runtime-service.js";
 
 export async function handleDaemonRoutes(ctx: RouteContext): Promise<boolean> {
-  const { req, res, url, rota, resolverWs, enviar, tasks, agentes, opencodeServer } = ctx;
+  const { req, res, url, rota, resolverWs, enviar, tasks, agentes } = ctx;
 
   if (rota === "/secretario/status" && req.method === "GET") {
     let wsId: string | undefined;
@@ -30,31 +30,8 @@ export async function handleDaemonRoutes(ctx: RouteContext): Promise<boolean> {
       ws = await resolverWs(url);
     } catch {}
 
-    const resolver = ctx.conversationRuntimeResolver ?? new ConversationRuntimeResolver({ homeDir: ctx.homeDir });
-    let resolucao = ws
-      ? await resolver.resolve({ workspaceId: ws.id, workspaceDir: ws.path, strict: false }).catch(() => null)
-      : null;
-    const motor = resolucao?.engineId ?? "opencode";
-
-    // 1. Se o motor resolvido for OpenCode e houver opencodeServer, usa o servidor legado
-    if (motor === "opencode" && opencodeServer) {
-      try {
-        const { pid, porta } = await opencodeServer.iniciar();
-        const status = await opencodeServer.status();
-        enviar(res, 200, { pid, porta, agentes: status.rodando ? "configurados" : 0, motor: "opencode" });
-        return true;
-      } catch (erro) {
-        if (!ws) {
-          const mensagem = erro instanceof Error ? erro.message : String(erro);
-          enviar(res, 500, { erro: `falha ao iniciar secretário: ${mensagem}` });
-          return true;
-        }
-      }
-    }
-
-    // 2. Se for outro motor ou não houver opencodeServer, resolve via runtime conversacional genérico
     if (!ws) {
-      enviar(res, 500, { erro: "servidor do motor de IA não configurado e workspace não resolvido" });
+      enviar(res, 500, { erro: "workspace não resolvido" });
       return true;
     }
 
@@ -81,12 +58,6 @@ export async function handleDaemonRoutes(ctx: RouteContext): Promise<boolean> {
     try {
       ws = await resolverWs(url);
     } catch {}
-
-    if (opencodeServer) {
-      try {
-        await opencodeServer.parar();
-      } catch {}
-    }
 
     if (ws) {
       try {

@@ -17,6 +17,7 @@ import { spawn, execSync } from "node:child_process";
 import { mkdirRecursive, writeFileAtomic } from "../../utils/fs-safe.js";
 import { opencorpHome, projectRoot } from "../../utils/paths.js";
 import { spawnDaemon } from "./serve.js";
+import { processoOpencorpVivo } from "../../utils/processo.js";
 
 const PIDFILE = "daemon.pid";
 const TICK_SEG = 15;
@@ -34,13 +35,13 @@ function schedulerPidPath(home: string): string {
   return join(home, ".opencorp", "scheduler.pid");
 }
 
-async function pidVivo(pid: number): Promise<boolean> {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
+/**
+ * PID vivo E processo do OpenCorp. Um pidfile antigo (depois de reinício) aponta para um número que outro programa
+ * reaproveitou; sem essa checagem o daemon acha que já há outro rodando, sai com código 0 e o systemd fica
+ * reiniciando para sempre. Sem /proc (ex.: macOS) mantém o comportamento antigo.
+ */
+export async function pidVivo(pid: number, papel?: string): Promise<boolean> {
+  return processoOpencorpVivo(pid, papel);
 }
 
 async function lerJson<T>(path: string): Promise<T | null> {
@@ -54,7 +55,7 @@ async function lerJson<T>(path: string): Promise<T | null> {
 
 async function lerPidScheduler(home: string): Promise<number | null> {
   const info = await lerJson<{ pid?: number }>(schedulerPidPath(home));
-  if (!info?.pid || !(await pidVivo(info.pid))) return null;
+  if (!info?.pid || !(await pidVivo(info.pid, "scheduler"))) return null;
   return info.pid;
 }
 
@@ -108,7 +109,7 @@ async function loopSupervisor(home: string, comServe: boolean, host?: string): P
       // 2. serve (opcional)
       if (comServe) {
         const apiInfo = await lerJson<{ pid?: number }>(join(home, ".opencorp", "api.pid"));
-        if (!apiInfo?.pid || !(await pidVivo(apiInfo.pid))) {
+        if (!apiInfo?.pid || !(await pidVivo(apiInfo.pid, "serve"))) {
           log("serve morto — reiniciando");
           const serveArgs = [process.argv[1] ?? "opencorp", "serve", "--host", host ?? "0.0.0.0"];
           spawn(process.execPath, serveArgs, {
@@ -136,7 +137,8 @@ export function registerDaemonCommand(program: Command): void {
       (async () => {
         const home = opencorpHome();
         const existente = await lerJson<DaemonPidInfo>(pidPath(home));
-        if (existente?.pid && (await pidVivo(existente.pid))) {
+        // Depois de um boot o pidfile velho pode ter o número deste mesmo processo.
+        if (existente?.pid && existente.pid !== process.pid && (await pidVivo(existente.pid, "daemon"))) {
           console.log(`daemon já ativo (pid ${existente.pid})`);
           return;
         }

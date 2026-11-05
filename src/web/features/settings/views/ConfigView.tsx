@@ -32,6 +32,7 @@ import {
   TabSkillsTools,
   TabGeneral,
 } from "../components/index.js";
+import { ProvedoresGratisSecao } from "../components/ProvedoresGratisSecao.js";
 
 export const ABAS_CONFIG: Array<{ id: TabConfigId; label: string; icon: any }> = [
   { id: "motores", label: "Motores & Provedores", icon: Bot },
@@ -201,6 +202,8 @@ export const ConfigView: FC = () => {
             onGoToKeysTab={() => setAbaAtiva("chaves")}
           />
         )}
+
+        {abaAtiva === "motores" && <ProvedoresGratisSecao />}
 
         {abaAtiva === "modelos" && (
           <TabModels

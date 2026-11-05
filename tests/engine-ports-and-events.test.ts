@@ -18,9 +18,9 @@ import {
 import { CapabilitiesPara, CAPACIDADES } from "../src/core/engines/capabilities.js";
 
 describe("ETAPA 3 — Manifestos e Domínio de Capacidades", () => {
-  it("fornece um manifesto válido e compilável para todos os 9 motores registrados", () => {
+  it("fornece um manifesto válido e compilável para todos os motores registrados (claude-code e claude-sdk; os demais estão arquivados)", () => {
     const drivers = engineRegistry.list();
-    expect(drivers.length).toBeGreaterThanOrEqual(9);
+    expect(drivers.length).toBeGreaterThanOrEqual(2);
 
     for (const driver of drivers) {
       const manifest = engineRegistry.getManifest(driver.id);
@@ -145,17 +145,14 @@ describe("ETAPA 3 — EngineRegistry e Portas Canônicas", () => {
   });
 
   it("resolveAdapter resolve todos os motores e aliases para EngineAdapter", () => {
-    const oc = engineRegistry.resolveAdapter("opencode");
-    expect(oc.engineId).toBe("opencode");
-    expect(oc.installer).toBeDefined();
-    expect(oc.authenticator).toBeDefined();
-    expect(oc.runner).toBeDefined();
+    const sdk = engineRegistry.resolveAdapter("claude-sdk");
+    expect(sdk.engineId).toBe("claude-sdk");
+    expect(sdk.installer).toBeDefined();
+    expect(sdk.authenticator).toBeDefined();
+    expect(sdk.runner).toBeDefined();
 
-    const agy = engineRegistry.resolveAdapter("agy");
-    expect(agy.engineId).toBe("antigravity");
-
-    const cd = engineRegistry.resolveAdapter("codex");
-    expect(cd.engineId).toBe("codex");
+    expect(engineRegistry.resolveAdapter("sdk").engineId).toBe("claude-sdk");
+    expect(engineRegistry.resolveAdapter("claude").engineId).toBe("claude-code");
   });
 });
 

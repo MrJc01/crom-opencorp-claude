@@ -24,7 +24,7 @@ export interface AgentHarness {
 
 export class HarnessRegistry {
   private harnesses = new Map<string, AgentHarness>();
-  private harnessPadrao = "opencode";
+  private harnessPadrao = "claude-sdk";
 
   registrar(harness: AgentHarness): void {
     this.harnesses.set(harness.id, harness);

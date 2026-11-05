@@ -13,6 +13,11 @@ Publicado (público) em https://github.com/MrJc01/crom-opencorp-claude como repo
 
 ## Estado atual
 
+- Harnesses não-Claude (opencode, codex, antigravity, copilot, cursor, aider, mimo, crom-agente, openheinerss, ACP) estão
+  ARQUIVADOS em `archive/harnesses/` (fora do build, sem uso; guardados para um futuro port ao opencorp original). O registry só
+  tem `claude-code` (instalação/auth) e `claude-sdk`; o motor padrão de execução e do Secretário é `claude-sdk`. Modelos
+  `opencode/*` e `openrouter/*` são traduzidos por `traduzirModelo` (provedor ativo); com provedor `compativel`/`pool` o
+  claude-sdk aceita qualquer modelo (`provedorAtivoTraduzModelos`) e a auth do preflight é a do provedor.
 - Motor `claude-sdk` em uso por agentes, fluxos e Secretário dos workspaces `yt-factory-01` e `fundao`:
   `adapters/claude-sdk-adapter.ts` (conversa com aprovações), `drivers/claude-sdk-driver.ts` (execução de agente em sandbox
   bwrap) e `runners/claude-sdk-cli.ts` (`query()` do SDK em processo filho).
@@ -39,6 +44,11 @@ Publicado (público) em https://github.com/MrJc01/crom-opencorp-claude como repo
 
 `~/.opencorp/provedores.json` + `opencorp provedor ...` escolhem de onde vêm autenticação e modelos (assinatura, API da Anthropic ou endpoint
 compatível). Código: `src/core/engines/provedor-claude.ts`, usado por `claude-sdk-driver.ts` e `claude-sdk-adapter.ts`. Sem arquivo = assinatura.
+
+Tipo `pool` reveza várias contas `compativel` (ex.: OpenRouter com chaves diferentes, opencode zen): `provedor-claude.ts`
+resolve os membros, `rotacao-provedores.ts` guarda cooldowns em `~/.opencorp/rotacao/`, e `runners/claude-sdk-cli.ts` tenta
+outro membro quando a conta esgota a cota. O driver passa as credenciais dos membros por `OPENCORP_POOL_MEMBROS` (a sandbox não
+enxerga `~/.opencorp`).
 
 ## Onde o encaixe acontece
 
