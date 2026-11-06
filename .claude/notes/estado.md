@@ -15,3 +15,6 @@
 ## Próximo passo
 Plano em 3 frentes (ver resumo ao dono): A) histórico+aprovações persistentes, B) UI do Secretário sobre Assistant UI com uma só fonte de abas, C) camada agnóstica de motor.
 Pendências antigas: runs-robustos instável; E2E não rodada.
+
+- 2026-11-05: seletor de modelos por vagas do provedor ativo (`provedorAtivo` no catálogo), layout do chat com input embaixo, bandeja Tauri com Nova janela. Não commitado.
+- 2026-11-06: editor de fluxos: comentário por nó (hover), handle vermelho/verde corrigido, botão Organizar nós. Não commitado.

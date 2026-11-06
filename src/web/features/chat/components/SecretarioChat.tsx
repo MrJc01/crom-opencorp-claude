@@ -450,9 +450,9 @@ const SecretarioChatInterno: FC<{
       >
         <ThreadPrimitive.Root className="flex flex-col flex-1 h-full min-h-0 overflow-hidden">
           {/* Viewport rolável com scroll suave automático */}
-          <ThreadPrimitive.Viewport className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-6">
+          <ThreadPrimitive.Viewport className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 md:px-8 pt-6">
             <ThreadPrimitive.Empty>
-              <div className="flex flex-col items-center justify-center h-full min-h-[360px] text-center p-8 space-y-4">
+              <div className="flex flex-col items-center justify-center flex-1 min-h-[360px] text-center p-8 space-y-4">
                 <div className="h-16 w-16 rounded-2xl bg-emerald-950/60 border border-emerald-800/40 flex items-center justify-center shadow-lg shadow-emerald-950/20">
                   <Bot size={32} className="text-emerald-400" />
                 </div>
@@ -654,7 +654,7 @@ const SecretarioChatInterno: FC<{
 
             {/* O composer pertence ao viewport da thread para preservar o
                 auto-scroll, o foco e o estado running/cancel do assistant-ui. */}
-            <ThreadPrimitive.ViewportFooter className="sticky bottom-0 z-20 -mx-4 md:-mx-8 mt-6 bg-linear-to-t from-zinc-950 via-zinc-950 to-transparent px-4 pb-4 pt-8 md:px-8">
+            <ThreadPrimitive.ViewportFooter className="sticky bottom-0 z-20 -mx-4 md:-mx-8 mt-auto shrink-0 bg-linear-to-t from-zinc-950 via-zinc-950 to-transparent px-4 pb-4 pt-8 md:px-8">
               <ThreadPrimitive.ScrollToBottom
                 className="absolute left-1/2 top-1 -translate-x-1/2 rounded-full border border-zinc-700 bg-zinc-900 p-1.5 text-zinc-400 shadow-lg hover:text-zinc-100 disabled:hidden"
                 aria-label="Ir para a mensagem mais recente"

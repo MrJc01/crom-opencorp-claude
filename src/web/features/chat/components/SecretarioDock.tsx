@@ -42,7 +42,7 @@ export const SecretarioDock: FC<SecretarioDockProps> = ({ aberto, aoFechar }) =>
   } = useAbasSecretario(wsId, adaptador);
   const [historicoAberto, setHistoricoAberto] = useState(false);
   const [configLateralAberta, setConfigLateralAberta] = useState(false);
-  const [modeloAtivo, setModeloAtivo] = useState("opencode/nemotron-3.5-lightning-free");
+  const [modeloAtivo, setModeloAtivo] = useState("");
 
   const contextoInicial = useMemo(() => {
     if (!location.pathname.endsWith("/fluxos")) return [];

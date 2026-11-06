@@ -179,3 +179,22 @@ Estado: `node scripts/estado_pauta.mjs --resumo` no workspace; boletim: `node sc
 - Causa do Secretário: `default_conversation_engine` caía em `opencode`. Agora o padrão é `claude-sdk` (schema, workspace fundao, settings global).
 - Harnesses e testes presos a eles: `archive/harnesses/` (ver o LEIAME de lá). Provedores: `~/.opencorp/provedores.json`; claude-sdk aceita qualquer modelo com provedor compativel/pool.
 - Validado: tsc limpo, 163 arquivos / 1486 testes passando, build, daemon reiniciado, Secretário do fundao respondeu "ok" pelo pool grátis.
+
+## Registro: app de bandeja Tauri (2026-11-05)
+- Pedido: atalho fixo perto do relógio (abrir, pausar, desligar, configurações) e app Tauri do sistema, abrindo pelo ícone/atalho ou pela web.
+- `desktop/` (Tauri 2, Rust): ícone na bandeja + janela com a UI do servidor local (127.0.0.1:4100). Menu: Abrir, Abrir no navegador, Configurações, Pausar/Retomar tudo (API `POST /workspaces/:id/pausa`), Iniciar/Reiniciar/Desligar daemon (`systemctl --user ... opencorp-daemon`), Sair. Fechar a janela só esconde; instância única.
+- Instalar/atualizar: `desktop/instalar.sh` (compila em /dev/shm com `rodar-pesado.sh`, instala em `~/.local/bin/opencorp-desktop`, atalho `opencorp.desktop` no menu e início automático oculto na sessão).
+- Atualização: item "Nova janela" no menu da bandeja (várias janelas, `janela-N`); fechar uma extra a destrói, só a principal esconde.
+
+## Registro: layout do chat e seletor de modelos (2026-11-05)
+- Pedido: o campo de mensagem ficava colado na conversa curta (devia ficar embaixo) e escolher modelo estava confuso.
+- Layout: `SecretarioChat.tsx` — viewport em coluna com rodapé `mt-auto`/sticky; estado vazio com `flex-1`.
+- Modelos: `GET /modelos/catalogo` agora devolve só modelos de motores registrados (claude-code, claude-sdk) e `provedorAtivo` (id, tipo, membros do pool, vagas padrao/haiku/sonnet/opus → modelo real). `ModelPicker` mostra no topo as vagas do provedor ativo (valor salvo = "padrao", "haiku"...), que `traduzirModelo` resolve. Padrão do Secretário passou de `opencode/...` para `padrao`.
+- 2026-11-05 (ajuste): sem nomes falsos. Com provedor compativel/pool o catálogo lista os modelos REAIS do provedor (ex.: deepseek-v4.1-flash-free), não "claude-*". Id real de outro membro do pool vira o equivalente (mesma vaga) no membro usado. Configs dos workspaces fundao e yt-factory-01 trocadas para ids reais (backup em /dev/shm/config-<ws>.bak). Agentes com `claude-sdk/claude-haiku-5-5` no .md continuam funcionando (traduzidos).
+
+## Registro: editor de fluxos — comentário, linha vermelha, organizar (2026-11-06)
+- Pedido: (a) seção de comentário só leitura em cada nó, mostrada no painel lateral ao passar o mouse; (b) checar se o dono quebrou o fluxo do fundao ao organizar; (c) linha do ponto vermelho saía junto com a verde; (d) botão para organizar os nós.
+- (a) Campo `comentario` em `nos[]` (adicionado ao `nosFlowSchema` em `flow-store.ts`; antes o zod o descartava ao salvar). Preenchido em 363 nós dos fluxos dos workspaces (texto gerado a partir de tipo/config; backup dos fluxos em /dev/shm/flows-bak/). `NodeInfoPanel.tsx` mostra o comentário no hover; sem comentário usa `descreverNo` (`descricao-no.ts`) e avisa que é explicação automática.
+- (b) Análise de todos os fluxos: nenhuma divergência entre `config.entao/senao` e as arestas, nenhuma aresta órfã. Só há nós sem `pos` (ex.: yt-pautador, yt-hora), que o botão Organizar posiciona. Nada quebrado.
+- (c) Causa: arestas de `condicao` não têm `saida` e o nó não tem handle padrão. `GraphCanvas.tsx` agora deriva o handle (`entao`/`senao`) de `config.entao/senao`.
+- (d) Botão "Organizar nós" sempre visível (`WorkflowHeader.tsx`), usa `organizarNos` (`layout.ts`: colunas por caminho mais longo, ignora ciclos, ordem por baricentro) e ajusta a vista. Não salva sozinho: clicar em Salvar.

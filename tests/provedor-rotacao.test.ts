@@ -167,6 +167,9 @@ describe("pool de provedores", () => {
   it("traduz modelo pelo mapa do membro", () => {
     expect(traduzirModelo({ padrao: "x", haiku: "h" }, "claude-haiku-5-5")).toBe("h");
     expect(traduzirModelo({ padrao: "x" }, "default")).toBe("x");
+    // id do OpenRouter só vale no OpenRouter; no zen vira o padrão do membro
+    expect(traduzirModelo({ padrao: "z" }, "openrouter/nvidia/n:free", "https://opencode.ai/zen")).toBe("z");
+    expect(traduzirModelo({ padrao: "z" }, "openrouter/nvidia/n:free", "https://openrouter.ai/api")).toBe("nvidia/n:free");
   });
 });
 

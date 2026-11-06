@@ -126,13 +126,22 @@ export async function gravarConfigProvedores(homeDir: string, config: ConfigProv
 }
 
 /** Traduz o modelo pedido pelo mapa do provedor (id, família ou padrão). Sem pedido, usa o padrão do mapa. */
-export function traduzirModelo(mapa: Record<string, string>, pedido: string | undefined): string | undefined {
+export function traduzirModelo(mapa: Record<string, string>, pedido: string | undefined, baseUrl?: string, outros: Record<string, string>[] = []): string | undefined {
   const sem = !pedido || pedido === "default";
   if (sem) return mapa.padrao;
   if (mapa[pedido]) return mapa[pedido];
+  // Id real de OUTRO membro do pool: vira o equivalente (mesma vaga) neste membro, ou o padrão.
+  if (!Object.values(mapa).includes(pedido)) {
+    for (const o of outros) {
+      const vaga = Object.keys(o).find((k) => o[k] === pedido);
+      if (vaga) return mapa[vaga] ?? mapa.padrao ?? pedido;
+    }
+  }
   // Ids de outros harnesses (arquivados) não existem no provedor: usam o modelo padrão do provedor.
   if (/^(opencode|opencode-go|codex|crom-agente|crom|antigravity|cursor|copilot|aider)\//i.test(pedido)) return mapa.padrao;
   // "openrouter/<modelo>" é a forma do harness antigo; o endpoint do OpenRouter recebe só "<modelo>".
+  // Fora do OpenRouter (ex.: opencode zen) esse id não existe: usa o modelo padrão do provedor.
+  if (/^openrouter\//i.test(pedido) && baseUrl && !/openrouter/i.test(baseUrl)) return mapa.padrao ?? pedido;
   if (/^openrouter\//i.test(pedido)) return pedido.replace(/^openrouter\//i, "");
   const familia = familiaDe(pedido);
   return mapa[pedido] ?? (familia ? mapa[familia] : undefined) ?? pedido;
@@ -211,7 +220,7 @@ export function resolverDireto(homeDir: string, id: string, p: ProvedorClaude, h
   const rapido = mapa.haiku ?? mapa.padrao;
   if (p.tipo === "compativel" && rapido) env.ANTHROPIC_SMALL_FAST_MODEL = rapido;
 
-  return { id, tipo: p.tipo, env, configDir, modelo: (pedido) => traduzirModelo(mapa, pedido) };
+  return { id, tipo: p.tipo, env, configDir, modelo: (pedido) => traduzirModelo(mapa, pedido, env.ANTHROPIC_BASE_URL) };
 }
 
 /** Pasta de configuração do Claude Code em uso (para ler histórico de sessões do mesmo lugar onde elas são gravadas). */
@@ -256,6 +265,8 @@ export interface MembroPoolResolvido {
   env: Record<string, string>;
   configDir?: string;
   modelos: Record<string, string>;
+  /** Mapas dos outros membros do pool: um id real de outra conta vira o equivalente deste membro. */
+  outros?: Record<string, string>[];
 }
 
 /** Resolve todos os membros válidos do pool (não consome o rodízio). */
@@ -271,7 +282,7 @@ export function membrosPoolResolvidos(homeDir: string, poolId: string, hostEnv: 
       /* conta sem chave ou sem URL: não entra no rodízio até ser corrigida */
     }
   }
-  return prontos;
+  return prontos.map((m) => ({ ...m, outros: prontos.filter((o) => o.id !== m.id).map((o) => o.modelos) }));
 }
 
 /**
@@ -308,7 +319,7 @@ export function resolverMembroPool(
     tipo: "compativel",
     env: m.env,
     configDir: m.configDir,
-    modelo: (pedido) => traduzirModelo(m.modelos, pedido),
+    modelo: (pedido) => traduzirModelo(m.modelos, pedido, m.env.ANTHROPIC_BASE_URL, m.outros),
     membro: id,
   };
 }

@@ -43,7 +43,7 @@ export const SecretarioView: FC = () => {
   const [historicoAberto, setHistoricoAberto] = useState<boolean>(false);
   const [configLateralAberta, setConfigLateralAberta] = useState<boolean>(false);
   const [gitBranch, setGitBranch] = useState<string>("main");
-  const [modeloAtivo, setModeloAtivo] = useState<string>("opencode/nemotron-3.5-lightning-free");
+  const [modeloAtivo, setModeloAtivo] = useState<string>("");
 
   // Sincroniza branch git do workspace
   useEffect(() => {

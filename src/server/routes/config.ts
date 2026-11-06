@@ -33,10 +33,10 @@ async function caminhosDeWorkspaces(homeDir: string): Promise<string[]> {
   const lista = await new WorkspaceManager({ homeDir }).listar().catch(() => []);
   return lista.map((w) => w.path).filter((p): p is string => Boolean(p));
 }
-import { collectCatalog, curatedSource, engineHintSource, ModelProbeStore, openCodeLiveSource, settingsSource } from "../../core/models/index.js";
+import { collectCatalog, curatedSource, engineHintSource, ModelProbeStore, settingsSource } from "../../core/models/index.js";
 import type { EngineAccount } from "../../core/engines/engine-account-store.js";
 import { listarProvedoresStatus, testarModeloDirect, completarChatDirect } from "../../core/contexts/execution/llm-client.js";
-import { ProvedorError } from "../../core/engines/provedor-claude.js";
+import { ProvedorError, lerConfigProvedores } from "../../core/engines/provedor-claude.js";
 import {
   definirAtivoGratis,
   listarGratis,
@@ -157,6 +157,20 @@ export async function handleConfigRoutes(ctx: RouteContext): Promise<boolean> {
 
   const home = homeDir ?? opencorpHome();
 
+  /** Provedor ativo e o que cada "vaga" (padrão, haiku, sonnet, opus) vira nele; num pool, junta os membros. */
+  function descreverProvedorAtivo(homeDir: string) {
+    const cfg = lerConfigProvedores(homeDir);
+    const ativo = cfg.provedores[cfg.ativo];
+    if (!ativo) return null;
+    const ids = ativo.tipo === "pool" ? (ativo.membros ?? []) : [cfg.ativo];
+    const membros = ids.map((id) => ({ id, nome: cfg.provedores[id]?.nome ?? id, modelos: cfg.provedores[id]?.modelos ?? {} }));
+    const vagas = ["padrao", "haiku", "sonnet", "opus"].map((vaga) => ({
+      vaga,
+      modelos: [...new Set(membros.map((m) => m.modelos[vaga]).filter((v): v is string => Boolean(v)))],
+    }));
+    return { id: cfg.ativo, nome: ativo.nome ?? cfg.ativo, tipo: ativo.tipo, membros, vagas };
+  }
+
   // ─────────────────────────────────────────────────────────────────────
   // 1. SETTINGS & CONFIG
   // ─────────────────────────────────────────────────────────────────────
@@ -166,11 +180,9 @@ export async function handleConfigRoutes(ctx: RouteContext): Promise<boolean> {
     // aprovado separado da presença no catálogo; governança por modelo.
     if (rota === "/modelos/catalogo" && req.method === "GET") {
       const motores = await engineRegistry.listSummaries(home, false);
-      const opencode = motores.find((motor) => motor.id === "opencode");
       const wsCatalogo = await resolverWs(url).catch(() => null);
       const { models, errors } = await collectCatalog(
         [
-          openCodeLiveSource(opencode?.installed ? opencode.path : null),
           engineHintSource(motores.map((m) => ({ id: m.id, supportedModelsHint: m.supportedModelsHint }))),
           curatedSource(),
           settingsSource(home, wsCatalogo?.path),
@@ -179,7 +191,10 @@ export async function handleConfigRoutes(ctx: RouteContext): Promise<boolean> {
       );
       // Formato por [motor, modelo] (compatível com clientes anteriores) + campos novos.
       const modelos: Array<Record<string, unknown>> = [];
+      const idsMotores = new Set(motores.map((m) => m.id));
       for (const m of models) {
+        // Harnesses arquivados não aparecem: só modelos de motores registrados neste fork.
+        if (!m.compatibleEngineIds.some((id) => idsMotores.has(id))) continue;
         const kinds = new Set(m.sources.map((s) => s.kind));
         const base = {
           id: m.modelId,
@@ -199,14 +214,33 @@ export async function handleConfigRoutes(ctx: RouteContext): Promise<boolean> {
           continue;
         }
         for (const engineId of m.compatibleEngineIds) {
+          if (!idsMotores.has(engineId)) continue;
           const probe = m.probes.find((p) => p.engineId === engineId);
           modelos.push({ ...base, motor: engineId, probe: probe ? { status: probe.status, em: probe.at, nivel: probe.level } : null });
         }
       }
+      // Provedor compatível/pool: os nomes "claude-*" são só rótulos traduzidos; a lista passa a ser a dos modelos reais.
+      const provedorAtivo = descreverProvedorAtivo(home);
+      let lista = modelos;
+      if (provedorAtivo && provedorAtivo.tipo !== "assinatura" && provedorAtivo.tipo !== "api") {
+        const vistos = new Set<string>();
+        lista = [];
+        for (const membro of provedorAtivo.membros) {
+          for (const id of Object.values(membro.modelos)) {
+            if (vistos.has(id)) continue;
+            vistos.add(id);
+            lista.push({
+              id, provedor: membro.id, origem: "live", origens: [`provedor:${membro.id}`], motores: ["claude-sdk"], motor: "claude-sdk",
+              gratuito: /free|:free/i.test(id), recomendado: true, autonomo: true, tier: "A", probe: null,
+            });
+          }
+        }
+      }
       enviar(res, 200, {
-        total: modelos.length,
-        modelos,
+        total: lista.length,
+        modelos: lista,
         erros: errors,
+        provedorAtivo,
         motores: motores.map(({ id, name, installed, version }) => ({ id, nome: name, instalado: installed, versao: version })),
       });
       return true;

@@ -3,6 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { useOpenCorp } from "../../../providers/OpenCorpProvider.js";
 import { showToast } from "../../../shared/ui/Toast.js";
 import { montarTemplateFluxo } from "../templates.js";
+import { organizarNos } from "../layout.js";
+import { NodeInfoPanel } from "../components/NodeInfoPanel.js";
 import type { FluxoCompleto, NoGrafo, FlowRunLog } from "../types.js";
 import {
   GraphCanvas,
@@ -30,6 +32,8 @@ export const FluxosView: FC = () => {
   const [carregandoFluxo, setCarregandoFluxo] = useState(false);
   const [salvandoGrafo, setSalvandoGrafo] = useState(false);
   const [noSelecionado, setNoSelecionado] = useState<NoGrafo | null>(null);
+  const [noSobMouse, setNoSobMouse] = useState<NoGrafo | null>(null);
+  const [ajustarVista, setAjustarVista] = useState(0);
 
   // Catálogos auxiliares (Agentes, etc.)
   const [agentes, setAgentes] = useState<any[]>([]);
@@ -392,67 +396,9 @@ export const FluxosView: FC = () => {
   // ── Auto-Layout DAG Simples ───────────────────────────────────────────
   const handleAutoLayout = () => {
     if (!fluxoAtivo) return;
-    const nos = fluxoAtivo.nos || [];
-    const arestas = fluxoAtivo.arestas || [];
-
-    // Calcula níveis a partir dos nós sem entrada (raízes)
-    const entradasCount = new Map<string, number>();
-    nos.forEach((n) => entradasCount.set(n.id, 0));
-    arestas.forEach((a) => {
-      entradasCount.set(a.para, (entradasCount.get(a.para) || 0) + 1);
-    });
-
-    const niveis = new Map<string, number>();
-    const fila: string[] = [];
-
-    nos.forEach((n) => {
-      if ((entradasCount.get(n.id) || 0) === 0) {
-        niveis.set(n.id, 0);
-        fila.push(n.id);
-      }
-    });
-
-    while (fila.length > 0) {
-      const atual = fila.shift()!;
-      const nivelAtual = niveis.get(atual) || 0;
-      const sucessores = arestas.filter((a) => a.de === atual).map((a) => a.para);
-
-      sucessores.forEach((suc) => {
-        const nivelExistente = niveis.get(suc) || 0;
-        if (nivelAtual + 1 > nivelExistente) {
-          niveis.set(suc, nivelAtual + 1);
-          fila.push(suc);
-        }
-      });
-    }
-
-    // Agrupa nós por nível
-    const nósPorNivel = new Map<number, string[]>();
-    nos.forEach((n) => {
-      const lvl = niveis.get(n.id) || 0;
-      if (!nósPorNivel.has(lvl)) nósPorNivel.set(lvl, []);
-      nósPorNivel.get(lvl)!.push(n.id);
-    });
-
-    const novosNos = nos.map((n) => {
-      const lvl = niveis.get(n.id) || 0;
-      const listaDoNivel = nósPorNivel.get(lvl) || [n.id];
-      const indexNoNivel = listaDoNivel.indexOf(n.id);
-
-      return {
-        ...n,
-        pos: {
-          x: lvl * 320 + 80,
-          y: indexNoNivel * 180 + 80,
-        },
-      };
-    });
-
-    setFluxoAtivo({
-      ...fluxoAtivo,
-      nos: novosNos,
-    });
-    showToast("Layout automático aplicado com sucesso.", "info");
+    setFluxoAtivo({ ...fluxoAtivo, nos: organizarNos(fluxoAtivo.nos || [], fluxoAtivo.arestas || []) });
+    setAjustarVista((v) => v + 1);
+    showToast("Nós organizados. Clique em Salvar para guardar o layout.", "info");
   };
 
   // ── Execuções de Fluxo ────────────────────────────────────────────────
@@ -625,7 +571,12 @@ export const FluxosView: FC = () => {
             onSelecionarNo={setNoSelecionado}
             onAtualizarGrafo={handleAtualizarGrafo}
             onAdicionarNodeTipo={handleAdicionarNodeTipo}
+            onPassarMouseNo={setNoSobMouse}
+            ajustarVista={ajustarVista}
           />
+
+          {/* Comentário do nó sob o mouse (só leitura); some quando a gaveta de edição está aberta */}
+          {!noSelecionado && <NodeInfoPanel no={noSobMouse} />}
 
           {/* Paleta Lateral Esquerda (Drawer Retrátil) */}
           <ComponentPalette

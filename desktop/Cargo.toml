@@ -1,0 +1,20 @@
+[package]
+name = "opencorp-desktop"
+version = "0.1.0"
+description = "App de bandeja do OpenCorp: abrir, pausar, desligar e configurar"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-single-instance = "2"
+serde_json = "1"
+ureq = { version = "2", default-features = false, features = ["json"] }
+
+[profile.release]
+opt-level = "s"
+lto = "thin"
+codegen-units = 4
+strip = true

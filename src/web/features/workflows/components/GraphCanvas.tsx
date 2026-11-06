@@ -78,6 +78,10 @@ export interface GraphCanvasProps {
   onSelecionarNo: (no: NoGrafo | null) => void;
   onAtualizarGrafo: (nos: NoGrafo[], arestas: any[]) => void;
   onAdicionarNodeTipo: (tipo: string, posicao?: { x: number; y: number }) => void;
+  /** Nó sob o mouse (null ao sair): alimenta o painel lateral de comentário. */
+  onPassarMouseNo?: (no: NoGrafo | null) => void;
+  /** Muda a cada "organizar nós": enquadra a vista no novo layout. */
+  ajustarVista?: number;
 }
 
 const GraphCanvasInner: FC<GraphCanvasProps> = ({
@@ -86,6 +90,8 @@ const GraphCanvasInner: FC<GraphCanvasProps> = ({
   onSelecionarNo,
   onAtualizarGrafo,
   onAdicionarNodeTipo,
+  onPassarMouseNo,
+  ajustarVista,
 }) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition, fitView } = useReactFlow();
@@ -111,17 +117,26 @@ const GraphCanvasInner: FC<GraphCanvasProps> = ({
   // Converte arestas OpenCorp para ReactFlow Edges
   const initialEdges: Edge[] = useMemo(() => {
     const rawArestas = Array.isArray(fluxo.arestas) ? fluxo.arestas : [];
+    const nosPorId = new Map((Array.isArray(fluxo.nos) ? fluxo.nos : []).map((n) => [n.id, n]));
     return rawArestas.map((a, idx) => {
-      const isEntao = a.saida === "entao" || a.condicao === "entao";
-      const isSenao = a.saida === "senao" || a.condicao === "senao";
+      // Nó "condicao": o arquivo guarda o destino em config.entao/config.senao e a aresta sem "saida".
+      // Sem isso as duas linhas saíam do primeiro ponto (o verde).
+      const origem = nosPorId.get(a.de);
+      const cfg = (origem?.config ?? {}) as Record<string, unknown>;
+      const ramoDoNo = origem && (origem.tipo === "condicao" || origem.tipo === "decisao")
+        ? cfg.entao === a.para && cfg.senao !== a.para ? "entao" : cfg.senao === a.para && cfg.entao !== a.para ? "senao" : undefined
+        : undefined;
+      const saida: string | undefined = a.saida || (a.condicao === "entao" || a.condicao === "senao" ? a.condicao : undefined) || ramoDoNo;
+      const isEntao = saida === "entao";
+      const isSenao = saida === "senao";
 
       const cor = isEntao ? "#10b981" : isSenao ? "#f43f5e" : "#f97316";
 
       return {
-        id: `e-${a.de}-${a.para}-${a.saida || idx}`,
+        id: `e-${a.de}-${a.para}-${saida || idx}`,
         source: a.de,
         target: a.para,
-        sourceHandle: a.saida || undefined,
+        sourceHandle: saida,
         type: "smoothstep",
         animated: true,
         markerEnd: {
@@ -147,7 +162,7 @@ const GraphCanvasInner: FC<GraphCanvasProps> = ({
         },
       };
     });
-  }, [fluxo.arestas]);
+  }, [fluxo.arestas, fluxo.nos]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -160,6 +175,19 @@ const GraphCanvasInner: FC<GraphCanvasProps> = ({
   React.useEffect(() => {
     setEdges(initialEdges);
   }, [initialEdges, setEdges]);
+
+  // Enquadra a vista depois de "organizar nós" (espera o React Flow receber as novas posições).
+  React.useEffect(() => {
+    if (!ajustarVista) return;
+    const t = setTimeout(() => void fitView({ padding: 0.2, duration: 400 }), 60);
+    return () => clearTimeout(t);
+  }, [ajustarVista, fitView]);
+
+  const aoEntrarNo = useCallback(
+    (_: React.MouseEvent, node: Node) => onPassarMouseNo?.((Array.isArray(fluxo.nos) ? fluxo.nos : []).find((n) => n.id === node.id) ?? null),
+    [fluxo.nos, onPassarMouseNo]
+  );
+  const aoSairNo = useCallback(() => onPassarMouseNo?.(null), [onPassarMouseNo]);
 
   // Notifica o pai quando os nós são arrastados/movidos
   const handleNodeDragStop = useCallback(
@@ -267,6 +295,8 @@ const GraphCanvasInner: FC<GraphCanvasProps> = ({
         onConnect={onConnect}
         onNodeDragStop={handleNodeDragStop}
         onNodeClick={onNodeClick}
+        onNodeMouseEnter={aoEntrarNo}
+        onNodeMouseLeave={aoSairNo}
         onPaneClick={onPaneClick}
         onDragOver={onDragOver}
         onDrop={onDrop}

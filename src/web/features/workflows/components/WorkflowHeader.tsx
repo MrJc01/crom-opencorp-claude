@@ -167,11 +167,11 @@ export const WorkflowHeader: FC<WorkflowHeaderProps> = ({
           <button
             type="button"
             onClick={onResetLayout}
-            className="hidden lg:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-xs text-zinc-300 transition-colors cursor-pointer"
-            title="Auto-organizar layout dos nós"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-xs text-zinc-300 transition-colors cursor-pointer"
+            title="Organizar os nós automaticamente"
           >
             <RotateCcw size={13} className="text-zinc-400" />
-            <span className="hidden xl:inline">Auto-layout</span>
+            <span>Organizar nós</span>
           </button>
         )}
 

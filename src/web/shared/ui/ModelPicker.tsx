@@ -20,7 +20,23 @@ export interface ModeloCatalogo {
   probe?: { status: "passed" | "failed"; em: string; nivel?: string } | null;
 }
 
+export interface ProvedorAtivoInfo {
+  id: string;
+  nome: string;
+  tipo: string;
+  membros: Array<{ id: string; nome: string }>;
+  vagas: Array<{ vaga: string; modelos: string[] }>;
+}
+
+const ROTULO_VAGA: Record<string, string> = {
+  padrao: "Padrão (quando nada é pedido)",
+  haiku: "Rápido (haiku)",
+  sonnet: "Equilibrado (sonnet)",
+  opus: "Poderoso (opus)",
+};
+
 let cacheCatalogo: ModeloCatalogo[] | null = null;
+let cacheProvedor: ProvedorAtivoInfo | null = null;
 
 export interface ModelPickerProps {
   value: string | string[];
@@ -44,9 +60,10 @@ export const ModelPicker: FC<ModelPickerProps> = ({
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState("");
   const [catalogo, setCatalogo] = useState<ModeloCatalogo[]>(cacheCatalogo ?? []);
+  const [provedor, setProvedor] = useState<ProvedorAtivoInfo | null>(cacheProvedor);
   const [carregando, setCarregando] = useState(cacheCatalogo === null);
   const [somenteFree, setSomenteFree] = useState(false);
-  const [somenteRecomendados, setSomenteRecomendados] = useState(true);
+  const [somenteRecomendados, setSomenteRecomendados] = useState(false);
   const [testando, setTestando] = useState<string | null>(null);
   const [resultados, setResultados] = useState<Record<string, boolean>>({});
 
@@ -55,12 +72,14 @@ export const ModelPicker: FC<ModelPickerProps> = ({
   useEffect(() => {
     if (!aberto || cacheCatalogo) return;
     setCarregando(true);
-    client.http.get<{ modelos?: ModeloCatalogo[] }>("/modelos/catalogo", {
+    client.http.get<{ modelos?: ModeloCatalogo[]; provedorAtivo?: ProvedorAtivoInfo | null }>("/modelos/catalogo", {
       headers: workspaceId ? { "x-opencorp-workspace": workspaceId } : undefined,
     }).then((res) => {
       const lista = Array.isArray(res?.modelos) ? res.modelos : [];
       cacheCatalogo = lista;
+      cacheProvedor = res?.provedorAtivo ?? null;
       setCatalogo(lista);
+      setProvedor(cacheProvedor);
     }).catch(() => setCatalogo([])).finally(() => setCarregando(false));
   }, [aberto, client, workspaceId]);
 
@@ -123,7 +142,7 @@ export const ModelPicker: FC<ModelPickerProps> = ({
           <span className="font-mono truncate">
             {multiple
               ? selecionados.length > 0 ? `${selecionados.length} modelo(s) selecionado(s)` : placeholder
-              : selecionados[0] || placeholder}
+              : (selecionados[0] && ROTULO_VAGA[selecionados[0]]) || selecionados[0] || placeholder}
           </span>
         </span>
         <ChevronDown size={14} className={`shrink-0 transition-transform ${aberto ? "rotate-180" : ""}`} />
@@ -156,6 +175,12 @@ export const ModelPicker: FC<ModelPickerProps> = ({
           </div>
 
           <div className="max-h-72 overflow-y-auto p-1.5 scrollbar-thin">
+            {provedor && (
+              <div className="px-2 pb-1 text-[10px] uppercase tracking-wide text-zinc-500">
+                Provedor ativo: <span className="text-emerald-400">{provedor.nome}</span>
+                {provedor.tipo === "pool" && <span> · reveza {provedor.membros.length} contas</span>}
+              </div>
+            )}
             {carregando ? (
               <div className="flex items-center justify-center gap-2 py-8 text-xs text-zinc-500"><Loader2 size={14} className="animate-spin" /> Descobrindo modelos...</div>
             ) : opcoes.length === 0 ? (

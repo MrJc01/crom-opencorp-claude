@@ -125,7 +125,7 @@ export async function executarComRotacao(
     let erro = "";
     let texto = "";
     const codigo = await executarAgenteCli(
-      { ...opts, model: traduzirModelo(membro.modelos, pool.modeloPedido) },
+      { ...opts, model: traduzirModelo(membro.modelos, pool.modeloPedido, membro.env.ANTHROPIC_BASE_URL, membro.outros) },
       { stdout: (t) => (texto += t), stderr: (t) => (erro += t), atividade: saidas.atividade },
       consulta,
     );

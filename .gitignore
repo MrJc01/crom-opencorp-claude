@@ -98,3 +98,7 @@ tsconfig.tsbuildinfo
 patch_agents.js
 corp-deep-sre/
 data/
+
+# App de bandeja (Tauri)
+desktop/target/
+desktop/gen/

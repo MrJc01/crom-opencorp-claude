@@ -41,6 +41,8 @@ export const nosFlowSchema = z.object({
   ]),
   config: z.record(z.string(), z.unknown()).default({}),
   pos: z.object({ x: z.number(), y: z.number() }).optional(),
+  /** Explicação do que o nó faz, só para leitura do dono (aparece no painel lateral do editor); não afeta a execução. */
+  comentario: z.string().optional(),
   // F10-T01: barreira de junção para nós com múltiplas entradas.
   // "all" = esperar TODAS as arestas de entrada antes de executar (concatena o
   // contexto); "any" = executa a cada entrada (comportamento legado).
