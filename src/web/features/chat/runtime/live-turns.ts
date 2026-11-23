@@ -15,16 +15,37 @@ export interface TurnoVivo {
 }
 
 const vivos = new Map<string, TurnoVivo>();
+const concluidos = new Map<string, { turno: TurnoVivo; em: number }>();
 const ouvintes = new Map<string, Set<(t: TurnoVivo) => void>>();
+const TTL_CONCLUIDO_MS = 10_000;
 
 export function publicarTurno(sessaoId: string, turno: TurnoVivo): void {
-  if (turno.running) vivos.set(sessaoId, turno);
-  else vivos.delete(sessaoId);
+  if (turno.running) {
+    concluidos.delete(sessaoId);
+    vivos.set(sessaoId, turno);
+  } else {
+    vivos.delete(sessaoId);
+    concluidos.set(sessaoId, { turno, em: Date.now() });
+  }
   for (const fn of ouvintes.get(sessaoId) ?? []) fn(turno);
 }
 
 export function obterTurno(sessaoId?: string): TurnoVivo | undefined {
   return sessaoId ? vivos.get(sessaoId) : undefined;
+}
+
+/** Último estado publicado ao encerrar um turno recentemente (resolve corrida entre render e effect). */
+export function obterTurnoRecente(sessaoId?: string): TurnoVivo | undefined {
+  if (!sessaoId) return undefined;
+  const vivo = vivos.get(sessaoId);
+  if (vivo) return vivo;
+  const fim = concluidos.get(sessaoId);
+  if (!fim) return undefined;
+  if (Date.now() - fim.em > TTL_CONCLUIDO_MS) {
+    concluidos.delete(sessaoId);
+    return undefined;
+  }
+  return fim.turno;
 }
 
 export function assinarTurno(sessaoId: string, fn: (t: TurnoVivo) => void): () => void {

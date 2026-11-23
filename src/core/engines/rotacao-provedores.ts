@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -53,13 +54,21 @@ export function lerEstadoRotacao(homeDir: string): EstadoRotacao {
   }
 }
 
-/** Grava de forma atômica (arquivo temporário + rename): quem lê nunca pega o JSON pela metade. */
+/** Grava de forma atômica (arquivo temporário único + rename): quem lê nunca pega o JSON pela metade. */
 export function gravarEstadoRotacao(homeDir: string, estado: EstadoRotacao): void {
   const caminho = caminhoEstadoRotacao(homeDir);
   mkdirSync(pastaEstadoRotacao(homeDir), { recursive: true });
-  const tmp = `${caminho}.${process.pid}.tmp`;
-  writeFileSync(tmp, `${JSON.stringify(estado, null, 2)}\n`);
-  renameSync(tmp, caminho);
+  const tmp = `${caminho}.${process.pid}-${randomUUID()}.tmp`;
+  try {
+    writeFileSync(tmp, `${JSON.stringify(estado, null, 2)}\n`);
+    renameSync(tmp, caminho);
+  } catch {
+    try {
+      rmSync(tmp, { force: true });
+    } catch {
+      // Ignora erro de remoção de temporário
+    }
+  }
 }
 
 /** Próxima meia-noite UTC: quando cotas diárias (ex.: 1000 chamadas grátis/dia do OpenRouter) renovam. */
@@ -86,11 +95,14 @@ export function classificarFalha(texto: string, agora: Date): { classe: ClasseFa
   if (/\b402\b|requires more credits|insufficient (credit|balance|funds)|saldo insuficiente|sem saldo/.test(t)) {
     return { classe: "cota", ate: em(6 * 60), motivo: "sem créditos (402)" };
   }
-  if (/\b403\b|\b404\b|only available|not available|unavailable|model not found|does not exist|no endpoints/.test(t)) {
-    return { classe: "modelo", ate: em(12 * 60), motivo: "modelo indisponível para esta conta" };
+  if (/econnrefused|connection refused|err_connection_refused|enotfound|ehostunreach|eai_again|cannot connect to api|unable to connect/.test(t)) {
+    return { classe: "transitoria", ate: em(5), motivo: "serviço inacessível (ECONNREFUSED)" };
   }
-  if (/timeout|timed out|etimedout|econnreset|fetch failed|socket hang up|overloaded|\b5\d\d\b/.test(t)) {
+  if (/temporarily unavailable|service unavailable|overloaded|high demand|timeout|timed out|etimedout|econnreset|fetch failed|socket hang up|\b5\d\d\b/.test(t)) {
     return { classe: "transitoria", motivo: "falha de rede ou servidor" };
+  }
+  if (/\b403\b|\b404\b|only available|not available|unavailable|model not found|not a valid model|does not exist|no endpoints/.test(t)) {
+    return { classe: "modelo", ate: em(12 * 60), motivo: "modelo indisponível para esta conta" };
   }
   return { classe: "outra", motivo: "erro que não muda com a conta" };
 }

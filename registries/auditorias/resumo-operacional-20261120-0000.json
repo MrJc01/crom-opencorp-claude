@@ -1,0 +1,95 @@
+{
+  "tipo": "resumo_operacional",
+  "autor": "agente:secretario-exec",
+  "tick": "00:00 -03",
+  "data": "2026-11-20",
+  "workspace": "opencorp-claude",
+  "kanban": {
+    "total": 3,
+    "pendentes": 2,
+    "concluidas": 1,
+    "bloqueadas": 0,
+    "detalhe": "3 tarefas no quadro Kanban, 2 pendentes em execução ('doing'), 1 concluída ('feito'). KANBAN_STATUS:total=3,pendentes=2 reportado pelo nó auditar-kanban.",
+    "tarefas": [
+      {
+        "id": "tsk-setup-01-contexto",
+        "titulo": "[SETUP] Definição do Contexto Adaptativo do Workspace",
+        "coluna": "feito",
+        "responsavel": "agente:secretario-exec",
+        "prioridade": "alta"
+      },
+      {
+        "id": "tsk-setup-02-auditoria",
+        "titulo": "[SETUP] Auditoria Inicial de Conexões e Ferramentas",
+        "coluna": "doing",
+        "responsavel": "agente:auditor",
+        "prioridade": "alta"
+      },
+      {
+        "id": "tsk-setup-03-fluxos",
+        "titulo": "[SETUP] Homologação dos Fluxos Declarativos",
+        "coluna": "doing",
+        "responsavel": "agente:secretario-exec",
+        "prioridade": "media"
+      }
+    ]
+  },
+  "bloqueios": {
+    "diagnostico": "Nenhum bloqueio formal registrado (bloqueado_por vazio). Detectada dependência lógica crítica entre tsk-setup-02-auditoria (alta prioridade) e tsk-setup-03-fluxos (média prioridade).",
+    "gargalo_infraestrutura": ".opencorp/secrets/ sem credenciais populadas. A homologação definitiva de fluxos depende da validação de conexões.",
+    "acao_mitigadora": "Caso o agente:auditor não conclua a tarefa tsk-setup-02-auditoria neste ciclo, o secretario-exec assume a tarefa de alta prioridade para desbloquear a sequência."
+  },
+  "registros_recentes": {
+    "pauta-680": {
+      "tema": "Neymar provocado por música de Virgínia no Couto Pereira",
+      "status": "aprovado",
+      "etapas": ["roteiro_criado", "fato_checado"],
+      "observacao": "Fact-checking aprovado com evidências do Purepeople; roteiro calibrado em 96 palavras (faixa ideal: 85 a 105). Pronta para curadoria visual."
+    },
+    "pauta-681": {
+      "tema": "Meta AI, Mark Zuckerberg, Signal e Capital One",
+      "status": "aprovado_para_render",
+      "etapas": ["roteiro_criado", "curadoria_visual"],
+      "observacao": "Curadoria visual aprovada com 4 imagens validadas e fontes livres (Wikimedia Commons/GPLv3). Pronta para render de vídeo."
+    },
+    "pauta-683": {
+      "tema": "Muse Charm: novo chaveiro de IA da Meta por US$ 300",
+      "status": "roteiro_pronto",
+      "etapas": ["roteiro_criado"],
+      "observacao": "Roteiro redigido baseado em vazamento apurado pelo The Information / TechCrunch. Aguarda fact-checking do agente:checador-fatos."
+    }
+  },
+  "prioridades_pendentes": [
+    {
+      "prioridade": "alta",
+      "item": "Disparo de renderização da pauta-681",
+      "responsavel": "agente:produtor-video",
+      "descricao": "Pauta-681 com curadoria visual aprovada para render."
+    },
+    {
+      "prioridade": "alta",
+      "item": "Curadoria visual da pauta-680",
+      "responsavel": "agente:curador-visual",
+      "descricao": "Fatos checados e confirmados; roteiro calibrado em 96 palavras pronto para seleção de mídias."
+    },
+    {
+      "prioridade": "alta",
+      "item": "Fact-checking da pauta-683",
+      "responsavel": "agente:checador-fatos",
+      "descricao": "Validar alegações do The Information sobre precificação de US$ 300 e lançamento do Muse Charm da Meta."
+    },
+    {
+      "prioridade": "alta",
+      "item": "Conclusão de tsk-setup-02-auditoria",
+      "responsavel": "agente:auditor / agente:secretario-exec",
+      "descricao": "Auditoria de conexões e ferramentas para desbloquear a homologação dos fluxos declarativos."
+    },
+    {
+      "prioridade": "media",
+      "item": "Homologação de tsk-setup-03-fluxos",
+      "responsavel": "agente:secretario-exec",
+      "descricao": "Homologação dos fluxos declarativos condicionada à conclusão da auditoria de infraestrutura."
+    }
+  ],
+  "observacoes": "Auditoria do tick 00:00 -03 concluída com sucesso. Pipeline editorial abastecido e dependências operacionais mapeadas."
+}

@@ -68,6 +68,18 @@ describe("classificarFalha", () => {
     expect(f.ate).toBeUndefined();
   });
 
+  it("ECONNREFUSED coloca membro offline em cooldown curto (5 min) e rotaciona", () => {
+    const f = classificarFalha("API Error: Connection refused — a firewall or proxy may be blocking it (ECONNREFUSED)", AGORA);
+    expect(f.classe).toBe("transitoria");
+    expect(f.ate!.getTime() - AGORA.getTime()).toBe(5 * 60_000);
+  });
+
+  it("503 Service Unavailable / overloaded é transitória e não bane conta por 12h", () => {
+    const f = classificarFalha("API Error: 503 Service Unavailable (overloaded_error: temporarily unavailable)", AGORA);
+    expect(f.classe).toBe("transitoria");
+    expect(f.ate).toBeUndefined();
+  });
+
   it("erro que não depende da conta não rotaciona", () => {
     expect(classificarFalha("prompt too long for the context window", AGORA).classe).toBe("outra");
   });
@@ -281,6 +293,44 @@ describe("runner com rotação", () => {
     expect(codigo).toBe(1);
     expect(vistos.length).toBe(2);
     expect(err).toContain("todos os membros falharam nesta chamada");
+  });
+
+  it("modelo morto pedido pelo workspace cai no padrão do membro sem bloquear a conta", async () => {
+    const h = await home();
+    const vistos: Array<{ base?: string; model?: string }> = [];
+    let out = "";
+    let err = "";
+    const erroModeloMorto = {
+      type: "result",
+      subtype: "success",
+      is_error: true,
+      result: "API Error: 404 model not found: nvidia/nemotron-3-super-120b-a12b:free",
+      errors: [],
+    };
+    const codigo = await executarComRotacao(
+      {
+        cwd: "/ws",
+        prompt: "oi",
+        pool: {
+          id: "rodizio",
+          home: h,
+          modeloPedido: "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+          membros: [membro("or1", "https://openrouter.ai/api", "nvidia/nemotron-3.5-super-vl:free")],
+        },
+      },
+      { stdout: (t) => (out += t), stderr: (t) => (err += t) },
+      consultaFalsa([[erroModeloMorto], [sucesso("recuperado no padrao")]], vistos) as any,
+      () => AGORA,
+    );
+    expect(codigo).toBe(0);
+    expect(out).toBe("recuperado no padrao\n");
+    expect(vistos.map((v) => v.model)).toEqual([
+      "nvidia/nemotron-3-super-120b-a12b:free",
+      "nvidia/nemotron-3.5-super-vl:free",
+    ]);
+    const estado = JSON.parse(await readFile(join(h, ".opencorp", "rotacao", "estado.json"), "utf8"));
+    expect(estado.bloqueios.or1).toBeUndefined();
+    expect(estado.usos.or1).toBe(1);
   });
 
   it("lê os membros do ambiente", () => {

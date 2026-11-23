@@ -74,7 +74,7 @@ describe("E2E — Governança de Modelos, CLI e Dimensionamento xB", () => {
         expect(["S", "A"]).toContain(item.tier);
       }
 
-      const temUltra = data.some((m: any) => m.modelo.includes("nemotron-3-ultra-free"));
+      const temUltra = data.some((m: any) => m.modelo.includes("nemotron-3-ultra"));
       expect(temUltra).toBe(true);
     });
 

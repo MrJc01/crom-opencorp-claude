@@ -299,7 +299,7 @@ describe("MeetingManager — encerramentos", () => {
     const ataChamadas = chamadas.filter((c) => c.opcoes.ordem?.includes("TAREFA INTERNA DO SISTEMA"));
     expect(ataChamadas).toHaveLength(2);
     expect(ataChamadas[0]!.opcoes.model).toBe("opencode/hy3-free");
-    expect(ataChamadas[1]!.opcoes.model).toBe("opencode/nemotron-3.5-lightning-free");
+    expect(ataChamadas[1]!.opcoes.model).toBe("opencode/deepseek-v4.1-flash-free");
   });
 
   it("ata com recusa determinística (budget) → não roda rotação", async () => {

@@ -183,6 +183,33 @@ function dividirChave(chave: string): string[] {
   return segs;
 }
 
+function desembrulharSchema(schema: unknown): Record<string, unknown> | null {
+  let atual = schema as { shape?: Record<string, unknown>; unwrap?: () => unknown; def?: { innerType?: unknown } } | null;
+  for (let i = 0; i < 8 && atual; i++) {
+    if (atual.shape && typeof atual.shape === "object") return atual.shape;
+    if (typeof atual.unwrap === "function") {
+      atual = atual.unwrap() as typeof atual;
+      continue;
+    }
+    if (atual.def && typeof atual.def === "object" && "innerType" in atual.def && atual.def.innerType) {
+      atual = atual.def.innerType as typeof atual;
+      continue;
+    }
+    break;
+  }
+  return null;
+}
+
+function chaveExisteNoSchema(segs: string[]): boolean {
+  let atual: unknown = settingsSchema;
+  for (const s of segs) {
+    const shape = desembrulharSchema(atual);
+    if (!shape || !(s in shape)) return false;
+    atual = shape[s];
+  }
+  return segs.length > 0;
+}
+
 function origemAproximada(origens: Map<string, Origem>, chave: string): Origem {
   const direta = origens.get(chave);
   if (direta) return direta;
@@ -376,7 +403,7 @@ export class SettingsStore {
     if (!lido.exists || !deepHas(lido.dados, segs)) {
       const r = await this.resolve(opts);
       const valor = deepGet(r.settings as unknown as Record<string, unknown>, segs);
-      if (valor === undefined) {
+      if (valor === undefined && !chaveExisteNoSchema(segs)) {
         throw new SettingsError(`chave desconhecida: "${chave}" (use "opencorp settings list")`, {
           chave,
           exitCode: 1,

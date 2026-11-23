@@ -15,7 +15,7 @@ export const Topbar: FC<TopbarProps> = ({
   aoAlternarSecretario,
   secretarioAberto = false,
 }) => {
-  const { notificacoesNaoLidas, sseConectado, workspaceId } = useOpenCorp();
+  const { notificacoesNaoLidas, sseConectado, sseConectando, workspaceId } = useOpenCorp();
   // Sem workspace aberto não há Secretário, notificações nem stream do workspace: esconde o que não se aplica.
   const temWorkspace = Boolean(workspaceId);
   const location = useLocation();
@@ -50,23 +50,27 @@ export const Topbar: FC<TopbarProps> = ({
           <>
         {/* Indicador de Conexão SSE */}
         <div
-          className={`hidden md:flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg border transition-all select-none ${
+          className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg border transition-all select-none ${
             sseConectado
               ? "bg-emerald-950/30 border-emerald-800/50 text-emerald-300"
+              : sseConectando
+              ? "bg-amber-950/30 border-amber-800/50 text-amber-300"
               : "bg-zinc-900/60 border-zinc-800/60 text-zinc-400"
           }`}
           title={
             sseConectado
               ? "Canal de eventos em tempo real conectado (SSE)"
-              : "Canal de eventos offline (reconectando automaticamente)"
+              : sseConectando
+              ? "Reconectando canal de eventos..."
+              : "Canal de eventos offline"
           }
         >
           <Radio
             size={12}
-            className={sseConectado ? "text-emerald-400 animate-pulse" : "text-zinc-500"}
+            className={sseConectado ? "text-emerald-400 animate-pulse" : sseConectando ? "text-amber-400 animate-spin" : "text-zinc-500"}
           />
           <span className="font-mono text-[10px]">
-            {sseConectado ? "stream" : "offline"}
+            {sseConectado ? "stream" : sseConectando ? "reconectando..." : "offline"}
           </span>
         </div>
 

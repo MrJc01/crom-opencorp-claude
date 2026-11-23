@@ -1,0 +1,95 @@
+{
+  "tipo": "resumo_operacional",
+  "autor": "agente:secretario-exec",
+  "tick": "00:10 -03",
+  "data": "2026-11-20",
+  "workspace": "opencorp-claude",
+  "kanban": {
+    "total": 3,
+    "pendentes": 2,
+    "concluidas": 1,
+    "bloqueadas": 0,
+    "detalhe": "Quadro Kanban com 3 tarefas registradas: 1 concluída ('feito') e 2 pendentes em andamento ('doing'). Confirmado KANBAN_STATUS:total=3,pendentes=2.",
+    "tarefas": [
+      {
+        "id": "tsk-setup-01-contexto",
+        "titulo": "[SETUP] Definição do Contexto Adaptativo do Workspace",
+        "coluna": "feito",
+        "responsavel": "agente:secretario-exec",
+        "prioridade": "alta"
+      },
+      {
+        "id": "tsk-setup-02-auditoria",
+        "titulo": "[SETUP] Auditoria Inicial de Conexões e Ferramentas",
+        "coluna": "doing",
+        "responsavel": "agente:auditor",
+        "prioridade": "alta"
+      },
+      {
+        "id": "tsk-setup-03-fluxos",
+        "titulo": "[SETUP] Homologação dos Fluxos Declarativos",
+        "coluna": "doing",
+        "responsavel": "agente:secretario-exec",
+        "prioridade": "media"
+      }
+    ]
+  },
+  "bloqueios": {
+    "diagnostico": "Sem travas de concorrência ou bloqueios formais em banco. Dependência lógica detectada entre tsk-setup-02-auditoria e tsk-setup-03-fluxos.",
+    "gargalo_infraestrutura": "A homologação final das rotinas cron e fluxos requer certificação prévia das conexões e credenciais.",
+    "acao_mitigadora": "Intervenção direta do secretario-exec caso o agente:auditor não reporte a conclusão da auditoria de conexões."
+  },
+  "registros_recentes": {
+    "pauta-680": {
+      "tema": "Neymar provocado por música de Virgínia no Couto Pereira",
+      "status": "aprovado_para_curadoria",
+      "etapas": ["roteiro_criado", "fato_checado"],
+      "observacao": "Fatos checados e validados pelo Purepeople; roteiro calibrado com 96 palavras. Liberado para curadoria visual."
+    },
+    "pauta-681": {
+      "tema": "Meta AI, Mark Zuckerberg, Signal e Capital One",
+      "status": "aprovado_para_render",
+      "etapas": ["roteiro_criado", "curadoria_visual"],
+      "observacao": "Curadoria visual 100% aprovada com 4 imagens livres verificadas no Wikimedia Commons. Pronta para render de vídeo."
+    },
+    "pauta-683": {
+      "tema": "Muse Charm: novo chaveiro de IA da Meta por US$ 300",
+      "status": "roteiro_pronto",
+      "etapas": ["roteiro_criado"],
+      "observacao": "Roteiro redigido baseado em apuração do TechCrunch / The Information. Aguarda checagem de fatos."
+    }
+  },
+  "prioridades_pendentes": [
+    {
+      "prioridade": "alta",
+      "item": "Conclusão de tsk-setup-02-auditoria",
+      "responsavel": "agente:auditor / agente:secretario-exec",
+      "descricao": "Auditar conexões e ferramentas para habilitar homologação dos fluxos declarativos."
+    },
+    {
+      "prioridade": "alta",
+      "item": "Disparo de renderização da pauta-681",
+      "responsavel": "agente:produtor-video",
+      "descricao": "Pauta-681 liberada na curadoria visual, pronta para compilação audiovisual."
+    },
+    {
+      "prioridade": "alta",
+      "item": "Fact-checking da pauta-683",
+      "responsavel": "agente:checador-fatos",
+      "descricao": "Verificação das afirmações sobre o dispositivo de IA Muse Charm da Meta e preço de US$ 300."
+    },
+    {
+      "prioridade": "media",
+      "item": "Curadoria visual da pauta-680",
+      "responsavel": "agente:curador-visual",
+      "descricao": "Seleção de mídias e imagens para o roteiro aprovado de Neymar e provocação no estádio."
+    },
+    {
+      "prioridade": "media",
+      "item": "Homologação de tsk-setup-03-fluxos",
+      "responsavel": "agente:secretario-exec",
+      "descricao": "Homologação dos fluxos declarativos dependente do término da auditoria de infraestrutura."
+    }
+  ],
+  "observacoes": "Resumo operacional gerado no tick 00:10 -03 da supervisão periódica do Secretário Executivo."
+}

@@ -185,9 +185,9 @@ export const ProvedoresGratisSecao: FC = () => {
           <Cpu className="w-4 h-4" />
         </div>
         <div>
-          <h2 className="text-sm font-bold text-zinc-100">Provedores grátis (Claude Agent SDK)</h2>
+          <h2 className="text-sm font-bold text-zinc-100">Provedores grátis (CCO / Agent SDK)</h2>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Os agentes rodam no Claude Agent SDK apontando para estes endpoints. Só modelos grátis: o id precisa
+            Os agentes rodam no CCO Agent SDK apontando para estes endpoints. Só modelos grátis: o id precisa
             terminar em <code className="font-mono">:free</code> ou <code className="font-mono">-free</code>. Nenhuma
             conta da Anthropic.
           </p>

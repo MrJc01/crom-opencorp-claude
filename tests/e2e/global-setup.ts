@@ -83,6 +83,12 @@ export default async function globalSetup(): Promise<void> {
     ],
   };
   await mkdir(join(E2E_HOME, ".opencorp"), { recursive: true });
+  await mkdir(join(E2E_HOME, ".claude"), { recursive: true });
+  await writeFile(join(E2E_HOME, ".claude", ".credentials.json"), JSON.stringify({ claudeAiOauth: { accessToken: "e2e-fake-token" } }));
+  if (process.env.HOME) {
+    await mkdir(join(process.env.HOME, ".claude"), { recursive: true }).catch(() => {});
+    await writeFile(join(process.env.HOME, ".claude", ".credentials.json"), JSON.stringify({ claudeAiOauth: { accessToken: "e2e-fake-token" } })).catch(() => {});
+  }
   await writeFile(join(E2E_HOME, ".opencorp", "workspaces.json"), JSON.stringify(workspacesConfig, null, 2));
   // Execução direta no host: o driver padrão (systemd-run) não existe em
   // contêineres de CI e fazia todo nó de agente falhar com "Failed to connect to bus".

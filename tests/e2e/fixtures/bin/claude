@@ -1,0 +1,82 @@
+#!/usr/bin/env node
+import readline from "node:readline";
+import { randomUUID } from "node:crypto";
+
+const args = process.argv.slice(2);
+if (args.includes("--version") || args.includes("-v")) {
+  console.log("2.1.112 (Claude Code)");
+  process.exit(0);
+}
+
+function responderTexto(prompt) {
+  if (/teste pergunta/i.test(prompt)) {
+    return "Qual ambiente você deseja implantar?\n1. Produção\n2. Staging\n3. Desenvolvimento";
+  }
+  const contrato = prompt.includes("[contrato de revisão]")
+    ? "APROVADO\n"
+    : prompt.includes("[contrato de moderação]")
+      ? "DECISÃO: seguir a proposta A\n"
+      : "";
+  return `${contrato}Resposta do assistant para: ${prompt}`;
+}
+
+const sessionIdx = args.indexOf("--session-id");
+const resumeIdx = args.indexOf("--resume");
+const sessionId =
+  (sessionIdx !== -1 && args[sessionIdx + 1]) ||
+  (resumeIdx !== -1 && args[resumeIdx + 1]) ||
+  randomUUID();
+
+if (args.includes("--input-format") && args[args.indexOf("--input-format") + 1] === "stream-json") {
+  const rl = readline.createInterface({ input: process.stdin });
+  rl.on("line", (line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    let msg;
+    try {
+      msg = JSON.parse(trimmed);
+    } catch {
+      return;
+    }
+    if (msg.type === "control_request") {
+      process.stdout.write(
+        JSON.stringify({
+          type: "control_response",
+          response: { subtype: "success", request_id: msg.request_id, response: {} },
+        }) + "\n",
+      );
+    } else if (msg.type === "user") {
+      const content = msg.message?.content;
+      const text =
+        typeof content === "string"
+          ? content
+          : Array.isArray(content)
+            ? content.map((c) => c?.text ?? "").join("\n")
+            : "";
+      const reply = responderTexto(text);
+      process.stdout.write(JSON.stringify({ type: "system", subtype: "init", session_id: sessionId }) + "\n");
+      process.stdout.write(
+        JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: reply }] } }) + "\n",
+      );
+      process.stdout.write(
+        JSON.stringify({
+          type: "result",
+          subtype: "success",
+          is_error: false,
+          result: reply,
+          total_cost_usd: 0,
+          modelUsage: {},
+        }) + "\n",
+        () => {
+          rl.close();
+          process.exit(0);
+        },
+      );
+    }
+  });
+} else {
+  const pIdx = args.indexOf("-p");
+  const prompt = pIdx !== -1 ? args[pIdx + 1] ?? "" : args.join(" ");
+  console.log(responderTexto(prompt));
+  process.exit(0);
+}

@@ -1,0 +1,50 @@
+{
+  "tipo": "resumo_operacional",
+  "autor": "agente:secretario-exec",
+  "tick": "22:00 -03",
+  "data": "2026-11-19",
+  "workspace": "opencorp-claude",
+  "kanban": {
+    "total": 3,
+    "pendentes": 0,
+    "bloqueadas": 0,
+    "detalhe": "3 tarefas no quadro Kanban, 0 pendentes (100% concluídas). KANBAN_STATUS:total=3,pendentes=0 reportado pelo nó auditar-kanban."
+  },
+  "bloqueios": {
+    "diagnostico": "Nenhum bloqueio detectado. Sem locks ativos ou travas concorrentes no workspace.",
+    "limpeza_executada": 0,
+    "detalhe": "Diretório de locks livre e limpo."
+  },
+  "registros_recentes": {
+    "pauta-680": {
+      "status": "aprovado",
+      "etapas": ["roteiro_criado", "fato_checado"],
+      "observacao": "Fatos checados e confirmados (Neymar vs Torcida Coritiba/Virgínia), roteiro ajustado para faixa ideal de 96 palavras."
+    },
+    "pauta-681": {
+      "status": "aprovado_para_render",
+      "etapas": ["roteiro_criado", "curadoria_visual"],
+      "observacao": "Curadoria visual concluída com 4 imagens validadas (Meta AI, Mark Zuckerberg, Signal, Capital One)."
+    },
+    "pauta-683": {
+      "status": "roteiro_pronto",
+      "etapas": ["roteiro_criado"],
+      "observacao": "Roteiro sobre o Muse Charm da Meta criado; aguarda checagem factual e curadoria visual."
+    }
+  },
+  "prioridades_pendentes": [
+    {
+      "prioridade": "media",
+      "item": "Checagem factual da pauta-683",
+      "responsavel": "agente:checador-fatos",
+      "descricao": "Validar alegações do The Information sobre precificação e lançamento do Muse Charm (US$ 300)."
+    },
+    {
+      "prioridade": "alta",
+      "item": "Disparo de renderização da pauta-681",
+      "responsavel": "agente:produtor-video",
+      "descricao": "Pauta-681 já possui curadoria visual aprovada para render."
+    }
+  ],
+  "observacoes": "Auditoria concluída com sucesso. Sem bloqueios operacionais."
+}

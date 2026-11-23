@@ -1,0 +1,40 @@
+{
+  "versao": 1,
+  "pauta_id": "pauta-680",
+  "aprovado": true,
+  "verificado_por": "agente:checador-fatos",
+  "verificado_em": "2026-11-19T23:35:20Z",
+  "fontes_lidas": [
+    "https://www.purepeople.com.br/noticia/neymar-x-virginia-apos-alo-virginia-tocar-e-rumor-de-beijo-em-jogo-do-santos-atleta-se-pronuncia-fizeram-de-proposito_a426622/1"
+  ],
+  "afirmacoes": [
+    {
+      "texto": "Neymar foi provocado com música sobre Virgínia Fonseca durante aquecimento em jogo no estádio Couto Pereira",
+      "status": "confirmada",
+      "evidencia": "\"o atacante foi surpreendido por uma provocação da torcida do Coritiba durante o aquecimento para a partida contra o Santos [...] Nas arquibancadas do Couto Pereira, os torcedores colocaram para tocar a música 'Alô, Virginia'\" - Purepeople"
+    },
+    {
+      "texto": "A torcida do Coritiba tocou a faixa Alô Virgínia nas arquibancadas em referência aos boatos de affair já negados por ambos",
+      "status": "confirmada",
+      "evidencia": "\"tocaram a música 'Alô, Virginia', do grupo Chocolate com a Turma do Pagode, em uma clara referência aos boatos de affair [...] Em meio aos rumores de um suposto beijo entre os dois - negado por ambos -\" - Purepeople"
+    },
+    {
+      "texto": "Neymar não se abalou, dançou no ritmo da canção e deu passe estiloso no gramado",
+      "status": "confirmada",
+      "evidencia": "\"Longe de ignorar a brincadeira, Neymar entrou no clima: dançou ao som da canção, reproduziu a coreografia e ainda deu um passe estiloso para Rodinei\" - Purepeople"
+    },
+    {
+      "texto": "Nas redes sociais, Neymar ironizou a tentativa da torcida de desestabilizá-lo e ressaltou que o Santos levou os três pontos",
+      "status": "confirmada",
+      "evidencia": "\"‘É um jogo mental. Isso eles fizeram de propósito para me desestabilizar e não conseguiram. 3 pontos quem levou foi o Santos’, ironizou o atleta em uma publicação de Hugo Gloss sobre o episódio.\" - Purepeople"
+    },
+    {
+      "texto": "O título afirma que Neymar foi provocado por música de Virgínia em jogo e deu a resposta",
+      "status": "confirmada",
+      "evidencia": "\"Neymar se pronuncia após torcida tocar música de Virgínia para provocá-lo em jogo [...] e não deixou de alfinetar os adversários!\" - Purepeople"
+    }
+  ],
+  "alteracoes_no_roteiro": "Ajustado: ampliada a contagem de palavras de 77 para 96 palavras (faixa ideal de 85 a 105 palavras). Ajustado: corrigida a citação textual exata da fala de Neymar ('Isso eles fizeram de propósito'). Eliminada a redundância entre as cenas 3 e 4. Corrigido o título alternativo B para refletir fielmente que o atleta não foi desestabilizado.",
+  "resumo": "Neymar foi provocado pela torcida do Coritiba no Couto Pereira com a música 'Alô, Virgínia', dançou no aquecimento e ironizou nas redes dizendo que tentaram desestabilizá-lo sem sucesso e que o Santos levou os 3 pontos.",
+  "motivo_reprovacao": ""
+}

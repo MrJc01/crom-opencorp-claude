@@ -91,14 +91,17 @@ describe("sequência sem delta (inicio → acao → aprovacao)", () => {
 
 describe("live-turns", () => {
   it("instância remontada adota o turno vivo e recebe as atualizações", async () => {
-    const { publicarTurno, obterTurno, assinarTurno } = await import("../../../src/web/features/chat/runtime/live-turns.js");
+    const { publicarTurno, obterTurno, obterTurnoRecente, assinarTurno } = await import("../../../src/web/features/chat/runtime/live-turns.js");
     const origem = {};
     const recebidos: boolean[] = [];
     const off = assinarTurno("s9", (t) => recebidos.push(t.running));
     publicarTurno("s9", { messages: [], running: true, origem, abort: () => {} });
     expect(obterTurno("s9")?.running).toBe(true);
-    publicarTurno("s9", { messages: [], running: false, origem, abort: () => {} });
+    const msgsFinais = converterMensagensBackend([{ id: "u1", role: "user", content: "oi" }, { id: "a1", role: "assistant", content: "ok final" }], "s9");
+    publicarTurno("s9", { messages: msgsFinais, running: false, origem, abort: () => {} });
     expect(obterTurno("s9")).toBeUndefined();
+    expect(obterTurnoRecente("s9")?.running).toBe(false);
+    expect(obterTurnoRecente("s9")?.messages).toHaveLength(2);
     expect(recebidos).toEqual([true, false]);
     off();
   });

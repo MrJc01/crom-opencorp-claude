@@ -133,7 +133,7 @@ fn main() {
                 .text("sair", "Sair do app")
                 .build()?;
 
-            let icone = tauri::image::Image::from_bytes(include_bytes!("../icons/icon.png"))?;
+            let icone = tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png"))?;
             TrayIconBuilder::with_id("opencorp")
                 .icon(icone)
                 .tooltip("OpenCorp")

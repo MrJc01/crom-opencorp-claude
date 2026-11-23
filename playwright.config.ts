@@ -34,6 +34,8 @@ export default defineConfig({
       OPENCORP_HOME: "/dev/shm/opencorp-e2e",
       OPENCODE_SERVER_BIN: fakeOpencodePath,
       OPENHEINERSS_BIN: resolve(fakeEngineBin, "openheinerss"),
+      OPENCORP_CLAUDE_BIN: resolve(fakeEngineBin, "claude"),
+      OPENCORP_CLAUDE_CONFIG_DIR: "/dev/shm/opencorp-e2e/.claude",
       PATH: `${fakeEngineBin}:${process.env.PATH ?? ""}`,
       // Chave fictícia: o preflight exige credencial do OpenCode; o fake nunca a usa.
       OPENROUTER_API_KEY: "sk-or-e2e-fake-key",

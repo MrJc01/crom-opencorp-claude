@@ -237,6 +237,23 @@ describe("SettingsStore — reset", () => {
     expect(r.valor).toBe("dark");
     expect(r.origem).toBe("default");
   });
+
+  it("reset de chave opcional ausente (ex.: secretary.model) retorna sem erro", async () => {
+    const home = await tmpDir();
+    const store = storeEm(home);
+    const r = await store.reset("secretary.model");
+    expect(r.changed).toBe(false);
+    expect(r.valor).toBeUndefined();
+    expect(r.origem).toBe("default");
+  });
+
+  it("reset de chave realmente desconhecida continua falhando", async () => {
+    const home = await tmpDir();
+    const store = storeEm(home);
+    const err = await store.reset("nao.existe").catch((e) => e);
+    expect(err).toBeInstanceOf(SettingsError);
+    expect(err.message).toContain("chave desconhecida");
+  });
 });
 
 describe("SettingsStore — paths e resolução de workspace", () => {

@@ -49,6 +49,15 @@ function urlValida(url: string): boolean {
   }
 }
 
+function urlEhLocal(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.hostname === "localhost" || u.hostname === "127.0.0.1";
+  } catch {
+    return false;
+  }
+}
+
 export function listarGratis(homeDir: string): { ativo: string; provedores: ProvedorGratisPublico[]; pools: PoolGratisPublico[] } {
   const config = lerConfigProvedores(homeDir);
   const provedores: ProvedorGratisPublico[] = [];
@@ -76,9 +85,10 @@ export async function salvarProvedorGratis(homeDir: string, e: ProvedorGratisEnt
   if (!urlValida(e.baseUrl ?? "")) throw new ProvedorError("URL inválida: use https:// (ou http://localhost para teste local)");
   const modelos = { ...e.modelos };
   if (!modelos.padrao?.trim()) throw new ProvedorError("informe o modelo padrão");
+  const local = urlEhLocal(e.baseUrl ?? "");
   for (const [familia, modelo] of Object.entries(modelos)) {
     if (!modelo) continue;
-    if (!modeloEGratis(modelo)) {
+    if (!local && !modeloEGratis(modelo)) {
       throw new ProvedorError(`o modelo "${modelo}" (${familia}) não é grátis: o id precisa terminar em :free ou -free`);
     }
   }

@@ -123,8 +123,13 @@ export function registerServeCommand(program: Command): void {
         const portaNum = Number(opts.port ?? 4100);
 
         if (!opts.foreground) {
+          const existente = await lerPidfile(home);
+          if (existente?.pid && existente.pid !== process.pid && (await pidVivo(existente.pid))) {
+            console.log(`ok: API já ativa em http://127.0.0.1:${existente.porta ?? portaNum} (pid ${existente.pid})`);
+            return;
+          }
           // Modo daemon: spawn detached child com --foreground
-          const logPath = join(home, "logs", "api-daemon.log");
+          const logPath = join(home, ".opencorp", "logs", "api-daemon.log");
           const args = [process.argv[1]!, "serve", "--foreground", "--port", String(portaNum), "--host", opts.host ?? "127.0.0.1"];
           // token "" (aberto) não é passado — o filho já nasce aberto por padrão
           if (token !== "") args.push("--token", token);
@@ -139,14 +144,18 @@ export function registerServeCommand(program: Command): void {
             return;
           }
 
-          // Gravar pidfile
-          await gravarPidfile(home, {
-            pid,
-            porta: portaNum,
-            token,
-            workspace: opts.workspace,
-            iniciado_em: new Date().toISOString(),
-          });
+          // O próprio filho (--foreground) grava api.pid ao entrar em 'listening'.
+          // Só grava daqui como fallback se o pidfile ainda não apontar para um processo vivo.
+          const atual = await lerPidfile(home);
+          if ((!atual?.pid || !(await pidVivo(atual.pid))) && pid && (await pidVivo(pid))) {
+            await gravarPidfile(home, {
+              pid,
+              porta: portaNum,
+              token,
+              workspace: opts.workspace,
+              iniciado_em: new Date().toISOString(),
+            });
+          }
 
           console.log(`ok: API em background em http://127.0.0.1:${portaNum} (pid ${pid}) — logs: ${logPath}`);
           return;
@@ -164,6 +173,13 @@ export function registerServeCommand(program: Command): void {
         const { vigiarServidor } = await import("../../server/event-loop-watchdog.js");
         vigiarServidor(server, { home });
         const porta = await portaPromessa.catch(() => portaNum);
+        await gravarPidfile(home, {
+          pid: process.pid,
+          porta,
+          token: tokenFinal,
+          workspace: opts.workspace,
+          iniciado_em: new Date().toISOString(),
+        }).catch(() => {});
         console.log(`API em http://127.0.0.1:${porta}`);
         if (token === "") console.log("acesso ABERTO (sem token)");
         else console.log(`token: ${tokenFinal.slice(0, 6)}… (informado via --token)`);

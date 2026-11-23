@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 import { query, type Options, type SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { traduzirModelo, type MembroPoolResolvido } from "../provedor-claude.js";
 import { classificarFalha, escolherMembro, gravarEstadoRotacao, lerEstadoRotacao, limparBloqueiosVencidos, registrarBloqueio, registrarUso } from "../rotacao-provedores.js";
+import { garantirDaemonLocal } from "../llms2api-daemon.js";
 
 /**
  * Runner de agente do motor "claude-sdk". Roda como processo filho (o session-manager
@@ -101,7 +102,10 @@ export async function executarComRotacao(
   agora: () => Date = () => new Date(),
 ): Promise<number> {
   const pool = opts.pool;
-  if (!pool) return executarAgenteCli(opts, saidas, consulta);
+  if (!pool) {
+    await garantirDaemonLocal(process.env.ANTHROPIC_BASE_URL);
+    return executarAgenteCli(opts, saidas, consulta);
+  }
   const excluir: string[] = [];
   for (let tentativa = 0; tentativa < pool.membros.length; tentativa++) {
     const estado = lerEstadoRotacao(pool.home);
@@ -120,15 +124,48 @@ export async function executarComRotacao(
     }
     const membro = pool.membros.find((m) => m.id === id)!;
     aplicarContaDoMembro(membro);
+    const daemonOk = await garantirDaemonLocal(membro.env.ANTHROPIC_BASE_URL);
+    if (!daemonOk) {
+      const depoisOff = lerEstadoRotacao(pool.home);
+      const ate = new Date(agora().getTime() + 5 * 60_000);
+      registrarBloqueio(depoisOff, id, ate, "serviço local offline (porta indisponível)");
+      gravarEstadoRotacao(pool.home, depoisOff);
+      saidas.stderr(`[rotação] ${id}: serviço local offline, fora até ${ate.toISOString()}; tentando outro membro\n`);
+      excluir.push(id);
+      continue;
+    }
     // Saída da tentativa fica guardada até saber se ela deu certo: a mensagem de cota de uma conta não pode virar
     // resposta do agente. Só a atividade (ferramentas usadas, no stderr) segue em tempo real para o watchdog.
+    let modeloTentado = traduzirModelo(membro.modelos, pool.modeloPedido, membro.env.ANTHROPIC_BASE_URL, membro.outros);
     let erro = "";
     let texto = "";
-    const codigo = await executarAgenteCli(
-      { ...opts, model: traduzirModelo(membro.modelos, pool.modeloPedido, membro.env.ANTHROPIC_BASE_URL, membro.outros) },
+    let codigo = await executarAgenteCli(
+      { ...opts, model: modeloTentado },
       { stdout: (t) => (texto += t), stderr: (t) => (erro += t), atividade: saidas.atividade },
       consulta,
     );
+    if (codigo !== 0) {
+      const falhaInicial = classificarFalha(erro, agora());
+      const modeloPadrao = membro.modelos.padrao;
+      // Se um workspace pediu um modelo específico morto/indisponível ou sobrecarregado, tenta 1x com o modelo padrão do membro antes de bloquear a conta.
+      if (
+        (falhaInicial.classe === "modelo" || falhaInicial.classe === "transitoria") &&
+        modeloPadrao &&
+        modeloTentado &&
+        modeloTentado !== modeloPadrao &&
+        !/econnrefused|connection refused|enotfound|ehostunreach|eai_again/i.test(erro)
+      ) {
+        saidas.stderr(`[rotação] ${id}: modelo "${modeloTentado}" falhou (${falhaInicial.motivo}); tentando padrão "${modeloPadrao}"\n`);
+        erro = "";
+        texto = "";
+        modeloTentado = modeloPadrao;
+        codigo = await executarAgenteCli(
+          { ...opts, model: modeloPadrao },
+          { stdout: (t) => (texto += t), stderr: (t) => (erro += t), atividade: saidas.atividade },
+          consulta,
+        );
+      }
+    }
     const depois = lerEstadoRotacao(pool.home);
     if (codigo === 0) {
       saidas.stdout(texto);

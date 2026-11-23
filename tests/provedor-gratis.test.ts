@@ -104,6 +104,19 @@ describe("salvarProvedorGratis", () => {
     const h = await home();
     await expect(salvarProvedorGratis(h, { ...openrouter, id: "assinatura" })).rejects.toThrow(/não é um provedor grátis/);
   });
+
+  it("aceita modelos de gateways locais (127.0.0.1 / localhost) como agy e llms2api sem sufixo :free", async () => {
+    const h = await home();
+    await expect(
+      salvarProvedorGratis(h, {
+        id: "agy",
+        nome: "Google Antigravity (AGY via CCO Proxy)",
+        baseUrl: "http://127.0.0.1:4810",
+        modelos: { padrao: "gemini-4-argon-high", sonnet: "claude-sonnet-5-5-high" },
+        chave: "cco-local",
+      }),
+    ).resolves.toBeUndefined();
+  });
 });
 
 describe("pools e ativo", () => {

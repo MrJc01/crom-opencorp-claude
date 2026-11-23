@@ -570,4 +570,60 @@ describe("ClaudeSdkAdapter — conversa (ConversationRuntime)", () => {
     expect(ultimo.type).toBe("run.failed");
     expect(ultimo.error.message).toContain("não encontrada");
   });
+
+  it("em pool de provedores mantém afinidade do membro e CLAUDE_CONFIG_DIR no segundo turno (resume)", async () => {
+    const { gravarConfigProvedores } = await import("../src/core/engines/provedor-claude.js");
+    await gravarConfigProvedores(ambiente.homeDir, {
+      ativo: "gratis",
+      provedores: {
+        m1: { tipo: "compativel", baseUrl: "https://m1.exemplo/api", chave: "k1", modelos: { padrao: "m1-free" } },
+        m2: { tipo: "compativel", baseUrl: "https://m2.exemplo/api", chave: "k2", modelos: { padrao: "m2-free" } },
+        gratis: { tipo: "pool", membros: ["m1", "m2"] },
+      },
+    });
+    const adapter = new ClaudeSdkAdapter({ homeDir: ambiente.homeDir });
+    const ref = await criarConversa(adapter);
+    queryMock.mockImplementation((params: { options: { sessionId?: string; resume?: string } }) => (async function* () {
+      yield inicializacao(params.options.sessionId ?? params.options.resume ?? "");
+      yield resultadoSucesso("ok");
+    })());
+
+    await coletar(adapter.conversationRuntime.send(ref, { text: "turno 1" }));
+    await coletar(adapter.conversationRuntime.send(ref, { text: "turno 2" }));
+
+    const [t1, t2] = queryMock.mock.calls.map((c) => c[0].options);
+    expect(t1.sessionId).toBe(ref.id);
+    expect(t2.resume).toBe(ref.id);
+    expect(t1.env.CLAUDE_CONFIG_DIR).toBe(t2.env.CLAUDE_CONFIG_DIR);
+    expect(t1.env.ANTHROPIC_BASE_URL).toBe(t2.env.ANTHROPIC_BASE_URL);
+  });
+
+  it("em pool de provedores rotaciona automaticamente para o próximo membro quando o primeiro falha por cota (429)", async () => {
+    const { gravarConfigProvedores } = await import("../src/core/engines/provedor-claude.js");
+    await gravarConfigProvedores(ambiente.homeDir, {
+      ativo: "gratis",
+      provedores: {
+        m1: { tipo: "compativel", baseUrl: "https://m1.exemplo/api", chave: "k1", modelos: { padrao: "m1-free" } },
+        m2: { tipo: "compativel", baseUrl: "https://m2.exemplo/api", chave: "k2", modelos: { padrao: "m2-free" } },
+        gratis: { tipo: "pool", membros: ["m1", "m2"] },
+      },
+    });
+    const adapter = new ClaudeSdkAdapter({ homeDir: ambiente.homeDir });
+    const ref = await criarConversa(adapter);
+    let chamadas = 0;
+    queryMock.mockImplementation((params: { options: { sessionId?: string; resume?: string } }) => (async function* () {
+      chamadas += 1;
+      if (chamadas === 1) {
+        throw new Error("HTTP 429: Rate limit exceeded");
+      }
+      yield inicializacao(params.options.sessionId ?? params.options.resume ?? "");
+      yield resultadoSucesso("respondido pelo segundo membro");
+    })());
+
+    const eventos = await coletar(adapter.conversationRuntime.send(ref, { text: "oi" }));
+    expect(chamadas).toBe(2);
+    const concluido = eventos.at(-1) as Extract<AgentEvent, { type: "run.completed" }>;
+    expect(concluido.type).toBe("run.completed");
+    expect(concluido.result.output).toBe("respondido pelo segundo membro");
+  });
 });

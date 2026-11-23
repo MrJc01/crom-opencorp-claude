@@ -4,6 +4,7 @@ import { opencorpHome } from "../../../utils/paths.js";
 import { mascararChave } from "./opencode-server.js";
 import { PROVIDER_DEFINITIONS, providerEnvVar, providersWithKeySources } from "../../models/providers.js";
 import { EngineAccountStore, type EngineAccount } from "../../engines/engine-account-store.js";
+import { garantirLlms2apiDaemon } from "../../engines/llms2api-daemon.js";
 
 export interface MensagemChat {
   role: "system" | "user" | "assistant";
@@ -187,6 +188,13 @@ export async function completarChatDirect(opcoes: OpcoesCompletar): Promise<Resp
     if (modelParam === "gpt-4o-mini" || modelParam === "default" || modelParam === "") {
       providerParam = "ChatGPTLightweight";
     }
+  } else if (modelo.startsWith("llms2api/")) {
+    modelParam = modelo.slice("llms2api/".length);
+    url = "http://127.0.0.1:11435/v1/chat/completions";
+    await garantirLlms2apiDaemon(url);
+    apiKey = "llms2api-local";
+    provedorNome = "LLMs2API";
+    headersReq["Authorization"] = "Bearer llms2api-local";
   } else if (modelo.startsWith("opencode-go/")) {
     url = "https://opencode.ai/zen/go/v1/chat/completions";
     apiKey = chaves["opencode-go"] || chaves["opencode"];

@@ -9,6 +9,8 @@ import {
 } from "@anthropic-ai/claude-agent-sdk";
 import { opencorpHome, pathComCliLocal } from "../../../utils/paths.js";
 import { configDirClaudeAtivo, resolverProvedorClaude } from "../provedor-claude.js";
+import { garantirDaemonLocal } from "../llms2api-daemon.js";
+import { classificarFalha, gravarEstadoRotacao, lerEstadoRotacao, registrarBloqueio, registrarUso } from "../rotacao-provedores.js";
 import { checkEngineAuthStatusAsync } from "../credentials-bridge.js";
 import { resolveEngineSpawnEnv } from "../../credentials/credentials-store.js";
 import { LegacyDriverAdapter } from "../adapter-compat.js";
@@ -252,7 +254,13 @@ interface OpcoesTurno {
   /** Controle do turno: `close` e o consumidor que para de ler acionam este abort. */
   controle: AbortController;
   /** Sessão do SDK: `retomar` usa `resume`; senão a sessão nasce com este id. */
-  sessao?: { id: string; retomar: boolean; aoIniciar?: () => void };
+  sessao?: {
+    id: string;
+    retomar: boolean;
+    membroProvedor?: string;
+    configDir?: string;
+    aoIniciar?: (membro?: string, configDir?: string) => void;
+  };
   /** Presente: `canUseTool` pergunta ao usuário. Ausente: a ferramenta que precisa de permissão é negada. */
   aprovacoes?: Map<string, PendenteAprovacao>;
 }
@@ -320,53 +328,110 @@ async function* executarTurno(opts: OpcoesTurno): AsyncGenerator<AgentEvent> {
 
   const produtor = (async () => {
     let terminou = false;
+    const membrosFalhos: string[] = [];
+    const MAX_TENTATIVAS = 5;
     try {
-      // Mesmo env do ClaudeCodeDriver, com uma diferença: a ANTHROPIC_API_KEY do shell/host
-      // não entra, para manter o login local do claude.ai (CLAUDE.md). Chaves configuradas
-      // no OpenCorp (conta, segredo, chave gerida) continuam valendo. O provedor ativo
-      // (provedores.json: assinatura, API ou endpoint compatível) acrescenta autenticação e modelos.
-      const provedor = resolverProvedorClaude(opts.homeDir);
-      const env = await resolveEngineSpawnEnv(
-        CREDENTIALS_ENGINE_ID,
-        { homeDir: opts.homeDir, workspaceId: opts.workspaceId, workspacePath: opts.workspacePath, accountId: opts.accountId },
-        {
-          ANTHROPIC_DISABLE_TELEMETRY: "1",
-          PATH: pathComCliLocal(),
-          ...provedor.env,
-          ...(provedor.configDir ? { CLAUDE_CONFIG_DIR: provedor.configDir } : {}),
-          ...opts.envOverrides,
-        },
-        { ...process.env, ANTHROPIC_API_KEY: undefined }
-      );
+      for (let tentativa = 0; tentativa < MAX_TENTATIVAS; tentativa++) {
+        if (interrompido() || terminou) break;
+        // Mesmo env do ClaudeCodeDriver, com uma diferença: a ANTHROPIC_API_KEY do shell/host
+        // não entra, para manter o login local do claude.ai (CLAUDE.md). Chaves configuradas
+        // no OpenCorp (conta, segredo, chave gerida) continuam valendo. O provedor ativo
+        // (provedores.json: assinatura, API ou endpoint compatível) acrescenta autenticação e modelos.
+        const provedor = resolverProvedorClaude(opts.homeDir, process.env, {
+          excluir: membrosFalhos,
+          preferirMembro: opts.sessao?.membroProvedor,
+        });
+        await garantirDaemonLocal(provedor.env.ANTHROPIC_BASE_URL);
+        const env = await resolveEngineSpawnEnv(
+          CREDENTIALS_ENGINE_ID,
+          { homeDir: opts.homeDir, workspaceId: opts.workspaceId, workspacePath: opts.workspacePath, accountId: opts.accountId },
+          {
+            ANTHROPIC_DISABLE_TELEMETRY: "1",
+            PATH: pathComCliLocal(),
+            ...provedor.env,
+            ...(provedor.configDir ? { CLAUDE_CONFIG_DIR: provedor.configDir } : {}),
+            ...opts.envOverrides,
+          },
+          { ...process.env, ANTHROPIC_API_KEY: undefined }
+        );
 
-      const sessao = opts.sessao;
-      const mensagens = query({
-        prompt: opts.prompt,
-        options: {
-          cwd: opts.workspacePath,
-          ...(provedor.modelo(opts.model) ? { model: provedor.modelo(opts.model) } : {}),
-          permissionMode: "acceptEdits",
-          // Secretário e conversas: CLAUDE.md e skills do workspace, sem as configurações do usuário.
-          ...OPCOES_WORKSPACE_SDK,
-          env,
-          abortController: controle,
-          canUseTool: opts.aprovacoes ? perguntarAprovacao : negarAprovacao,
-          ...(sessao ? (sessao.retomar ? { resume: sessao.id } : { sessionId: sessao.id }) : {}),
-        },
-      });
+        const sessao = opts.sessao;
+        const mesmaPasta = !sessao?.configDir || sessao.configDir === provedor.configDir;
+        const usarResume = Boolean(sessao?.retomar && mesmaPasta);
+        const mensagens = query({
+          prompt: opts.prompt,
+          options: {
+            cwd: opts.workspacePath,
+            ...(provedor.modelo(opts.model) ? { model: provedor.modelo(opts.model) } : {}),
+            ...(process.env.OPENCORP_CLAUDE_BIN ? { pathToClaudeCodeExecutable: process.env.OPENCORP_CLAUDE_BIN } : {}),
+            permissionMode: "acceptEdits",
+            // Secretário e conversas: CLAUDE.md e skills do workspace, sem as configurações do usuário.
+            ...OPCOES_WORKSPACE_SDK,
+            env,
+            abortController: controle,
+            canUseTool: opts.aprovacoes ? perguntarAprovacao : negarAprovacao,
+            ...(sessao ? (usarResume ? { resume: sessao.id } : { sessionId: sessao.id }) : {}),
+          },
+        });
 
-      for await (const msg of mensagens) {
-        if (sessao?.aoIniciar && ehInicializacao(msg)) sessao.aoIniciar();
-        for (const evento of traduzirMensagemSdk(msg, estado)) {
-          if (evento.type !== "run.completed" && evento.type !== "run.failed") {
-            fila.push(evento);
+        let emitiuAtividade = false;
+        let erroMembro: unknown = null;
+
+        try {
+          for await (const msg of mensagens) {
+            if (sessao?.aoIniciar && ehInicializacao(msg)) {
+              sessao.aoIniciar(provedor.membro, provedor.configDir);
+            }
+            for (const evento of traduzirMensagemSdk(msg, estado)) {
+              if (evento.type !== "run.completed" && evento.type !== "run.failed") {
+                emitiuAtividade = true;
+                fila.push(evento);
+                continue;
+              }
+              if (interrompido()) continue;
+              if (evento.type === "run.failed" && provedor.membro && !emitiuAtividade) {
+                erroMembro = new Error(evento.error.message);
+                break;
+              }
+              if (evento.type === "run.completed" && provedor.membro) {
+                try {
+                  const est = lerEstadoRotacao(opts.homeDir);
+                  registrarUso(est, provedor.membro);
+                  gravarEstadoRotacao(opts.homeDir, est);
+                } catch {}
+              }
+              terminou = true;
+              fila.push(evento);
+            }
+            if (erroMembro) break;
+          }
+        } catch (err) {
+          if (provedor.membro && !emitiuAtividade && !interrompido()) {
+            erroMembro = err;
+          } else {
+            throw err;
+          }
+        }
+
+        if (erroMembro && provedor.membro) {
+          const textoErro = erroMembro instanceof Error ? erroMembro.message : String(erroMembro);
+          const classificada = classificarFalha(textoErro, new Date());
+          if (classificada.classe !== "outra" && tentativa + 1 < MAX_TENTATIVAS) {
+            try {
+              if (classificada.ate) {
+                const est = lerEstadoRotacao(opts.homeDir);
+                registrarBloqueio(est, provedor.membro, classificada.ate, classificada.motivo);
+                gravarEstadoRotacao(opts.homeDir, est);
+              }
+            } catch {}
+            membrosFalhos.push(provedor.membro);
             continue;
           }
-          // Interrompido: o stopReason do finally decide o final, não o erro que o SDK devolve ao abortar.
-          if (interrompido()) continue;
           terminou = true;
-          fila.push(evento);
+          fila.push(falha(erroMembro));
+          break;
         }
+        break;
       }
       if (!terminou && !interrompido()) {
         terminou = true;
@@ -511,7 +576,8 @@ export class ClaudeSdkAdapter implements EngineAdapter {
 
   /** Lê a transcrição que o SDK guarda na pasta de login do OpenCorp (a mesma usada pelo runner). */
   private async historicoDaTranscricao(ref: ConversationRef) {
-    const dir = configDirClaudeAtivo(this.homeDir);
+    const meta = this.sessoes.get(ref.id);
+    const dir = meta?.configDir ?? configDirClaudeAtivo(this.homeDir);
     const anterior = process.env.CLAUDE_CONFIG_DIR;
     if (dir) process.env.CLAUDE_CONFIG_DIR = dir;
     try {
@@ -602,8 +668,12 @@ export class ClaudeSdkAdapter implements EngineAdapter {
         sessao: {
           id: meta.id,
           retomar: meta.iniciada,
-          aoIniciar: () => {
+          membroProvedor: meta.membroProvedor,
+          configDir: meta.configDir,
+          aoIniciar: (membro, configDir) => {
             meta.iniciada = true;
+            if (membro) meta.membroProvedor = membro;
+            if (configDir) meta.configDir = configDir;
             this.sessoes.touch(meta);
           },
         },

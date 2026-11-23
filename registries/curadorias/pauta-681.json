@@ -1,0 +1,63 @@
+{
+  "versao": 2,
+  "pauta_id": "pauta-681",
+  "aprovado_para_render": true,
+  "validado_por": "agente:curador-visual",
+  "timestamp_validacao": "2026-11-19T23:10:00Z",
+  "cenas": [
+    {
+      "cena_idx": 1,
+      "decisao": "foto",
+      "imagem_escolhida": "registries/candidatos/pauta-681/cena-1/c2.jpg",
+      "titulo_imagem": "Meta_AI_Logo_(2026).svg",
+      "fonte": "Wikipedia (pt): Meta AI",
+      "autor": "ver página do arquivo no Wikimedia Commons",
+      "licenca": "livre (Wikimedia)",
+      "o_que_mostra": "Logo oficial do Meta AI (círculo 3D em degradê azul e roxo sobre fundo branco)",
+      "ajuste": "inteiro",
+      "justificativa": "Logo oficial da inteligência artificial da Meta (Meta AI), tema exato da notícia e da cena de abertura; c1 e c5 mostram a entrada da sede em Menlo Park com enquadramento distante e aberto, c3 e c4 são vistas aéreas gerais do campus, c6 é o campus de Bellevue, c7 é captura de aviso de mudança de nome de 2022 e c8 é a capa dos óculos Ray-Ban Meta."
+    },
+    {
+      "cena_idx": 2,
+      "decisao": "foto",
+      "imagem_escolhida": "registries/candidatos/pauta-681/cena-2/c1.jpg",
+      "titulo_imagem": "Mark_Zuckerberg_(2025).jpg",
+      "fonte": "Wikipedia (pt): Mark Zuckerberg",
+      "autor": "ver página do arquivo no Wikimedia Commons",
+      "licenca": "livre (Wikimedia)",
+      "o_que_mostra": "Retrato recente de Mark Zuckerberg (2025), de frente com fundo escuro",
+      "ajuste": "cobrir",
+      "justificativa": "Foto recente e nítida em alta resolução do CEO da Meta (Mark Zuckerberg), em enquadramento vertical ideal; c2 e c4 são de sua esposa Priscilla Chan, c5 é de sua irmã Randi Zuckerberg, c3 tem resolução muito baixa (414x552), c6 é de 2011 (muito antiga) e c7/c8 são de apresentações de 2019 em plano aberto ou horizonte."
+    },
+    {
+      "cena_idx": 3,
+      "decisao": "foto",
+      "imagem_escolhida": "registries/candidatos/pauta-681/cena-3/c6.jpg",
+      "titulo_imagem": "File:Signal ultramarine icon.png",
+      "fonte": "Wikimedia Commons",
+      "autor": "Signal Messenger",
+      "licenca": "GPLv3",
+      "o_que_mostra": "Ícone oficial do aplicativo Signal (balão de diálogo ultramarino com traço pontilhado branco)",
+      "ajuste": "inteiro",
+      "justificativa": "Logo/ícone oficial do aplicativo Signal, assunto central citado na cena; c1, c2, c3 e c5 são capturas de tela com conversas em italiano/francês alheias ao contexto da matéria, c4 é tela de checagem de chave de segurança e c7 é comando de terminal Linux."
+    },
+    {
+      "cena_idx": 4,
+      "decisao": "foto",
+      "imagem_escolhida": "registries/candidatos/pauta-681/cena-4/c8.jpg",
+      "titulo_imagem": "File:Capital One World Headquarters.jpg",
+      "fonte": "Wikimedia Commons",
+      "autor": "Lluck002",
+      "licenca": "CC BY-SA 4.0",
+      "o_que_mostra": "Arranha-céu da sede mundial da Capital One em Tysons, Virgínia, com o logotipo Capital One destacado no topo do edifício",
+      "ajuste": "cobrir",
+      "justificativa": "Mostra o arranha-céu da sede mundial do Capital One com enquadramento vertical ideal e logotipo da instituição bancária visível no topo da torre; c1 e c4 são fotos horizontais da sede, c2 e c5 mostram a arena esportiva Capital One Arena (estádio/ginásio), c3 é o logotipo da Carabao Cup (futebol inglês) e c6/c7 são agências de rua locais horizontais."
+    },
+    {
+      "cena_idx": 5,
+      "decisao": "sem_foto",
+      "justificativa": "Cena de fechamento/CTA usa o avatar do canal, sem imagem na pasta de candidatos."
+    }
+  ],
+  "observacoes": "Curadoria concluída com sucesso para a pauta-681. Todas as 4 fotos selecionadas correspondem exatamente às entidades mencionadas nas falas (Meta AI, Mark Zuckerberg, Signal e Capital One), com identidades confirmadas nos registros de candidatos e verificação visual direta. Cena 5 configurada como sem_foto para uso padrão do avatar de CTA do canal."
+}

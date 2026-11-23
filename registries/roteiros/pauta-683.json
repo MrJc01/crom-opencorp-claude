@@ -1,0 +1,51 @@
+{
+  "pauta_id": "pauta-683",
+  "titulo_escolhido": "Meta vai cobrar 300 dólares por chaveiro com inteligência artificial (Revelado)",
+  "titulo_alternativo_b": "Muse Charm: novo chaveiro de IA da Meta vai custar 300 dólares (Revelado)",
+  "fonte_fatos": "https://techcrunch.com/2026/11/19/metas-new-muse-charm-device-may-cost-300/",
+  "cenas": [
+    {
+      "tipo": "HOOK",
+      "templateId": "video-hero-bg",
+      "fala": "Você pagaria trezentos dólares por um bichinho virtual com inteligência artificial no bolso?",
+      "texto_tela": "CHAVEIRO DE IA POR US$ 300",
+      "imagens": [
+        "Mark Zuckerberg"
+      ]
+    },
+    {
+      "tipo": "CONTEXTO",
+      "templateId": "media-split-showcase",
+      "fala": "Segundo o The Information, a Meta prepara o lançamento do Muse Charm, um chaveiro inteligente para comandos por voz.",
+      "texto_tela": "MUSE CHARM DA META",
+      "imagens": [
+        "The Information (website)"
+      ]
+    },
+    {
+      "tipo": "DESENVOLVIMENTO",
+      "templateId": "fact-check",
+      "fala": "O dispositivo funciona como pingente e busca espaço onde o Humane AI Pin falhou e foi vendido para a HP.",
+      "texto_tela": "O FRACASSO DA HUMANE",
+      "imagens": [
+        "Humane AI Pin"
+      ]
+    },
+    {
+      "tipo": "CLIMAX",
+      "templateId": "big-stat",
+      "fala": "Com preço de trezentos dólares, o aparelho supera concorrentes como o Bee da Amazon, vendido a setenta e cinco dólares.",
+      "texto_tela": "MAIS CARO QUE A AMAZON",
+      "imagens": [
+        "Amazon (company)"
+      ]
+    },
+    {
+      "tipo": "FECHAMENTO_CTA",
+      "templateId": "cta-subscribe",
+      "fala": "Resta ver se o público vai comprar a ideia ou ignorar o acessório. Siga o canal para mais novidades de tecnologia.",
+      "texto_tela": "SIGA PARA MAIS",
+      "imagens": []
+    }
+  ]
+}

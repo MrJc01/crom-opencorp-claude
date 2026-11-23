@@ -1,0 +1,53 @@
+{
+  "pauta_id": "pauta-680",
+  "titulo_escolhido": "🚨 NEYMAR É PROVOCADO POR MÚSICA DE VIRGÍNIA EM JOGO; JOGADOR DÁ A MELHOR RESPOSTA",
+  "titulo_alternativo_b": "🚨 NEYMAR IRONIZA MÚSICA DE VIRGÍNIA TOCADA POR TORCIDA ADVERSÁRIA",
+  "fonte_fatos": "https://www.purepeople.com.br/noticia/neymar-x-virginia-apos-alo-virginia-tocar-e-rumor-de-beijo-em-jogo-do-santos-atleta-se-pronuncia-fizeram-de-proposito_a426622/1",
+  "cenas": [
+    {
+      "tipo": "HOOK",
+      "templateId": "video-hero-bg",
+      "fala": "Neymar foi provocado com música sobre Virgínia Fonseca durante aquecimento em jogo no estádio Couto Pereira.",
+      "texto_tela": "🚨 NEYMAR PROVOCADO EM JOGO",
+      "imagens": [
+        "Neymar",
+        "Virginia Fonseca"
+      ]
+    },
+    {
+      "tipo": "CONTEXTO",
+      "templateId": "media-split-showcase",
+      "fala": "A torcida do Coritiba tocou a faixa Alô Virgínia nas arquibancadas, lembrando boatos de affair já negados por ambos.",
+      "texto_tela": "😱 MÚSICA DA VIRGÍNIA",
+      "imagens": [
+        "Neymar",
+        "Virginia Fonseca"
+      ]
+    },
+    {
+      "tipo": "DESENVOLVIMENTO",
+      "templateId": "fact-check",
+      "fala": "Em vez de se abalar, o craque do Santos dançou no ritmo da canção e deu passe estiloso no gramado.",
+      "texto_tela": "💣 NEYMAR DANÇOU",
+      "imagens": [
+        "Neymar"
+      ]
+    },
+    {
+      "tipo": "CLIMAX",
+      "templateId": "big-stat",
+      "fala": "Nas redes sociais, Neymar ironizou: \"É um jogo mental. Isso eles fizeram de propósito para me desestabilizar e não conseguiram. Três pontos quem levou foi o Santos\".",
+      "texto_tela": "👀 RESPOSTA DE NEYMAR",
+      "imagens": [
+        "Neymar"
+      ]
+    },
+    {
+      "tipo": "FECHAMENTO_CTA",
+      "templateId": "cta-subscribe",
+      "fala": "E aí, o que achou da reação? Comente e se inscreva no canal Fundão!",
+      "texto_tela": "INSCREVA-SE 🔔",
+      "imagens": []
+    }
+  ]
+}

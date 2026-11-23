@@ -164,14 +164,18 @@ function chaveDe(id: string, p: ProvedorClaude, hostEnv: NodeJS.ProcessEnv): str
  * Decide o provedor ativo e devolve o que o SDK precisa: ambiente, pasta de configuração e tradutor de modelos.
  * Erros de configuração viram `ProvedorError` com a causa em português (a execução falha cedo e claro).
  */
-export function resolverProvedorClaude(homeDir: string, hostEnv: NodeJS.ProcessEnv = process.env): ResolucaoProvedor {
+export function resolverProvedorClaude(
+  homeDir: string,
+  hostEnv: NodeJS.ProcessEnv = process.env,
+  opcoes: { excluir?: string[]; preferirMembro?: string } = {},
+): ResolucaoProvedor {
   const config = lerConfigProvedores(homeDir);
   const id = hostEnv.OPENCORP_PROVEDOR?.trim() || config.ativo;
   const p = config.provedores[id];
   if (!p) {
     throw new ProvedorError(`provedor "${id}" não existe em provedores.json (disponíveis: ${Object.keys(config.provedores).join(", ")}).`);
   }
-  if (p.tipo === "pool") return resolverMembroPool(homeDir, id, [], hostEnv);
+  if (p.tipo === "pool") return resolverMembroPool(homeDir, id, opcoes.excluir ?? [], hostEnv, opcoes.preferirMembro);
   return resolverDireto(homeDir, id, p, hostEnv);
 }
 
@@ -223,9 +227,14 @@ export function resolverDireto(homeDir: string, id: string, p: ProvedorClaude, h
   return { id, tipo: p.tipo, env, configDir, modelo: (pedido) => traduzirModelo(mapa, pedido, env.ANTHROPIC_BASE_URL) };
 }
 
-/** Pasta de configuração do Claude Code em uso (para ler histórico de sessões do mesmo lugar onde elas são gravadas). */
+/** Pasta de configuração do Claude Code em uso (para ler histórico de sessões do mesmo lugar onde elas são gravadas). Não consome o rodízio do pool. */
 export function configDirClaudeAtivo(homeDir: string, hostEnv: NodeJS.ProcessEnv = process.env): string | undefined {
   try {
+    const poolId = poolAtivo(homeDir, hostEnv);
+    if (poolId) {
+      const membros = membrosPoolResolvidos(homeDir, poolId, hostEnv);
+      return membros[0]?.configDir ?? claudeConfigDirOpencorp();
+    }
     return resolverProvedorClaude(homeDir, hostEnv).configDir;
   } catch {
     return claudeConfigDirOpencorp();
@@ -294,6 +303,7 @@ export function resolverMembroPool(
   poolId: string,
   excluir: string[] = [],
   hostEnv: NodeJS.ProcessEnv = process.env,
+  preferirMembro?: string,
 ): ResolucaoProvedor {
   if (lerConfigProvedores(homeDir).provedores[poolId]?.tipo !== "pool") throw new ProvedorError(`"${poolId}" não é um pool de provedores.`);
   const membros = membrosPoolResolvidos(homeDir, poolId, hostEnv);
@@ -302,13 +312,26 @@ export function resolverMembroPool(
   const agora = new Date();
   const estado = lerEstadoRotacao(homeDir);
   limparBloqueiosVencidos(estado, agora);
-  const { id, bloqueados } = escolherMembro(
-    membros.map((m) => m.id),
-    estado,
-    agora,
-    excluir,
-  );
-  gravarEstadoRotacao(homeDir, estado);
+  let id: string | undefined;
+  let bloqueados: Array<{ id: string; motivo: string; ate: string }> = [];
+  if (
+    preferirMembro &&
+    !excluir.includes(preferirMembro) &&
+    membros.some((m) => m.id === preferirMembro) &&
+    !estado.bloqueios[preferirMembro]
+  ) {
+    id = preferirMembro;
+  } else {
+    const escolha = escolherMembro(
+      membros.map((m) => m.id),
+      estado,
+      agora,
+      excluir,
+    );
+    id = escolha.id;
+    bloqueados = escolha.bloqueados;
+    gravarEstadoRotacao(homeDir, estado);
+  }
   if (!id) {
     const motivos = bloqueados.map((b) => `${b.id} (${b.motivo}, volta ${b.ate})`).join("; ");
     throw new ProvedorError(`pool "${poolId}" sem membro disponível: ${motivos || "todos os membros já falharam nesta chamada"}.`);
@@ -340,7 +363,7 @@ export const PREDEFINIDOS: Record<string, PredefinidoProvedor> = {
     onde: "https://openrouter.ai/keys",
     modelos: {
       padrao: "nvidia/nemotron-3.5-super-vl:free",
-      haiku: "nvidia/nemotron-3.5-super-vl:free",
+      haiku: "nvidia/nemotron-3.5-lightning:free",
       sonnet: "nvidia/nemotron-3.5-super-vl:free",
       opus: "nvidia/nemotron-3-ultra-550b-a55b:free",
     },
@@ -352,8 +375,41 @@ export const PREDEFINIDOS: Record<string, PredefinidoProvedor> = {
     modelos: {
       padrao: "deepseek-v4.1-flash-free",
       haiku: "deepseek-v4.1-flash-free",
-      sonnet: "glm-5.3-flash-free",
+      sonnet: "mimo-v2.6-flash-free",
       opus: "nemotron-3.5-super-vl-free",
+    },
+  },
+  "llms2api": {
+    nome: "LLMs2API (Local Gateway)",
+    baseUrl: "http://127.0.0.1:11435",
+    onde: "Gateway local rodando em http://127.0.0.1:11435/v1 (sem chave ou Bearer llms2api-local)",
+    modelos: {
+      padrao: "gemini/gemini-pro",
+      haiku: "deepseek/deepseek-v3.2",
+      sonnet: "gemini/gemini-pro",
+      opus: "qwen/qwen3-max",
+    },
+  },
+  "agy": {
+    nome: "Google Antigravity (AGY via CCO Proxy)",
+    baseUrl: "http://127.0.0.1:4810",
+    onde: "Proxy local CCO AGY em http://127.0.0.1:4810 (rotação entre contas Google Antigravity)",
+    modelos: {
+      padrao: "gemini-4-argon-high",
+      haiku: "gemini-3.8-flash-high",
+      sonnet: "claude-sonnet-5-5-high",
+      opus: "claude-opus-5-5-high",
+    },
+  },
+  "nvidia": {
+    nome: "NVIDIA NIM (via CCO Proxy)",
+    baseUrl: "http://127.0.0.1:4821",
+    onde: "Proxy local CCO OpenAI→Anthropic em http://127.0.0.1:4821 usando NVIDIA_API_KEY (build.nvidia.com)",
+    modelos: {
+      padrao: "nvidia/nemotron-3.5-super-vl-120b-a12b",
+      haiku: "nvidia/nemotron-3.5-lightning-30b-a3b",
+      sonnet: "mistralai/mistral-large-4-1t-a52b",
+      opus: "nvidia/nemotron-3-ultra-550b-a55b",
     },
   },
 };

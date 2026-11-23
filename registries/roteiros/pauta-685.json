@@ -1,0 +1,51 @@
+{
+  "pauta_id": "pauta-685",
+  "titulo_escolhido": "🚨 URGENTE: OAB DISCORDA DE DINO E PEDE JULGAMENTO PRESENCIAL DE VAN HATTEM NO STF",
+  "titulo_alternativo_b": "🚨 CASO VAN HATTEM: OAB ACIONA STF CONTRA DECISÃO DE FLÁVIO DINO",
+  "fonte_fatos": "https://www.cnnbrasil.com.br/politica/oab-discorda-de-dino-e-pede-que-stf-julgue-van-hattem-em-sessao-presencial/",
+  "cenas": [
+    {
+      "tipo": "HOOK",
+      "templateId": "video-hero-bg",
+      "fala": "Gente, climão total em Brasília! A OAB bateu de frente com o ministro Flávio Dino no STF.",
+      "texto_tela": "🚨 DINO X OAB NO STF",
+      "imagens": [
+        "Flávio Dino"
+      ]
+    },
+    {
+      "tipo": "CONTEXTO",
+      "templateId": "media-split-showcase",
+      "fala": "Dino rejeitou o pedido presencial e manteve no plenário virtual o julgamento do deputado federal Marcel van Hattem.",
+      "texto_tela": "😱 CASO VAN HATTEM",
+      "imagens": [
+        "Marcel van Hattem"
+      ]
+    },
+    {
+      "tipo": "DESENVOLVIMENTO",
+      "templateId": "fact-check",
+      "fala": "O parlamentar foi denunciado por calúnia contra um delegado da Polícia Federal e chamou a decisão de absurda.",
+      "texto_tela": "💣 DEFESA EXIGE PRESENCIAL",
+      "imagens": [
+        "Ordem dos Advogados do Brasil"
+      ]
+    },
+    {
+      "tipo": "CLIMAX",
+      "templateId": "big-stat",
+      "fala": "Agora, a OAB acionou a Primeira Turma do STF, afirmando que gravações limitam a defesa e exigindo sustentação oral ao vivo.",
+      "texto_tela": "👀 TURMA VAI DECIDIR",
+      "imagens": [
+        "Supremo Tribunal Federal"
+      ]
+    },
+    {
+      "tipo": "FECHAMENTO_CTA",
+      "templateId": "cta-subscribe",
+      "fala": "E aí, o julgamento deve ser presencial ou virtual? Comenta sua opinião e se inscreve no canal Fundão!",
+      "texto_tela": "INSCREVA-SE 🔔",
+      "imagens": []
+    }
+  ]
+}

@@ -208,12 +208,14 @@ export const PADRAO_ERRO_CREDITOS =
   /requires more credits|can only afford|insufficient balance|payment_required|402|credit balance|billing_not_active|exceeded.*quota|insufficient.?credits|add (?:more )?credits|exceed.*credits/i;
 
 export const MODELOS_ROTACAO_PADRAO = [
+  "openrouter/nvidia/nemotron-3.5-super-vl:free",
   "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
-  "openrouter/thinkingmachines/inkling:free",
-  "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
-  "openrouter/qwen/qwen3.8-27b:free",
-  "openrouter/cohere/north-mini-code:free",
   "openrouter/nvidia/nemotron-3.5-lightning:free",
+  "openrouter/cohere/north-mini-code:free",
+  "openrouter/inclusionai/ling-3.2-flash:free",
+  "openrouter/baidu/ernie-5.5-flash-preview:free",
+  "openrouter/particle-ai/particle-1:free",
+  "openrouter/recursive/flint-v1.0:free",
 ];
 
 const TETO_RUN_PADRAO_MIN = 20;

@@ -22,6 +22,7 @@ export interface OpenCorpContextValue {
   marcarTodasComoLidas: () => Promise<void>;
   limparTodasNotificacoes: () => Promise<void>;
   sseConectado: boolean;
+  sseConectando: boolean;
 }
 
 const OpenCorpContext = createContext<OpenCorpContextValue | null>(null);
@@ -80,6 +81,7 @@ export const OpenCorpProvider: FC<OpenCorpProviderProps> = ({
 
   const [notificacoesNaoLidas, setNotificacoesNaoLidas] = useState<number>(0);
   const [sseConectado, setSseConectado] = useState<boolean>(false);
+  const [sseConectando, setSseConectando] = useState<boolean>(false);
 
   const authToken =
     token ??
@@ -241,10 +243,12 @@ export const OpenCorpProvider: FC<OpenCorpProviderProps> = ({
 
     eventSource.onopen = () => {
       setSseConectado(true);
+      setSseConectando(false);
     };
 
     eventSource.onerror = () => {
       setSseConectado(false);
+      setSseConectando(true);
     };
 
     const tratarDadosEvento = (evento: unknown) => {
@@ -312,6 +316,7 @@ export const OpenCorpProvider: FC<OpenCorpProviderProps> = ({
         } catch {}
       }
       setSseConectado(false);
+      setSseConectando(false);
     };
   }, [authToken, recarregarNotificacoes, wsAtivo]);
 
@@ -328,6 +333,7 @@ export const OpenCorpProvider: FC<OpenCorpProviderProps> = ({
         marcarTodasComoLidas,
         limparTodasNotificacoes,
         sseConectado,
+        sseConectando,
       }}
     >
       {children}

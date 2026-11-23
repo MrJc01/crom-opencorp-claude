@@ -12,6 +12,10 @@ export interface ClaudeSdkSessionMeta {
   updatedAt: string;
   /** Sessão já criada no SDK: os próximos turnos usam `resume` em vez de `sessionId`. */
   iniciada: boolean;
+  /** Membro do pool onde a sessão do SDK foi iniciada (mantém afinidade do CLAUDE_CONFIG_DIR no resume). */
+  membroProvedor?: string;
+  /** Pasta CLAUDE_CONFIG_DIR onde a transcrição desta sessão foi gravada. */
+  configDir?: string;
 }
 
 /**

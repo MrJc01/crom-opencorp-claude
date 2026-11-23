@@ -38,11 +38,12 @@ export const settingsSchema = z.object({
   secretary: z
     .object({
       agent: z.string().min(1).default("secretario-exec"),
-      /** override do modelo dos agentes secretário/secretário-exec (default: o do template) */
+      /** override do modelo dos agentes secretário/secretário-exec (aceita vaga do provedor, id direto ou provider/model) */
       model: z
         .string()
+        .trim()
         .min(1)
-        .regex(/^[a-z0-9_-]+\/\S+$/i, "use o formato provider/model (ex.: opencode-go/glm-5.3-flash)")
+        .regex(/^[a-z0-9._:@/-]+$/i, "informe um identificador de modelo válido (ex.: padrao, gemini-4-argon-high ou provider/model)")
         .optional(),
     })
     .prefault({}),
